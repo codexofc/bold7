@@ -1,0 +1,51 @@
+name: Fidelity request
+description: Something does not look, sound or behave as on the BlackBerry Bold 9900, or still shows Android.
+labels: ["fidelity"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bold7 only reproduces what a source shows. A reference capture from a real 9900 or from the official BlackBerry simulator makes a request actionable. Please do not link to unofficial copies of BlackBerry files.
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Screen, app or situation.
+      placeholder: Calendar, Week view
+    validations:
+      required: true
+  - type: textarea
+    id: bold7
+    attributes:
+      label: What Bold7 shows
+      description: A Q25 capture at native size (720 x 720) helps.
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference capture
+      description: A native capture of a real 9900 or of the official simulator (OS 7.1 if possible), at its native size.
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source of the reference
+      options:
+        - Official BlackBerry simulator (OS 7.1)
+        - Real Bold 9900
+        - Another OS 7 device
+        - RIM manual or guide
+        - Recollection or press
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: OS version of the reference
+      placeholder: 7.1.0.318
+  - type: input
+    id: module
+    attributes:
+      label: Bold7 module version

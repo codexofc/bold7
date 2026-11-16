@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the rows of OS 7's open choice list (values/widgets.xml): #CCCCCC,
+     white on the chosen value (BBOS7-VISUEL.md §8, C). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true" android:color="#ffffffff" />
+    <item android:state_focused="true" android:color="#ffffffff" />
+    <item android:state_selected="true" android:color="#ffffffff" />
+    <item android:color="#ffcccccc" />
+</selector>

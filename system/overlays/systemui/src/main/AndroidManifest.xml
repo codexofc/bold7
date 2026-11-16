@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static, as the framework's. MtkSystemUI declares no <overlayable>: idmap2 then accepts
+         any preinstalled overlay (default policies), which /system_ext/overlay gives. -->
+    <overlay
+        android:targetPackage="com.android.systemui"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 SystemUI overlay" />
+</manifest>

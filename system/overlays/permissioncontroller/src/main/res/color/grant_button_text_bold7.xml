@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Label of a permission request button, as Bold7Android's dialog buttons (color/dialog_button_text_bold7):
+     #202121 on the grey button, white on the blue focus (sim-19, sim-47, C) and while pressed (D),
+     40 % when disabled (D). A resource of the overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:color="#66202121" />
+    <item android:state_pressed="true" android:color="#ffffffff" />
+    <item android:state_focused="true" android:color="#ffffffff" />
+    <item android:color="#ff202121" />
+</selector>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The rows of system_server's "isn't responding" dialog (AppNotRespondingDialog), which shares
+     aerr_list_item with the crash dialog, as OS 7's stacked dialog buttons, laid out as the
+     crash dialog's (app_error_dialog.xml). A copy of the Q25's own layout, every id, view type and
+     attribute kept (the dialog finds the three buttons by id), without Android's icons. Only
+     framework references: system_server reads this file. Every id checked against the Q25's
+     framework-res. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingTop="4px"
+    android:paddingBottom="37px">
+
+    <Button
+        android:id="@*android:id/aerr_close"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_close_app" />
+
+    <Button
+        android:id="@*android:id/aerr_wait"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_wait" />
+
+    <Button
+        android:id="@*android:id/aerr_report"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_report" />
+</LinearLayout>

@@ -1,0 +1,29 @@
+<resources>
+    <string name="description">OS 7 status bar, volume, power off, status messages and lock screen in MtkSystemUI, behind a fingerprint guard.</string>
+    <!-- The power key's dialog (docs/BBOS7-VISUEL.md §23): Full Power Off is OS 7's (manual
+         p. 301), Emergency the lock screen's (sim-65); the question, Restart and Cancel here are
+         mine (D). -->
+    <string name="power_question">Turn off the device?</string>
+    <string name="power_full_off">Full Power Off</string>
+    <string name="power_restart">Restart</string>
+    <string name="power_cancel">Cancel</string>
+    <string name="power_emergency">Emergency</string>
+    <!-- The 9900's lock screen, as the simulator 7.1.0.318 writes them (sim-85, sim-87, sim-65). -->
+    <string name="lock_enter_password">Enter Password:</string>
+    <string name="lock_incorrect_password">Incorrect password!</string>
+    <string name="lock_emergency">Emergency</string>
+    <!-- The SIM's PIN and PUK: no capture of the 9900's SIM screen, and its firmware's
+         strings are compressed; written after "Enter Password:" (sim-85) by eye (D). -->
+    <string name="lock_enter_sim_pin">Enter SIM PIN:</string>
+    <string name="lock_enter_sim_puk">Enter SIM PUK:</string>
+    <string name="lock_enter_new_sim_pin">Enter New SIM PIN:</string>
+    <string name="lock_confirm_sim_pin">Confirm New SIM PIN:</string>
+    <!-- The warning before a volume above Android's safe level: OS 7's warning
+         before Audio Boost, as the simulator 7.1.0.318 shows it (sim-341 to sim-343), its double
+         spaces after a full stop made single and the blank line between its paragraphs left out,
+         so that the whole fits the Q25's screen without OS 7's scrolling (HearingWarningTest);
+         Learn More and "Don't show again" left out (D). -->
+    <string name="hearing_warning">WARNING: You are about to activate Audioboost and exceed the recommended safe output volume limits of the BlackBerry smartphone. Damage to your hearing may result. Consult the website before proceeding.\nIMPORTANT REMINDER: Hearing experts warn against the use of portable media players at a high volume. If you experience ringing in your ears or any discomfort, immediately discontinue use of the media player and consult with a physician.</string>
+    <string name="hearing_proceed">Proceed</string>
+    <string name="hearing_cancel">Cancel</string>
+</resources>

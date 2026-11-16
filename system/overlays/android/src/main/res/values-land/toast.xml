@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The framework sets toast_y_offset again for land (24dp), which an app's activity on this
+     720x720 screen is (w554dp, h523dp): an overlay value wins only in a configuration as good as
+     the target's. The same zero as values/toast.xml, written in dp: aapt2 drops a value equal to
+     a less specific one, at link and again when AGP optimizes the release (aapt2 optimize, which
+     the link option no-resource-deduping does not reach), and this one must stay in the overlay. -->
+<resources>
+    <dimen name="toast_y_offset">0dp</dimen>
+</resources>

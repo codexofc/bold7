@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static: enabled and immutable from boot, preloaded by the zygote with framework-res.
+         The resources it changes are not in an <overlayable> of framework-res: idmap2 only
+         accepts a preinstalled overlay (partition policy), which /system_ext/overlay gives.
+         /system has no overlay folder, and system_ext is the partition whose static overlays
+         win (OverlayConfig), as long as /system_ext/overlay/config/config.xml does not exist. -->
+    <overlay
+        android:targetPackage="android"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 android" />
+</manifest>

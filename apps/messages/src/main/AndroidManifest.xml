@@ -1,0 +1,200 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Switch Application of the menus: the launcher's switcher, behind its
+         signature permission, declared here and by the launcher and each app that asks for it, so
+         that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <!-- The Hub's store (dev.bold7.hub.data.HubContract), declared by apps/hub: signature, granted
+         to Bold7's apps, all signed by the same key. Messages is an ordinary app. -->
+    <uses-permission android:name="dev.bold7.permission.READ_HUB" />
+    <!-- A missed call opened asks "Call …?" through the Phone of Bold7: its
+         signature permission, declared by dev.bold7.phone. -->
+    <uses-permission android:name="dev.bold7.permission.CALL_PROMPT" />
+
+    <!-- The thread reads Telephony itself (SMS, MMS and the RCS Google Messages copies
+         there), granted by tools/install.sh; Google Messages keeps the SMS role and writes. -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Google Messages' ExternalMessagingApiService (dangerous, granted by tools/install.sh), which
+         sends, marks read and deletes; opened to this app's signature by dev.bold7.sysui. -->
+    <uses-permission android:name="com.google.android.apps.messaging.EXTERNAL_MESSAGING_API" />
+
+    <!-- To proposes contacts by name and the thread's band shows the contact's
+         picture: the contacts provider, read only (granted by tools/install.sh). -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Attach's picker lists the phone's pictures, videos and sounds through
+         MediaStore (granted by tools/install.sh, never asked on screen); File keeps the system's
+         document picker, a text file not being in MediaStore without the all-files access. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Choose Contact: Select Contact of Bold7's Contacts, signature, declared there and here so
+         that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SELECT_CONTACT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SELECT_CONTACT" />
+
+    <!-- A new text to a number, asked by Bold7's Contacts (its Text): signature, declared
+         here and by Contacts, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.COMPOSE_TEXT"
+        android:protectionLevel="signature" />
+
+    <!-- A new mail to an address, asked by Bold7's Contacts (its Email): signature,
+         declared here and by Contacts, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.COMPOSE_EMAIL"
+        android:protectionLevel="signature" />
+
+    <!-- The state of Google Messages' consent (ConsentProvider), for the launcher's Setup screen
+         alone: signature, declared here and by the launcher, so that the order of the installs
+         does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.READ_TEXT_CONSENT"
+        android:protectionLevel="signature" />
+
+    <!-- Package visibility (Android 11+) for what Open starts: an app's launcher activity when its
+         notification is gone, and the SMS app that Compose and a text open. -->
+    <queries>
+        <!-- The API's service, bound by GrpcMessagingApi. -->
+        <package android:name="com.google.android.apps.messaging" />
+        <!-- The Phone of Bold7's "Call …?". -->
+        <package android:name="dev.bold7.phone" />
+        <!-- Select Contact of Choose Contact. -->
+        <package android:name="dev.bold7.contacts" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+    </queries>
+
+    <!-- No backup: it shows messages (it stores none). -->
+    <application
+        android:name=".MessagesApp"
+        android:allowBackup="false"
+        android:label="@string/app_name">
+
+        <!-- The home's Messages icon. Exported as every launcher activity; it is never shown over
+             the lock screen, and its rows=N extra only shows made-up items, never written. -->
+        <activity
+            android:name=".MessagesActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The home's Text Messages icon: the same list opened on its texts,
+             the 9900's second icon beside Messages (sim-03, C). Its own row in core/icons' tables
+             names it and gives it net_rim_bb_messaging_app.sms_and_mms. Exported as every
+             launcher activity, never shown over the lock screen. -->
+        <activity-alias
+            android:name=".TextMessages"
+            android:exported="true"
+            android:label="@string/folder_text"
+            android:targetActivity=".MessagesActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- The thread: started by the inbox only, never over the lock screen. -->
+        <activity
+            android:name=".ConversationActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- A text to a number (extras "to" and "title"), for Bold7's apps only: Contacts' Text;
+             with a picture (EXTRA_STREAM, read grant), Pictures' Send > Text
+             Message, the picture attached to a new message. The thread itself, never over the lock screen: the conversation with
+             this number when there is one, else a new message. -->
+        <activity-alias
+            android:name=".Compose"
+            android:exported="true"
+            android:permission="dev.bold7.permission.COMPOSE_TEXT"
+            android:targetActivity=".ConversationActivity" />
+
+        <!-- A text's picture in full, opened from the thread only, never over the
+             lock screen. -->
+        <activity
+            android:name=".ViewerActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
+        <!-- A text's video or sound played, opened from the thread only, never over
+             the lock screen; the part is read by this app itself (READ_SMS), nothing is granted. -->
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
+        <!-- Attach's picker, opened from the thread only, never over the lock screen. -->
+        <activity
+            android:name=".PickerActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- The files attached in the thread's field, read only: not exported, a
+             grant for one URI lets Google Messages read the one it sends, for that call only. -->
+        <provider
+            android:name=".AttachmentProvider"
+            android:authorities="dev.bold7.messages.attachments"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <!-- Google Messages' consent read for the launcher's Setup (call "consent"): exported
+             behind its signature permission only, which the provider checks again. -->
+        <provider
+            android:name=".ConsentProvider"
+            android:authorities="dev.bold7.messages.consent"
+            android:exported="true"
+            android:permission="dev.bold7.permission.READ_TEXT_CONSENT" />
+
+        <!-- Mail: reading, Compose Email and Email Account Management, started by the
+             inbox only, never over the lock screen. The accounts and the network are apps/hub's
+             (MailContract): this app has no INTERNET. -->
+        <activity
+            android:name=".MailActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen" />
+        <activity
+            android:name=".ComposeMailActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+        <activity
+            android:name=".MessagesOptionsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+        <activity
+            android:name=".MailAccountsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+
+        <!-- A new mail to an address (extras "to" and "title"), for Bold7's apps only: Contacts'
+             Email. Never over the lock screen. -->
+        <activity-alias
+            android:name=".ComposeEmail"
+            android:exported="true"
+            android:permission="dev.bold7.permission.COMPOSE_EMAIL"
+            android:targetActivity=".ComposeMailActivity" />
+    </application>
+</manifest>

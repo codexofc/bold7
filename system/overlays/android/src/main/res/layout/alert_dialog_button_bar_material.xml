@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The button bar of every framework AlertDialog (alert_dialog_material.xml, here too) and of the
+     date and time pickers: system_server inflates it for its error dialogs. OS 7's buttons,
+     stacked and centred (docs/BBOS7-VISUEL.md §12; sim-19, sim-47, sim-62, C): each 51 px high,
+     the first 24 px under the text, then one every 74 px, the box's bottom border 41 px under the
+     last; all as wide as 0.545 of the box (353 px of the 648 px box, values/dimens.xml; 359 px with the image edges), or as
+     their label and 20 px on each side when that is wider (theme.xml GreyBorderDef, A), at most
+     the box's text width. Each Button is the button and its image's 3 px of edge and shadow on
+     every side (border_button.png, drawable/dialog_button_bold7.xml): 57 px high, 17 px apart,
+     4 px of padding above the first and 37 px under the last (x 0 here is the box's border pixel
+     plus one, see alert_dialog_material.xml); its label's baseline 35 px under the button's top
+     (sim-19, C), 38 under the view's. Order top to bottom: positive, negative, neutral, Android's
+     own when it stacks (D: OS 7 puts Cancel last, sim-47, which an app usually makes the
+     negative). A label too long for the box is cut with an ellipsis (D).
+     A copy of the Q25's own layout, every id, view type and attribute it had kept:
+     AlertController finds buttonPanel and button1 to button3, AlertDialogLayout measures
+     buttonPanel by id, ButtonBarLayout finds spacer. The bar is vertical from the start and never
+     restacks: ButtonBarLayout reads its private allowStacking from its XML style only, and the
+     framework's Widget.Material.ButtonBar.AlertDialog it names here is redefined with
+     allowStacking false (values/dialogs.xml), so it never turns horizontal or reorders its
+     buttons. The buttons name the framework's dialog button style directly, whatever the
+     dialog's theme: every dialog theme draws the dark OS 7 box. No padding from the theme's
+     buttonBarStyle; no focus highlight on the scroll view. Only framework references, no
+     resource of the overlay: system_server reads this file. Every id checked against the Q25's
+     framework-res. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@*android:id/buttonPanel"
+    style="?android:attr/buttonBarStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="0px"
+    android:scrollbarAlwaysDrawVerticalTrack="true"
+    android:scrollIndicators="top|bottom"
+    android:fillViewport="true"
+    android:defaultFocusHighlightEnabled="false">
+
+    <com.android.internal.widget.ButtonBarLayout
+        style="@android:style/Widget.Material.ButtonBar.AlertDialog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="4px"
+        android:paddingBottom="37px"
+        android:layoutDirection="locale"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <Button
+            android:id="@android:id/button1"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Button
+            android:id="@android:id/button2"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Button
+            android:id="@android:id/button3"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Space
+            android:id="@*android:id/spacer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+    </com.android.internal.widget.ButtonBarLayout>
+</ScrollView>

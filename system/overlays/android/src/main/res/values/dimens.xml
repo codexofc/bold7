@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Height of the status bar: the 9900's banner over an app, two lines of 67 px (banner.pme,
+         y 0 to 66 on sim-43; docs/BBOS7-VISUEL.md §18), a pixel of the 9900 being one of the Q25,
+         instead of 24dp (31 px). A framework value: SystemUI sizes its window with it
+         (SystemBarUtils.getStatusBarHeight) and every app gets it as its top inset; heads-up
+         cards start under it. status_bar_height and _portrait refer to it in AOSP. system/sysui
+         StatusBarTest checks it against Banner.HEIGHT. -->
+    <dimen name="status_bar_height_default">67px</dimen>
+
+    <!-- The older status_bar_height, which BenOS points at status_bar_height_portrait (40 dp,
+         52 px) and _landscape (28 dp): SystemBarUtils never reads it, but an app that asks for
+         getIdentifier("status_bar_height") (React Native and others) lays its content under it.
+         The banner's 67 px too, or that content starts 15 px under the banner. In SystemUI, only
+         the lock screen previews of the wallpaper picker read it (KeyguardRemotePreviewManager,
+         KeyguardPreviewSmartspaceViewModel). -->
+    <dimen name="status_bar_height_portrait">67px</dimen>
+    <dimen name="status_bar_height_landscape">67px</dimen>
+
+    <!-- Width of the alert dialogs: OS 7's widest box, 648 px from border pixel to border pixel on
+         720 (the screen less popup-screen-margin-percentage = 5 % on each side, theme.xml, A;
+         docs/BBOS7-VISUEL.md §12, D for the square), as core/ui's DialogLayout. OS 7 makes a box
+         as wide as its text (40 px more, sim-19, C): a framework dialog keeps this width
+         whatever its text (D), because a dialog sized by its content would squeeze the input
+         fields and lists of the apps' dialogs. The window is the box's image, border_popup.png,
+         with its 4 px of edge and shadow on each side (values/dialogs.xml): 656 px, centred, the
+         box from x 36 to x 683. DecorView takes this fraction of the screen's width (720 px)
+         and keeps the integer part: 91.12 % gives 656. Both values alike, whatever the
+         orientation (an app's 554x523 dp window counts as landscape). Read only through
+         windowMinWidthMajor and Minor of the Alert and MinWidth dialog themes (Holo, Material,
+         DeviceDefault and what derives from them); no framework code reads them. -->
+    <item name="dialog_min_width_major" type="dimen">91.12%</item>
+    <item name="dialog_min_width_minor" type="dimen">91.12%</item>
+</resources>

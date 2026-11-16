@@ -1,0 +1,92 @@
+# BlackBerry OS 7.1 sounds the module lays in /product/media/audio (docs/BBOS7-VISUEL.md, section 20).
+# Columns: path under /product/media/audio, firmware file under assets-gen/sounds/ (the
+# <cod>/<path> of assets-private/bbos7-9900/sounds/, which tools/import-assets.sh copies), title
+# shown by the pickers. The directory is the category (ringtones, notifications, alarms: what
+# MediaStore classes by path; ui: names fixed by Android). The build keeps the firmware's AAC as it
+# is in .m4a (copied, not re-encoded), converts the Sonar WAV to FLAC and the interface sounds to
+# Ogg Opus, and writes the title as a tag; it fails if a source is missing. tools/sons.sh reads the
+# first column. Titles: the one tagged in the firmware's AAC, trailing space removed (A); the file
+# name split before each capital where the firmware has none (D: Sonar and the ui sounds).
+# No lock, unlock, keypress, power-on or power-off sound: the 9900 has none that Android could
+# play at those moments, so those stay Android's.
+# ringtones/: all 34 tones of the 9900 (Ringtones picker, MediaStore is_ringtone).
+ringtones/3Beeps.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/3Beeps.m4a	3 Beeps
+ringtones/3Bells.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/3Bells.m4a	3 Bells
+ringtones/Action.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Action.m4a	Action
+ringtones/Adventurous.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Adventurous.m4a	Adventurous
+ringtones/Antelope.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Antelope.m4a	Antelope
+ringtones/Aspiration.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Aspiration.m4a	Evolving Aspiration
+ringtones/Assured.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Assured.m4a	Assured
+ringtones/Astute.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Astute.m4a	Astute
+ringtones/Attentive.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Attentive.m4a	Attentive
+ringtones/Balance.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Balance.m4a	Balance
+ringtones/ClassicPhoneRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ClassicPhoneRemix.m4a	Classic Phone Remix
+ringtones/Confidence.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Confidence.m4a	Confidence
+ringtones/ConfirmRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ConfirmRemix.m4a	Confirm Remix
+ringtones/Considerate.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Considerate.m4a	Considerate
+ringtones/ContentmentRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ContentmentRemix.m4a	Contentment Remix
+ringtones/Dream.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Dream.m4a	Evolving Dream
+ringtones/EagerRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/EagerRemix.m4a	Eager Remix
+ringtones/LightSpeedRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/LightSpeedRemix.m4a	Light Speed Remix
+ringtones/MentalNote.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MentalNote.m4a	Mental Note
+ringtones/MorningBlues.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MorningBlues.m4a	Morning Blues
+ringtones/MorningLight.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MorningLight.m4a	Morning Light
+ringtones/Possibilities.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Possibilities.m4a	Evolving Possibilities
+ringtones/Prompt.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Prompt.m4a	Prompt
+ringtones/Pursuit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Pursuit.m4a	Pursuit
+ringtones/Revelation.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Revelation.m4a	Evolving Revelation
+ringtones/SanguineRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/SanguineRemix.m4a	Sanguine Remix
+ringtones/Seaside.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Seaside.m4a	Evolving Seaside
+ringtones/Shimmer.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Shimmer.m4a	Shimmer
+ringtones/Spirit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Spirit.m4a	Spirit
+ringtones/Sunrise.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Sunrise.m4a	Sunrise
+ringtones/Urgent1.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Urgent1.m4a	Urgent 1
+ringtones/Urgent2.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Urgent2.m4a	Urgent 2
+ringtones/Vital.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Vital.m4a	Vital
+ringtones/ZenSpirit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ZenSpirit.m4a	Zen Spirit
+# notifications/: the tones under 5 s, plus the Sonar tune (Notifications picker).
+notifications/3Beeps.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/3Beeps.m4a	3 Beeps
+notifications/3Bells.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/3Bells.m4a	3 Bells
+notifications/Action.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Action.m4a	Action
+notifications/Adventurous.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Adventurous.m4a	Adventurous
+notifications/Assured.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Assured.m4a	Assured
+notifications/Astute.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Astute.m4a	Astute
+notifications/Attentive.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Attentive.m4a	Attentive
+notifications/Balance.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Balance.m4a	Balance
+notifications/ClassicPhoneRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ClassicPhoneRemix.m4a	Classic Phone Remix
+notifications/Confidence.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Confidence.m4a	Confidence
+notifications/ConfirmRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ConfirmRemix.m4a	Confirm Remix
+notifications/Considerate.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Considerate.m4a	Considerate
+notifications/ContentmentRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ContentmentRemix.m4a	Contentment Remix
+notifications/EagerRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/EagerRemix.m4a	Eager Remix
+notifications/LightSpeedRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/LightSpeedRemix.m4a	Light Speed Remix
+notifications/MentalNote.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MentalNote.m4a	Mental Note
+notifications/Prompt.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Prompt.m4a	Prompt
+notifications/Pursuit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Pursuit.m4a	Pursuit
+notifications/SanguineRemix.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/SanguineRemix.m4a	Sanguine Remix
+notifications/Shimmer.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Shimmer.m4a	Shimmer
+notifications/Spirit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Spirit.m4a	Spirit
+notifications/Sunrise.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Sunrise.m4a	Sunrise
+notifications/Urgent1.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Urgent1.m4a	Urgent 1
+notifications/Urgent2.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Urgent2.m4a	Urgent 2
+notifications/Vital.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Vital.m4a	Vital
+notifications/ZenSpirit.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/ZenSpirit.m4a	Zen Spirit
+notifications/Sonar.flac	net_rim_bb_profiles_tunes/tunebundles/Notifier_Sonar_16_44k.wav	Sonar
+# alarms/: the tones over 5 s (Alarms picker), and 3Beeps, the timer's.
+alarms/3Beeps.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/3Beeps.m4a	3 Beeps
+alarms/Antelope.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Antelope.m4a	Antelope
+alarms/Aspiration.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Aspiration.m4a	Evolving Aspiration
+alarms/Dream.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/Dream.m4a	Evolving Dream
+alarms/MorningBlues.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MorningBlues.m4a	Morning Blues
+alarms/MorningLight.m4a	net_rim_bb_medialoader_ringtones_640x480_01a_t/ringtones/MorningLight.m4a	Morning Light
+alarms/Possibilities.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Possibilities.m4a	Evolving Possibilities
+alarms/Revelation.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Revelation.m4a	Evolving Revelation
+alarms/Seaside.m4a	net_rim_bb_medialoader_ringtones_640x480_01b_t/ringtones/Seaside.m4a	Evolving Seaside
+# ui/: names fixed by Android (low_battery_sound, charging_started_sound, MediaActionSound, NfcService).
+ui/LowBattery.ogg	net_rim_bb_medialoader_accessibility/accessibility/Notifier_BatteryLow.m4a	Low Battery
+ui/ChargingStarted.ogg	net_rim_bb_medialoader_accessibility/accessibility/Notifier_Connected.m4a	Charging Started
+ui/VideoRecord.ogg	net_rim_bb_videorecorderlibrary/src/main/resources/VideoREC_Start.m4a	Video Record
+ui/VideoStop.ogg	net_rim_bb_videorecorderlibrary/src/main/resources/VideoREC_Stop.m4a	Video Stop
+ui/NFCSuccess.ogg	net_rim_nfc/nfc/resources/NFC_Complete.m4a	NFC Success
+ui/NFCTransferComplete.ogg	net_rim_nfc/nfc/resources/NFC_Complete.m4a	NFC Transfer Complete
+ui/NFCFailure.ogg	net_rim_nfc/nfc/resources/NFC_Error.m4a	NFC Failure

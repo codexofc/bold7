@@ -1,0 +1,66 @@
+Bold7
+Copyright 2026 Arthur Michon
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+BlackBerry, BlackBerry 10 and BlackBerry OS 7 are trademarks of their respective owners. This
+repository contains no BlackBerry asset (icons, sounds, wallpapers, fonts, boot
+animation): those stay outside the repository and are not covered by this license.
+
+Third-party code included in this repository is listed below, with its license.
+
+Android Open Source Project, Apache License 2.0, unmodified, original headers kept
+Copyright (C) 2017-2023 The Android Open Source Project
+Source: https://android.googlesource.com/platform/frameworks/base, tag android-14.0.0_r28
+(tag chosen against the Q25's own Launcher3: tools/stubs.sh checks the AIDL against its dex)
+  core/platform/src/main/aidl/com/android/systemui/shared/recents/IOverviewProxy.aidl
+  core/platform/src/main/aidl/com/android/systemui/shared/recents/ISystemUiProxy.aidl
+  core/platform/src/main/aidl/com/android/systemui/shared/recents/model/Task.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/recents/IRecentTasks.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/recents/IRecentTasksListener.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/transition/IShellTransitions.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/util/GroupedRecentTaskInfo.aidl
+  core/platform/src/main/aidl/com/android/internal/util/ScreenshotRequest.aidl
+  core/platform/src/main/aidl/android/window/RemoteTransition.aidl
+  core/platform/src/main/aidl/android/window/TransitionFilter.aidl
+  core/platform/src/main/java/com/android/wm/shell/util/GroupedRecentTaskInfo.java
+  core/platform/src/main/java/com/android/wm/shell/util/SplitBounds.java
+
+Thunderbird for Android (formerly K-9 Mail), Apache License 2.0, original headers kept
+Copyright 2008-2016, K-9 Mail Developers; Copyright 2005-2016, The Android Open Source Project
+Source: https://github.com/thunderbird/thunderbird-android, tag THUNDERBIRD_25_0
+(commit 1584e32ddc3e17f9f0ad5c435e11f3f1aa6a1a42)
+Unmodified, except three files left out (ssl/TrustManagerFactory.java, ssl/LocalKeyStore.kt,
+ssl/KeyStoreDirectoryProvider.kt):
+  core/mail/src/main/java/com/fsck/k9/       from mail/common, mail/protocols/imap, mail/protocols/smtp
+  core/mail/src/main/java/net/thunderbird/protocols/   from mail/protocols/imap
+Unmodified, single files from other modules:
+  core/mail/src/main/java/net/thunderbird/core/common/exception/MessagingException.kt
+  core/mail/src/main/java/net/thunderbird/core/common/mail/Flag.kt
+  core/mail/src/main/java/net/thunderbird/core/common/net/tls/CompromisedCertificateException.kt
+  core/mail/src/main/java/net/thunderbird/feature/mail/folder/api/FolderPathDelimiter.kt
+  core/mail/src/main/java/net/thunderbird/feature/mail/folder/api/FolderServerId.kt
+Modified (the change is stated at the top of each file):
+  core/mail/src/main/java/net/thunderbird/core/common/net/tls/CertificateBlocklist.kt
+  core/mail/src/main/java/net/thunderbird/legacy/logging/Log.kt
+
+Android Open Source Project, Apache License 2.0, original header kept
+Copyright (C) 2010 The Android Open Source Project
+Source: frameworks/base/data/keyboards/Generic.kl, as BenOS ships it in
+/system/usr/keylayout/Q25_keyboard.kl on the Q25 (two lines added by the ROM:
+"#key 100 SYM", "key 231 CALL").
+Modified: line "key 172 HOME" changed to "key 172 ENDCALL" (the End key of the 9900):
+  system/module/src/layer/product/usr/keylayout/Q25_keyboard.kl
+
+Barlow Semi Condensed Bold, SIL Open Font License 1.1
+Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
+Source: https://github.com/google/fonts/tree/main/ofl/barlowsemicondensed
+Used only to draw the word "Bold7" in the module banner (docs/logo/banner.png); licence text in docs/logo/fonts/OFL.txt:
+  docs/logo/fonts/BarlowSemiCondensed-Bold.ttf
+
+ImageMagick, ImageMagick License (Apache License 2.0 terms, https://imagemagick.org/script/license.php)
+Copyright 1999 ImageMagick Studio LLC
+Source: https://github.com/ImageMagick/ImageMagick, tag 7.1.2-31, MagickCore/resize.c
+The ten coefficients of SincFast (by Nicolas Robidoux and Chantal Racette, for 16-bit quanta),
+reproduced as constants, and the order of its Lanczos resize, rewritten in Kotlin:
+  core/firmware/src/main/kotlin/dev/bold7/firmware/Resize.kt

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A text toast an app of SDK 29 or less draws itself (Toast, ToastPresenter), as OS 7's status
+     message: the box of a dialog without buttons (docs/BBOS7-VISUEL.md §13; sim-42, C), its
+     text white 27 px left aligned, 19 px from the left border and 20 px from the right one, 22 px
+     of box above its first line and 20 px under its last, lines of 32 px; at most two lines, the
+     box at most 648 px, as Android cuts its own (D for the cut). The box is toast_frame, which
+     values/toast.xml makes the dialog box: its padding brings x and y 0 here to the pixel after
+     its border. Centred by config_toastDefaultGravity (values/toast.xml). No elevation (the box
+     carries its own shadow). SystemUI draws the toasts of the other apps (system/sysui).
+     A copy of the Q25's own layout, every id and view type kept (ToastPresenter finds message);
+     Android's side paddings left to the box. Only framework references. Every id checked against
+     the Q25's framework-res. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:background="@android:drawable/toast_frame">
+
+    <TextView
+        android:id="@android:id/message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@*android:style/TextAppearance.Toast"
+        android:maxWidth="646px"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:paddingStart="18px"
+        android:paddingEnd="20px"
+        android:firstBaselineToTopHeight="46px"
+        android:lastBaselineToBottomHeight="27px"
+        android:lineHeight="32px"
+        android:textColor="@android:color/white" />
+</LinearLayout>

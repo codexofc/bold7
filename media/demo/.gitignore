@@ -1,0 +1,9 @@
+node_modules/
+out/
+.cache/
+# Made by prepare-assets.sh and capture.sh, never committed: downloads (CREDITS.md), screen
+# captures that carry BlackBerry elements, takes filmed on the Q25.
+public/music/
+public/photos/
+public/private/
+public/captures/

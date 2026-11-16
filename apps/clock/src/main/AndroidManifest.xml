@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Clock of BBOS 7.1: an ordinary app, out of the module, installed by
+  tools/install.sh. Its alarm must ring whatever happens: exact
+  alarm clock of AlarmManager, foreground service for the sound, full-screen notification and a
+  screen over the lock screen, armed again at every boot before the first unlock (the alarm's
+  components are directBootAware and keep their state in the device protected storage).
+  Exported: the launcher's activity (the home and Manage Connections open it) and BootReceiver,
+  whose actions are all protected broadcasts only Android may send (see Receivers.kt).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Switch Application of the menus: the launcher's switcher, behind its
+         signature permission, declared here and by the launcher and each app that asks for it, so
+         that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <!-- Exact alarms for an alarm clock app: granted at install, never revoked by the user (API 33+). -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Normal: the alarm stream set under 3 of its 15 steps, Volume 1 (without it Android keeps
+         3 as the floor, dumpsys audio "Min: 1 w/o perm:3"). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- The ring's service: systemExempted, the type Android 14 gives an app with exact alarms
+         that rings in the background; media playback if that one is refused (RingService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- The ring's notification (runtime, granted by tools/install.sh) and its full screen
+         (app-op allowed by tools/install.sh). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Its app-op, allowed by tools/install.sh, lets the ring screen open over an app at once. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application
+        android:name=".ClockApp"
+        android:allowBackup="false"
+        android:label="@string/app_name">
+
+        <!-- The home's Clock icon; EXTRA_SET_ALARM (Manage Connections' Alarm) opens Set Alarm. -->
+        <activity
+            android:name=".ClockActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".OptionsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <!-- The ring: over the lock screen, turning the screen on, its own task. -->
+        <activity
+            android:name=".RingActivity"
+            android:directBootAware="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity="dev.bold7.clock.ring"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:turnScreenOn="true" />
+
+        <service
+            android:name=".RingService"
+            android:directBootAware="true"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted|mediaPlayback" />
+
+        <!-- AlarmManager's PendingIntents only. -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:directBootAware="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

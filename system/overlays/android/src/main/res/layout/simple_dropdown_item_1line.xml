@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The row of the framework's suggestion lists (ArrayAdapter for an AutoCompleteTextView, the
+     most common of the framework's drop-down rows): 57 px high, BBAlpha Sans 27 px (OS 7's rows,
+     BBOS7-VISUEL §8), its colours those of its dropDownItemStyle (light in
+     DeviceDefault apps, whose popup is OS 7's dark box). A copy of the Q25's own layout: every
+     id (text1), type and attribute kept, but the height (the theme's 64 dp), the size, and the
+     textAppearance, which the style gives. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    style="?android:attr/dropDownItemStyle"
+    android:layout_width="match_parent"
+    android:layout_height="57px"
+    android:textSize="27px"
+    android:singleLine="true"
+    android:ellipsize="marquee" />

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No ambient display: the 9900's screen stays dark when locked, a new
+         message lights its LED and nothing else (user guide 7.1, p. 15, B; docs/BBOS7-VISUEL.md
+         §5 and §10). Android, through SystemUI's DozeService (set by BenOS's overlays, read on
+         the Q25 by dumpsys dreams), lit the screen with its clock and the card of each new
+         notification (pulse, doze_enabled on by default, config_pulseOnNotificationsAvailable).
+         Empty is AOSP's own value for a device without ambient display: AmbientDisplayConfiguration
+         then says it is unavailable, DreamManagerService starts no doze dream, and the screen goes
+         from on to off (PowerManagerService's path when no dream runs). Nothing of the lock
+         itself depends on it. -->
+    <string name="config_dozeComponent" translatable="false"></string>
+</resources>

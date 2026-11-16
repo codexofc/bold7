@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Read once at boot by SystemUI (OverviewProxyService: binds QUICKSTEP_SERVICE in this
+         package), by WindowManager (RecentTasks: the recents uid) and by the package manager
+         (the "recents" protection flag). Fixed for the whole boot. -->
+    <string name="config_recentsComponentName" translatable="false">dev.bold7.launcher/dev.bold7.launcher.LauncherActivity</string>
+</resources>

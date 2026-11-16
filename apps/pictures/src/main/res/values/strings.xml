@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900 (docs/BBOS7-VISUEL.md §37): C for the simulator's
+     (sim-344 to sim-373), B for the guide's (7.1 p. 153 to 155), D for mine. -->
+<resources>
+    <string name="app_name">Pictures</string>
+    <string name="title">Pictures</string>
+    <!-- The first screen's rows (sim-344, C). -->
+    <string name="camera">Camera</string>
+    <string name="camera_pictures">Camera Pictures</string>
+    <string name="picture_library">Picture Library</string>
+    <!-- The menus (sim-346 to sim-373, C; ps 33262, 33263, C). -->
+    <string name="act_open">Open</string>
+    <string name="act_view_slideshow">View Slide Show</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_set_wallpaper">Set As Wallpaper</string>
+    <string name="act_assign_contact">Assign To Contact</string>
+    <string name="act_send">Send</string>
+    <string name="act_send_short">Send...</string>
+    <string name="act_send_text">Text Message</string>
+    <string name="act_rotate">Rotate</string>
+    <string name="act_zoom">Zoom</string>
+    <string name="act_close">Close</string>
+    <string name="act_switch_application">Switch Application</string>
+    <!-- Delete's question, as MemoPad's and Contacts' (sim-199, C; D for Pictures). -->
+    <string name="delete_question">Delete %1$s?</string>
+    <string name="cancel">Cancel</string>
+    <!-- Messages of my own (D). -->
+    <string name="not_deleted">Unable to delete the picture.</string>
+    <string name="wallpaper_set">Wallpaper set.</string>
+    <string name="wallpaper_not_set">Unable to set the wallpaper.</string>
+    <string name="contact_set">Picture assigned to the contact.</string>
+    <string name="contact_not_set">Unable to assign the picture.</string>
+    <string name="unreadable">Unable to open the picture.</string>
+    <string name="no_messages">Messages is not installed.</string>
+    <string name="no_camera">No camera application.</string>
+</resources>

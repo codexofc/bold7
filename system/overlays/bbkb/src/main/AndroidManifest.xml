@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static, as the SystemUI one. BBKB (versionName AA001.021Q25P) declares no <overlayable>:
+         idmap2 then accepts any preinstalled overlay (default policies), which
+         /system_ext/overlay gives. Its signature plays no part. -->
+    <overlay
+        android:targetPackage="com.blackberry.keyboard"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 BBKB overlay" />
+</manifest>

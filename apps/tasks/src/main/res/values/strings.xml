@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900 (docs/BBOS7-VISUEL.md §33): A for the Tasks' resource of
+     the firmware (net_rim_bb_resource__en.cod of the simulator), B for the guide's (p. 206 and 207),
+     C for the captures (sim-267 to sim-282), D for mine. -->
+<resources>
+    <string name="app_name">Tasks</string>
+    <string name="title">Tasks</string>
+    <!-- sim-277, A: "Add Task: ". The note under it is D. -->
+    <string name="add_task">Add Task:</string>
+    <string name="search">Search</string>
+    <string name="no_tasks">* No Tasks *</string>
+    <!-- The menus (sim-281, sim-282, C; A). -->
+    <string name="act_new">New</string>
+    <string name="act_complete">Mark Completed</string>
+    <string name="act_progress">Mark in Progress</string>
+    <string name="act_open">Open</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_delete_completed">Delete Completed</string>
+    <string name="act_hide">Hide Completed</string>
+    <string name="act_show">Show Completed</string>
+    <string name="act_options">Options</string>
+    <string name="act_save">Save</string>
+    <string name="act_close">Close</string>
+    <!-- The statuses and priorities (sim-270, sim-271, C; A). -->
+    <string name="status_not_started">Not Started</string>
+    <string name="status_in_progress">In Progress</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_waiting">Waiting</string>
+    <string name="status_deferred">Deferred</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_normal">Normal</string>
+    <string name="priority_high">High</string>
+    <!-- The form (sim-268, sim-273, C; A). Reminder's values A; Recurrence's the Calendar's (D). -->
+    <string name="field_title">Title:</string>
+    <string name="field_status">Status:</string>
+    <string name="field_priority">Priority:</string>
+    <string name="field_due">Due:</string>
+    <string name="field_time_zone">Time Zone:</string>
+    <string name="field_reminder">Reminder:</string>
+    <string name="field_recurrence">Recurrence:</string>
+    <string name="field_notes">Notes:</string>
+    <string name="none">None</string>
+    <string name="by_date">By Date:</string>
+    <string name="relative">Relative</string>
+    <string name="daily">Daily</string>
+    <string name="weekly">Weekly</string>
+    <string name="monthly">Monthly</string>
+    <string name="yearly">Yearly</string>
+    <string name="minutes">%1$d Min.</string>
+    <plurals name="hours">
+        <item quantity="one">%1$d Hour</item>
+        <item quantity="other">%1$d Hours</item>
+    </plurals>
+    <string name="edit_title">Edit Task</string>
+    <string name="new_title">New Task</string>
+    <string name="no_title">(No Title)</string>
+    <!-- Saving (A); Yes and No D. -->
+    <string name="no_name">A Task name must be entered</string>
+    <string name="complete_recurring">Task is complete. It cannot have a recurrence.</string>
+    <string name="reminder_passed">The reminder cannot be set because its time has passed. Is this OK?</string>
+    <string name="reminder_after_due">The reminder occurs past the due date. Is this OK?</string>
+    <string name="due_passed">Warning! Due date has already passed.</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="ok">OK</string>
+    <!-- Dialogs: A; the buttons as Contacts' (sim-193 and sim-199, C). -->
+    <string name="delete_question">Delete task?</string>
+    <string name="delete_completed_question">Delete all completed tasks?</string>
+    <string name="cancel">Cancel</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="discard">Discard</string>
+    <!-- The reminder (A: "Task Reminder"; the box's buttons the Calendar's, sim-245, C; "Due:" A). -->
+    <string name="task_reminder">Task Reminder</string>
+    <string name="box_due">Due: %1$s</string>
+    <string name="open">Open</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="snooze">Snooze (%1$d min.)</string>
+    <!-- Tasks Options (A: "Tasks Options", Sort By and its values; Confirm Delete B; Snooze A; the group D). -->
+    <string name="options_title">Tasks Options</string>
+    <string name="opt_sort">Sort By:</string>
+    <string name="opt_snooze">Snooze:</string>
+    <string name="opt_confirm_delete">Confirm Delete:</string>
+    <string name="sort_subject">Subject</string>
+    <string name="sort_priority">Priority</string>
+    <string name="sort_due_date">Due Date</string>
+    <string name="sort_status">Status</string>
+    <!-- Status messages (D). -->
+    <string name="not_saved">The task could not be saved.</string>
+    <string name="not_deleted">The task could not be deleted.</string>
+    <string name="not_updated">The task could not be changed.</string>
+    <string name="no_notifications">Task reminders cannot ring: notifications are off for Tasks.</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

@@ -1,0 +1,107 @@
+# How each app of the Q25 appears in Bold7 (AppTable.kt): grid, folders, search. Tab-separated:
+# package, activity (* for all of them), BBOS 7 name (- keeps Android's), shown or hidden, source.
+# An app absent here shows under its own name. A name comes from the 9900's 7.1 user guide (B,
+# pages 16 to 18 of the Quick Help icon list, assets-private/reference-bbos7/manuels/), the
+# simulator (C, docs/BBOS7-VISUEL.md) or the firmware's resource names (A); D is deduced, said in
+# the line. Hiding is display only: the app stays installed and enabled, the search finds it, and
+# the launcher's files/hidden-apps.tsv overrides this column app by app (OS 7's Hide and Show All).
+
+# Renamed after the BBOS 7 app that does the same job.
+com.android.chrome	*	Browser	shown	B p17
+com.android.soundrecorder	*	Voice Notes Recorder	shown	B p17
+com.android.vending	*	BlackBerry App World	shown	B p18
+com.google.android.apps.maps	*	Maps	shown	B p17
+com.google.android.apps.walletnfcrel	*	Wallet	shown	A theme net_rim_bb_wallet_app, absent from the guide
+com.light.lightcamera	*	Camera	shown	B p17
+com.soundcloud.android	*	Music	shown	D choice of the project owner: SoundCloud replaces YouTube Music, under the name of the OS 7 app that plays music (B p17)
+com.twitter.android	*	Twitter	shown	C sim-06 (Twitter icon of the home screen); absent from the guide
+org.fossify.filemanager	*	Files	shown	B p18
+
+# Messages is Bold7's own unified inbox (apps/messages); Text Messages is the same app
+# opened on its texts (activity-alias TextMessages), the 9900's second icon
+# beside Messages (sim-03, gsm 020, C; guide p. 87: "a separate icon ... for text messages"). Gmail
+# keeps its own name, as the 9900 showed a mail account's icon under the account's name (gsm 020,
+# C; its icon in bbos7_icons.tsv). Google Messages, the hidden engine of the texts (role holder),
+# leaves the grid under its own Play Store name, never a second Text
+# Messages (D); Show All shows it, with its generated icon. Outside the launcher its RRO still
+# names it Text Messages (system/overlays/names/names.tsv).
+dev.bold7.messages	*	Messages	shown	B p16
+dev.bold7.messages	dev.bold7.messages.TextMessages	Text Messages	shown	B p16; C sim-03, sim-06
+com.google.android.apps.messaging	*	Messages	hidden	C sim-05 (the switcher names apps the BB way); D: the task of Google's engine, hidden behind Bold7's Messages
+
+# Options is Bold7's own (the launcher's OptionsActivity); Android's Settings leaves the
+# grid under its own name, reached from the entries Options does not draw yet; Show All shows it.
+dev.bold7.launcher	dev.bold7.launcher.options.OptionsActivity	Options	shown	B p16; C BBOS7-VISUEL.md section 2
+com.android.settings	*	-	hidden	D hidden behind Bold7's Options
+
+# Phone is Bold7's own (apps/phone), the call screen once tools/dialer.sh gives it
+# DIALER. Google's Phone, Telecom's system dialer and the way back, leaves the grid under its own
+# name; Show All shows it, the search finds it.
+dev.bold7.phone	*	Phone	shown	C BBOS7-VISUEL.md section 2 (sim-15), absent from the guide's icon list
+com.google.android.dialer	*	-	hidden	D hidden behind Bold7's Phone
+
+# Clock is Bold7's own (apps/clock). Google's Clock leaves the grid under its own
+# name, its alarms untouched: both clocks ring; Show All shows it, the search finds it.
+dev.bold7.clock	*	Clock	shown	B p17
+com.google.android.deskclock	*	-	hidden	D hidden behind Bold7's Clock
+
+# Calendar is Bold7's own (apps/calendar), on the same calendar provider. Google
+# Calendar stays the engine of the reminders (its notifications, untouched) and leaves the grid
+# under its own name; Show All shows it, the search finds it.
+dev.bold7.calendar	*	Calendar	shown	B p17
+com.google.android.calendar	*	-	hidden	D hidden behind Bold7's Calendar
+# Contacts is Bold7's own (apps/contacts), over Android's contacts provider. Google's
+# Contacts leaves the grid under its own name, the contacts untouched (the same provider); Show All
+# shows it, the search finds it.
+dev.bold7.contacts	*	Contacts	shown	B p17
+com.google.android.contacts	*	-	hidden	D hidden behind Bold7's Contacts
+
+# Hidden: duplicates of an app above or of Bold7's own (Google's search, its Assistant and Photos,
+# Games, a second browser, the XMPP client the 9900 would call BBM).
+com.google.android.googlequicksearchbox	*	-	hidden	D Google, duplicate of the home's search
+com.google.android.apps.googleassistant	*	-	hidden	D Assistant, duplicate of the home's search
+com.google.android.apps.photos	*	-	hidden	D duplicate of Pictures
+com.google.android.play.games	*	-	hidden	D Android only
+de.monocles.browser	*	-	hidden	D duplicate of Browser
+xyz.cybertopia.salam	*	BBM	hidden	B p16; D second messenger, hidden
+
+# Technical tools of BenOS and of the phone: BlackBerry had none on its grid.
+com.android.stk	*	SIM Toolkit	hidden	A theme net_rim_SIMToolKit; D technical
+com.google.android.apps.adm	*	-	hidden	D technical
+com.google.android.apps.safetyhub	*	-	hidden	D technical
+org.fdroid.fdroid	*	-	hidden	D technical
+com.machiav3lli.backup	*	-	hidden	D technical, BenOS
+kwlkkw.odbaum.pebxnq	*	-	hidden	D technical, root manager
+vctsrt.cntgtj.uqfwgg	*	-	hidden	D technical, root manager
+com.duc1607.q25led	*	-	hidden	D technical, BenOS
+com.duc1607.resolutionchanger	*	-	hidden	D technical, BenOS
+io.github.sds100.keymapper	*	-	hidden	D technical, BenOS
+ph.dgsd.Custota	*	-	hidden	D technical, BenOS updater
+tech.shroyer.q25trackpadcustomizer	*	-	hidden	D technical, BenOS
+com.pranavpandey.rotation	*	-	hidden	D technical
+
+# Calculator is Bold7's own (apps/calculator). Google's leaves the grid under its
+# own name; Show All shows it, the search finds it.
+dev.bold7.calculator	*	Calculator	shown	B p17
+com.google.android.calculator	*	-	hidden	D hidden behind Bold7's Calculator
+
+# Flashlight is Bold7's own (apps/flashlight), new on the grid: the 9900 had no flashlight,
+# so its name and its icon (a pictogram on OS 7's tile, drawn by the app, no row in bbos7_icons.tsv:
+# there is no theme PNG for it) are D. Q25's BenOS LED app stays hidden above; no Google lamp is installed.
+dev.bold7.flashlight	*	Flashlight	shown	D new, the 9900 had none
+
+# MemoPad is Bold7's own (apps/memopad), its memos in its own database. Google Keep
+# leaves the grid under its own name, its notes untouched and not imported; Show All shows it, the
+# search finds it.
+dev.bold7.memopad	*	MemoPad	shown	B p17
+com.google.android.keep	*	-	hidden	D hidden behind Bold7's MemoPad
+
+# Pictures is Bold7's own (apps/pictures), over MediaStore. Aves, its engine before,
+# leaves the grid under its own name, its pictures untouched (the same MediaStore); Show All shows
+# it, the search finds it.
+dev.bold7.pictures	*	Pictures	shown	B p17
+deckers.thibault.aves.libre	*	-	hidden	D duplicate of Pictures
+
+# Tasks is Bold7's own (apps/tasks), its tasks in its own database. The Q25 has no Tasks
+# app to hide: the OS 7 name is new on the grid, after the guide's list.
+dev.bold7.tasks	*	Tasks	shown	B p17

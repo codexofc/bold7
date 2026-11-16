@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- A Vector module, nothing to launch: Vector reads META-INF/xposed/ from the APK. -->
+    <application
+        android:label="Bold7 SystemUI"
+        android:description="@string/description">
+    </application>
+</manifest>

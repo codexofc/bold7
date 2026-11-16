@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- French and British English (the simulator's English). No
+     settings activity. Labels left to Android, which names each subtype after its locale. -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android">
+    <subtype
+        android:imeSubtypeLocale="fr_FR"
+        android:languageTag="fr-FR"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:isAuxiliary="false" />
+    <subtype
+        android:imeSubtypeLocale="en_GB"
+        android:languageTag="en-GB"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:isAuxiliary="false" />
+</input-method>

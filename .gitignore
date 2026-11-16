@@ -1,0 +1,20 @@
+# BlackBerry resources extracted from your own 9900 file, and what the build makes of them: never
+# committed. Signing keys and local settings: never committed.
+/assets-private
+/assets-gen
+/keys
+local.properties
+
+# Build
+.gradle/
+build/
+.kotlin/
+/stubs
+/vendor
+__pycache__/
+*.apk
+*.zip
+
+# Machine
+.DS_Store
+.idea/

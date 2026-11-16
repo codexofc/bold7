@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The permission request (GrantPermissionsActivity), as OS 7 draws its dialogs (docs/BBOS7-VISUEL.md
+     §12; the framework's Bold7Android overlay does the box). On Android 14
+     PermissionController always inflates grant_permissions_material3, whose every view takes its
+     look from one of these styles, all in the PermissionControllerStyles overlayable. Checked
+     against the Q25's GooglePermissionController aml_per_341410020 (aapt2, outside the
+     repository); its styles as they were are kept in ../../../../target-styles.txt for
+     the next update.
+
+     Rules:
+     - an overlaid style replaces the whole entry: every item the layout relies on is copied, above
+       all layout_width and layout_height, which the layout leaves to the styles (without them the
+       inflation throws and no permission can be granted any more);
+     - anydpi: PermissionController ships the button styles as v31 only, and an overlay value wins
+       only in a configuration as good as the target's. Density is compared before the SDK
+       version, and anydpi always wins it (as for BBKB); a v31 qualifier would not survive here,
+       aapt2 drops it under minSdk 34. Only a night-v31 entry still beats it, in night mode,
+       which the Q25 does not use (the title icon below);
+     - no reference to PermissionController's own resources (their ids change with each update),
+       only public framework ones and the overlay's own drawable and color.
+
+     The panel itself: PermissionGrantDialogMaterial3 draws ?android:windowBackground of
+     Theme.PermissionGrantDialog, a Light.Dialog.Alert theme, which Bold7Android turns into the dark
+     box of OS 7 (border_popup.png as a 9-patch, whose padding is the inside of its border). -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingDefaultResource">
+
+    <!-- The text block, as the framework's alert (alert_dialog_material.xml, sim-19, C): 18 px
+         from the box's inside (19 from its border) on the left, 20 on the right, 21 above (the
+         spacer of a dialog without title); the buttons' own 4 px of padding plus margin follow,
+         so none below. Android: 24 dp on the sides, 18 above, 24 below. -->
+    <style name="PermissionGrantContent">
+        <item name="android:orientation">vertical</item>
+        <item name="android:paddingLeft">18px</item>
+        <item name="android:paddingTop">21px</item>
+        <item name="android:paddingRight">20px</item>
+        <item name="android:paddingBottom">4px</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+
+    <!-- No icon above the question: the dialog of OS 7 draws its own icons at the left of the
+         text, which Android's permission group icon is not. Its size and margin at 0, the view
+         stays. -->
+    <style name="PermissionGrantTitleIconMaterial3">
+        <item name="android:layout_width">0px</item>
+        <item name="android:layout_height">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+
+    <!-- The question ("Allow Essai to access your calendar?") is the dialog's message: BBAlpha
+         Sans 27 px, white, left aligned, 32 px lines, first baseline 25 px under the top, 7 px
+         from the last baseline to the bottom, as the framework's alert message (sim-19, sim-47,
+         C). Android: 20 sp, medium, centered. -->
+    <style name="PermissionGrantTitleMessage" parent="@android:style/TextAppearance.DeviceDefault.WindowTitle">
+        <item name="android:gravity">start</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:lineHeight">32px</item>
+        <item name="android:firstBaselineToTopHeight">25px</item>
+        <item name="android:lastBaselineToBottomHeight">7px</item>
+    </style>
+
+    <!-- The explanation under it, when there is one (background location, a link to Settings):
+         the same text again, 27 px white, 32 px lines (D: OS 7 has no second paragraph).
+         Android: 16 sp, 18 dp above. -->
+    <style name="PermissionGrantDetailMessage" parent="@android:style/TextAppearance.DeviceDefault">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:lineHeight">32px</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8px</item>
+    </style>
+
+    <!-- The buttons' column, centred; 37 px under the last button as in the framework's bar
+         (alert_dialog_button_bar_material.xml). Android: 22 dp. -->
+    <style name="PermissionGrantButtonListMaterial3">
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:paddingBottom">37px</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+
+    <!-- The buttons, the same three styles (Android: top, middle and bottom of a stack of pills,
+         56 dp high, 24 dp from the sides): OS 7's dialog buttons, as Bold7Android's
+         Widget.DeviceDefault.Button.ButtonBar.AlertDialog and the framework's button bar draw
+         them (sim-19, sim-47, C; images A): border_button.png grey with a #202121 label, blue
+         with a white one under the focus and while pressed, BBAlpha Sans 27 px as written; the
+         view is the 51 px button and the image's 3 px around it, 57 px high, 17 px apart, at
+         least 359 px wide (0.545 of the box, plus the edges), centred. -->
+    <style name="PermissionGrantButtonTop" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/grant_button_text_bold7</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:background">@drawable/grant_button_bold7</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:gravity">center_horizontal|top</item>
+        <item name="android:firstBaselineToTopHeight">38px</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:minWidth">359px</item>
+        <item name="android:maxWidth">614px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingLeft">23px</item>
+        <item name="android:paddingRight">23px</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">57px</item>
+        <item name="android:layout_marginLeft">0px</item>
+        <item name="android:layout_marginTop">17px</item>
+        <item name="android:layout_marginRight">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+    <style name="PermissionGrantButtonMiddle" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/grant_button_text_bold7</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:background">@drawable/grant_button_bold7</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:gravity">center_horizontal|top</item>
+        <item name="android:firstBaselineToTopHeight">38px</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:minWidth">359px</item>
+        <item name="android:maxWidth">614px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingLeft">23px</item>
+        <item name="android:paddingRight">23px</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">57px</item>
+        <item name="android:layout_marginLeft">0px</item>
+        <item name="android:layout_marginTop">17px</item>
+        <item name="android:layout_marginRight">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+    <style name="PermissionGrantButtonBottom" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/grant_button_text_bold7</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:background">@drawable/grant_button_bold7</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:gravity">center_horizontal|top</item>
+        <item name="android:firstBaselineToTopHeight">38px</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:minWidth">359px</item>
+        <item name="android:maxWidth">614px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingLeft">23px</item>
+        <item name="android:paddingRight">23px</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">57px</item>
+        <item name="android:layout_marginLeft">0px</item>
+        <item name="android:layout_marginTop">17px</item>
+        <item name="android:layout_marginRight">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+</resources>

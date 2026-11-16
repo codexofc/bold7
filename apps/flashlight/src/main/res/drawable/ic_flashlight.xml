@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The flashlight pictogram (D: the 9900 had none), in the theme's icon style: a plain white glyph
+     inside the 72 dp the launcher shows of the 108 dp layer; the launcher puts it on OS 7's tile
+     (core/icons Tile.kt, the monochrome stage). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,34 L70,34 L62,50 L46,50 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M46,52 L62,52 L62,88 Q62,90 60,90 L48,90 Q46,90 46,88 Z M54,59 a3,3 0 1,0 0.01,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,18 L56,18 L56,28 L52,28 Z M31,24 L34,21 L42,28 L39,31 Z M77,24 L74,21 L66,28 L69,31 Z" />
+</vector>

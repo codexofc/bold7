@@ -1,0 +1,27 @@
+{
+  "photos": {
+    "v1": {"size": [1080, 1080], "face": null, "screen": [[316, 175], [801, 175], [801, 659], [316, 659]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v2": {"size": [1080, 1080], "face": null, "screen": [[322, 169], [798, 181], [798, 657.5], [322, 661]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v3": {"size": [1080, 1080], "face": null, "screen": [[336, 163], [788.5, 186.5], [788, 655.5], [336, 663]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v4": {"size": [1080, 1080], "face": null, "screen": [[358, 158], [772, 192], [772, 653.5], [357, 664.5]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v19": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v20": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v21": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v22": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v23": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v24": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v25": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v26": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v27": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v28": {"size": [1080, 1080], "face": null, "screen": null, "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v29": {"size": [1080, 1080], "face": null, "screen": [[493, 207.5], [569, 147.5], [569, 668], [493, 648.5]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v30": {"size": [1080, 1080], "face": null, "screen": [[456, 206], [615, 146], [615, 668.5], [456.5, 649]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v31": {"size": [1080, 1080], "face": null, "screen": [[423, 203], [659, 147.5], [659, 668], [422.5, 650]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v32": {"size": [1080, 1080], "face": null, "screen": [[392, 200], [699, 151], [699, 667.5], [392, 651]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v33": {"size": [1080, 1080], "face": null, "screen": [[365, 196], [734, 154], [733.5, 666], [365, 652.5]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v34": {"size": [1080, 1080], "face": null, "screen": [[344, 191], [762, 159.5], [762, 664.5], [344, 654]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v35": {"size": [1080, 1080], "face": null, "screen": [[328, 186.5], [783, 164.5], [783, 663], [328, 655.5]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "v36": {"size": [1080, 1080], "face": null, "screen": [[319, 180.5], [796, 169.5], [796, 661], [318, 657.5]], "credit": "BlackBerry Classic renders: TurboSquid free model"},
+    "keyboard": {"size": [3200, 2133], "face": null, "screen": null, "credit": "Keyboard photo: Randy Lu, Unsplash"}
+  }
+}

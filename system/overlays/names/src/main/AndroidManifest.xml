@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- One APK per app of names.tsv (a product flavor each, build.gradle.kts), the target
+         package filled in by the flavor. Static, as the others. None of the targets declares an
+         <overlayable> for its label, so idmap2 accepts a preinstalled overlay, which
+         /system_ext/overlay gives. The target is read by package name, whether the app sits in
+         /product (Aves Libre) or in /data/app (updated by the Play Store): an update that
+         renames the string silences the overlay, the original name comes back. -->
+    <overlay
+        android:targetPackage="${target}"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 name ${target}" />
+</manifest>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MtkSettings' own (color-v31): the same two items, as the overlay's file stands for every
+     configuration of the target. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:alpha="?android:attr/disabledAlpha" android:color="@color/settingslib_text_color_primary_device_default" />
+    <item android:color="@color/settingslib_text_color_primary_device_default" />
+</selector>

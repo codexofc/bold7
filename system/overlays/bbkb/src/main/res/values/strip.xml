@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Classic's prediction bar under the physical keyboard, on BBKB's suggestion strip. BBKB keeps AOSP LatinIME's strip: names and uses
+     checked against the Q25's bbkb.apk (aapt2 and jadx, outside the repository). Only what BBKB's
+     default theme reads: KLP, no keyboard theme being set in its preferences. -->
+<resources>
+    <!-- Three words of 240 px on the 720 px bar (sys.keyboard, pkb 720x720 qwerty, wordWidth):
+         no side margin, and the centre word the same weight as the two others. BBKB lays the
+         words out by weight, the centre one taking this fraction and the others sharing the
+         rest; its two dividers stay 1 px wide (an ImageView never measures 0), so the words are
+         239, 239 and 240 px. 33.33333% is the encoding that gives this, not 239, 239, 239. -->
+    <dimen name="config_suggestions_strip_horizontal_margin">0dp</dimen>
+    <fraction name="config_center_suggestion_percentile">33.33333%</fraction>
+
+    <!-- No "≡" button at the bar's left edge: the Classic's bar is the three words only
+         (showMoreWordsButton="false", nothing else in pkb 720x720). BBKB shows it while its
+         "input board bar" preference is on (the default), at this width (suggestions_strip.xml,
+         cjk_suggestions_strip.xml); at 0 it takes no room and cannot be seen. It opened BBKB's
+         input board (clipboard, password keeper). -->
+    <dimen name="config_suggestion_half_hamburger_icon_width">0px</dimen>
+    <!-- No "…" under the centre word: BBKB draws it in code (Paint, this text size) when more
+         suggestions exist than fit; the Classic has no more-words hint. At size 0 the bitmap is an
+         empty 1 x 1 px (Paint.setTextSize accepts 0, getTextBounds gives an empty rectangle). -->
+    <dimen name="config_more_suggestions_hint_text_size">0px</dimen>
+
+    <!-- Word size: 32 px, measured on the Classic's capture ("to" and "and" match Slate Pro at
+         31 to 32 px); sys.keyboard gives wordFont="8" in a unit not established. -->
+    <dimen name="config_suggestion_text_size">32px</dimen>
+
+    <!-- sys.keyboard's dark prediction bar on an LCD (skins.lua, darkPredictionBarOrTray):
+         a prediction in fontColorPrediction, the typed word (verbatim) in fontColorDefault,
+         both regular and opaque. -->
+    <color name="suggested_word_color_klp">#FFB1B1B1</color>
+    <color name="typed_word_color_klp">#FFFAFAFA</color>
+</resources>

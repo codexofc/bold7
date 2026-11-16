@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The title of every framework AlertDialog (alert_dialog_material.xml includes it). An OS 7
+     dialog has no title bar (sim-19, sim-47, sim-62, C): Android's title becomes the first line of
+     the box's text, at the message's place and size, BBAlpha Sans 27 px white, in bold because
+     on OS 7 what stands out is written in bold (gsm 022, C; the bold is D here), its baseline
+     47 px under the box's top border (22 px of top margin, then 25: x and y 0 here are the box's
+     border pixels plus one, see alert_dialog_material.xml), the message's first line 32 px under
+     it. The app's icon, if any, stays Android's, before the title (D: OS 7's dialog icons are
+     its own four, 80x80, core/ui DialogIcon). A copy of the Q25's own layout, every id, view type
+     and attribute it had kept: AlertController finds topPanel, title_template, icon, alertTitle
+     and titleDividerNoCustom; DialogTitle still falls back to two smaller lines when the title
+     does not fit. Only framework references: system_server reads this file. Every id checked
+     against the Q25's framework-res. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@*android:id/topPanel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@*android:id/title_template"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical|start"
+        android:paddingStart="18px"
+        android:paddingEnd="20px">
+
+        <ImageView
+            android:id="@android:id/icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="8dp"
+            android:scaleType="fitCenter"
+            android:src="@null" />
+
+        <com.android.internal.widget.DialogTitle
+            android:id="@*android:id/alertTitle"
+            style="?android:attr/windowTitleStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textAlignment="viewStart"
+            android:firstBaselineToTopHeight="46px"
+            android:lastBaselineToBottomHeight="7px"
+            android:textSize="27px"
+            android:fontFamily="sans-serif"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
+
+    <Space
+        android:id="@*android:id/titleDividerNoCustom"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="0px" />
+</LinearLayout>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The list of the options panel, what the Q25's Menu key opens in every app (PhoneWindow.openPanel:
+     with a permanent menu key, the framework shows this panel instead of the action bar's overflow
+     popup; the Q25 has no navigation bar, so ViewConfiguration.hasPermanentMenuKey() is true).
+     Only ListMenuPresenter inflates it, for that panel, in the panel's DecorView and with
+     Theme.Material(.Light).CompactMenu, which values/widgets.xml makes OS 7's full menu: the box
+     border_menu.png, 57 px rows, the focus band.
+     Placed as OS 7's full menu (docs/BBOS7-VISUEL.md §4; sim-04, sim-44, C): against the screen's
+     left edge, its left border off the screen (4 px to the left: its text 7 px from the edge),
+     sitting on the bottom, its bottom border off the screen (5 px down: 5 px under the last row
+     stay). match_parent makes the panel's window as wide as the screen, which PhoneWindow then
+     gives panelFullBackground, transparent here (values/widgets.xml), instead of the app's
+     colorBackground around the box; the end margin leaves the box 324 px wide, its right border
+     at x 320, room for "View Saved Messages" (299 px, sim-44) and 7 px (D: Android's list cannot
+     be as wide as its longest label). A copy of the Q25's own layout, its id and view type kept.
+     Only framework references. Every id checked against the Q25's framework-res. -->
+<com.android.internal.view.menu.ExpandedMenuView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@*android:id/expanded_menu"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="start|bottom"
+    android:layout_marginStart="-4px"
+    android:layout_marginEnd="396px"
+    android:layout_marginBottom="-5px" />

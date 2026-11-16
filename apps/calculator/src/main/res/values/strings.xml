@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900 (docs/BBOS7-VISUEL.md §31): B for the guide's (p. 362),
+     D for the project's own deduction: the calculator is not on any capture. -->
+<resources>
+    <string name="app_name">Calculator</string>
+    <string name="title">Calculator</string>
+    <!-- Guide p. 362 (B). -->
+    <string name="act_to_metric">To Metric</string>
+    <string name="act_from_metric">From Metric</string>
+    <string name="act_help">Help</string>
+    <string name="act_close">Close</string>
+    <string name="conv_nothing">Nothing to convert.</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

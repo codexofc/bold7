@@ -1,0 +1,95 @@
+name="PermissionControllerStyles" style/PermissionGrantButtonBottom
+name="PermissionControllerStyles" style/PermissionGrantButtonListMaterial3
+name="PermissionControllerStyles" style/PermissionGrantButtonMiddle
+name="PermissionControllerStyles" style/PermissionGrantButtonTop
+name="PermissionControllerStyles" style/PermissionGrantContent
+name="PermissionControllerStyles" style/PermissionGrantDetailMessage
+name="PermissionControllerStyles" style/PermissionGrantTitleIconMaterial3
+name="PermissionControllerStyles" style/PermissionGrantTitleMessage
+    resource style/PermissionGrantButtonBottom OVERLAYABLE
+      (v31) (style) size=10 parent=0x010302e1
+        0x01010095=14.000000sp
+        0x01010098=@0x01060028
+        0x010100d4=@drawable/grant_permissions_buttons_bottom
+        0x010100f4=-1
+        0x010100f5=56.000000dp
+        0x010100f7=24.000000dp
+        0x010100f8=2.000000dp
+        0x010100f9=24.000000dp
+        0x010100fa=2.000000dp
+        0x010103ac="google-sans-medium"
+    resource style/PermissionGrantButtonListMaterial3 OVERLAYABLE
+      () (style) size=4
+        0x010100c4=1
+        0x010100f4=-1
+        0x010100f5=-2
+        0x01010329=0x00000002
+      (v31) (style) size=5
+        0x010100af=0x00000011
+        0x010100c4=1
+        0x010100d9=22.000000dp
+        0x010100f4=-1
+        0x010100f5=-2
+    resource style/PermissionGrantButtonMiddle OVERLAYABLE
+      (v31) (style) size=10 parent=0x010302e1
+        0x01010095=14.000000sp
+        0x01010098=@0x01060028
+        0x010100d4=@drawable/grant_permissions_buttons_middle
+        0x010100f4=-1
+        0x010100f5=56.000000dp
+        0x010100f7=24.000000dp
+        0x010100f8=2.000000dp
+        0x010100f9=24.000000dp
+        0x010100fa=2.000000dp
+        0x010103ac="google-sans-medium"
+    resource style/PermissionGrantButtonTop OVERLAYABLE
+      (v31) (style) size=10 parent=0x010302e1
+        0x01010095=14.000000sp
+        0x01010098=@0x01060028
+        0x010100d4=@drawable/grant_permissions_buttons_top
+        0x010100f4=-1
+        0x010100f5=56.000000dp
+        0x010100f7=24.000000dp
+        0x010100f8=2.000000dp
+        0x010100f9=24.000000dp
+        0x010100fa=2.000000dp
+        0x010103ac="google-sans-medium"
+    resource style/PermissionGrantContent OVERLAYABLE
+      () (style) size=7
+        0x010100c4=1
+        0x010100d6=24.000000dp
+        0x010100d7=18.000000dp
+        0x010100d8=24.000000dp
+        0x010100d9=24.000000dp
+        0x010100f4=-1
+        0x010100f5=-2
+    resource style/PermissionGrantDetailMessage OVERLAYABLE
+      () (style) size=4 parent=0x010301ad
+        0x01010095=16.000000sp
+        0x010100f4=-1
+        0x010100f5=-2
+        0x010100f8=18.000000dp
+    resource style/PermissionGrantTitleIconMaterial3 OVERLAYABLE
+      () (style) size=5
+        0x010100f4=24.000000dp
+        0x010100f5=24.000000dp
+        0x010100fa=12.000000dp
+        0x0101011d=3
+        0x01010121=?0x01010435
+      (v31) (style) size=5
+        0x010100f4=32.000000dp
+        0x010100f5=32.000000dp
+        0x010100fa=12.000000dp
+        0x0101011d=3
+        0x01010121=@0x0106003f
+      (night-v31) (style) size=5
+        0x010100f4=32.000000dp
+        0x010100f5=32.000000dp
+        0x010100fa=12.000000dp
+        0x0101011d=3
+        0x01010121=@0x0106003c
+    resource style/PermissionGrantTitleMessage OVERLAYABLE
+      () (style) size=3 parent=0x010301b7
+        0x010100af=0x00000011
+        0x010100f4=-1
+        0x010100f5=-2

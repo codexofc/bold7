@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The labels of Messages, OS 7's English (docs/BBOS7-VISUEL.md §15). B: the 9900's 7.1 user guide
+     (p. 31, 52, 94-95, 103); C: sim-43, sim-44; S: remembered, to check against a capture; D: mine. -->
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- Menus (B) -->
+    <string name="act_open">Open</string>
+    <string name="act_mark_read">Mark Read</string>
+    <string name="act_mark_unread">Mark Unread</string>
+    <string name="act_mark_prior_read">Mark Prior Read</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_delete_prior">Delete Prior</string>
+    <string name="act_compose">Compose Text Message</string>
+    <string name="act_compose_other">Compose Other</string>
+    <string name="act_text_message">Text Message</string>
+    <string name="act_search">Search</string>
+    <string name="act_view_folder">View Folder</string>
+    <!-- sim-44, sim-45, sim-289, sim-290 (C); Save and the Display Style choices: guide 7.1 p. 88, 91-93 (B) -->
+    <string name="act_search_by">Search by</string>
+    <string name="act_by_sender">Sender</string>
+    <string name="act_by_recipient">Recipient</string>
+    <string name="act_by_subject">Subject</string>
+    <string name="act_display_style">Display Style</string>
+    <string name="act_style_group">Group by Subject</string>
+    <string name="act_style_single">Single Messages</string>
+    <string name="act_view_saved">View Saved Messages</string>
+    <string name="act_save">Save</string>
+    <string name="act_notifiers">Message Notifiers</string>
+    <!-- Messages Options (sim-294, sim-295, C: titles and subtitles; B: the fields, guide 7.1 p. 87-89) -->
+    <string name="options_title">Messages Options</string>
+    <string name="options_display">Message Display and Actions</string>
+    <string name="options_display_hint">Hide and change messages display</string>
+    <string name="options_inbox">Inbox Management</string>
+    <string name="options_inbox_hint">Select types of messages to show</string>
+    <string name="options_accounts_hint">Set up Internet email accounts</string>
+    <string name="opt_hide_sent">Hide Sent Messages</string>
+    <string name="opt_confirm_delete">Confirm Delete</string>
+    <string name="opt_confirm_prior">Confirm Mark Prior Read</string>
+    <string name="opt_text_messages">Text Messages</string>
+    <string name="no_options">Options is not available.</string>
+    <string name="folder_saved">Saved Messages</string>
+
+    <!-- The empty inbox (C, sim-43) -->
+    <string name="no_messages">* No Messages *</string>
+
+    <!-- The confirmations of Confirm Delete and Confirm Mark Prior Read (B p. 89); their wording S -->
+    <string name="confirm_delete">Delete message?</string>
+    <string name="confirm_delete_prior">Delete all messages prior to and including this date?</string>
+    <string name="confirm_mark_prior_read">Mark all messages prior to and including this date as read?</string>
+    <string name="button_delete">Delete</string>
+    <string name="button_yes">Yes</string>
+    <string name="button_cancel">Cancel</string>
+
+    <!-- View Folder: the views of the Alt shortcuts (B p. 52), named by me (D) -->
+    <string name="folder_title">View Folder</string>
+    <string name="folder_all">All Messages</string>
+    <string name="folder_incoming">Incoming Messages</string>
+    <string name="folder_outgoing">Outgoing Messages</string>
+    <string name="folder_text">Text Messages</string>
+    <string name="folder_calls">Call Logs</string>
+    <string name="folder_unread">Unread Messages</string>
+    <string name="folder_notifications">Notifications</string>
+
+    <!-- An item that opens nothing (D) -->
+    <string name="unable_to_open">Unable to open %1$s</string>
+    <string name="search_hint">Search</string>
+
+    <!-- The thread. C: sim-49 ("To:"), sim-50 ("Me"), sim-51 and sim-52 (Send, Clear
+         Field, Clear Conversation); B: guide 7.1 p. 105 (Delete Message, Clear Conversation); D: mine. -->
+    <string name="thread_to">To:</string>
+    <string name="thread_me">Me</string>
+    <string name="thread_send">Send</string>
+    <string name="thread_delete_message">Delete Message</string>
+    <string name="thread_clear_field">Clear Field</string>
+    <!-- sim-150, sim-52 (C). -->
+    <string name="thread_add_smiley">Add Smiley</string>
+    <string name="thread_clear_conversation">Clear Conversation</string>
+    <!-- To. B: guide 7.1 p. 103 (Choose Contact); D: the others, the number's
+         question in Contacts' words -->
+    <string name="thread_choose_contact">Choose Contact</string>
+    <string name="select_number">Select a number:</string>
+    <string name="no_recipient">Choose a contact or type a number in To.</string>
+    <string name="not_chosen">Unable to read this contact.</string>
+    <string name="no_contacts_app">Contacts is not available.</string>
+    <!-- Attachments. B: guide 7.1 p. 104 (Attach), p. 131 (Open Attachment), p. 153
+         (Save Image); C: ps 33263 (Zoom); D: the submenu's kinds, Remove Attachment and the status
+         messages, mine. -->
+    <string name="thread_attach">Attach</string>
+    <string name="attach_picture">Picture</string>
+    <string name="attach_video">Video</string>
+    <string name="attach_audio">Audio</string>
+    <string name="attach_file">File</string>
+    <string name="thread_remove_attachment">Remove Attachment</string>
+    <string name="thread_open_attachment">Open Attachment</string>
+    <string name="not_attachable">This file can\'t be attached to a text message.</string>
+    <string name="not_attached">Unable to attach the file.</string>
+    <string name="too_large">The file is too large for a text message.</string>
+    <!-- The picker of Attach; D: no capture of OS 7's file explorer -->
+    <string name="picker_empty">No items found.</string>
+    <plurals name="picker_items">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <!-- The player (D) -->
+    <string name="player_error">Unable to play the file.</string>
+    <string name="no_picker">Unable to choose a file.</string>
+    <string name="no_player">No application can open this attachment.</string>
+    <string name="viewer_save_image">Save Image</string>
+    <string name="viewer_zoom">Zoom</string>
+    <string name="viewer_saved">Image saved in Pictures.</string>
+    <string name="viewer_not_saved">Unable to save the image.</string>
+    <string name="viewer_unreadable">Unable to open the picture.</string>
+    <plurals name="thread_attachments">
+        <item quantity="one">%d attachment</item>
+        <item quantity="other">%d attachments</item>
+    </plurals>
+    <!-- Confirmations and status messages of the thread (D, in the words of the inbox's) -->
+    <string name="confirm_delete_message">Delete message?</string>
+    <string name="confirm_clear_conversation">Delete all messages in this conversation?</string>
+    <string name="confirm_discard">Discard message?</string>
+    <string name="button_discard">Discard</string>
+    <string name="not_sent">Message not sent. It stays in the field.</string>
+    <string name="not_created">Unable to start a conversation with %1$s. Your message stays in the field.</string>
+    <string name="not_deleted">Unable to delete the message.</string>
+    <!-- Google Messages' door shut: said, then Text Messages opens as without the API (D) -->
+    <string name="api_shut">Text messaging unavailable here (%1$s). Opening Text Messages.</string>
+    <string name="why_permission">permission</string>
+    <string name="why_closed">bridge closed</string>
+    <string name="why_consent">consent off</string>
+    <string name="why_refused">refused</string>
+    <string name="why_contract">contract changed</string>
+    <string name="why_failed">error</string>
+
+    <!-- Mail. C: sim-44 (Compose Email), sim-45 (Options), sim-46 (To:, Cc:,
+         Subject:), sim-47 (Changes made!, Save, Discard, Cancel), gsm 030 (From:), gsm 032 (Reply,
+         Forward, Reply To All); B: guide 7.1 p. 90 (Email Accounts, Email Account Management,
+         Internet Mail Account), p. 93 to 95 (Mark Unread, Delete, Save Draft, Send); D: mine. -->
+    <string name="act_compose_email">Compose Email</string>
+    <string name="act_options">Options</string>
+    <string name="act_help">Help</string>
+    <string name="mail_from">From: %1$s</string>
+    <string name="mail_to">To:</string>
+    <string name="mail_cc">Cc:</string>
+    <string name="mail_subject">Subject:</string>
+    <string name="mail_send_using">Send Using:</string>
+    <string name="mail_reply">Reply</string>
+    <string name="mail_forward">Forward</string>
+    <string name="mail_reply_all">Reply To All</string>
+    <string name="mail_send">Send</string>
+    <string name="mail_save_draft">Save Draft</string>
+    <string name="mail_close">Close</string>
+    <string name="mail_loading">Retrieving message…</string>
+    <string name="mail_unreadable">Unable to retrieve this message. Check your connection and open it again.</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="button_save">Save</string>
+    <string name="mail_no_account">No email account. Set one up in Options.</string>
+    <string name="mail_bad_address">Check the addresses in To and Cc.</string>
+    <string name="mail_not_sent">Unable to send. Your message is saved in Drafts.</string>
+    <string name="mail_not_sent_auth">%1$s refused the password. Your message is saved in Drafts.</string>
+    <string name="mail_draft_saved">Saved in Drafts.</string>
+    <string name="accounts_title">Email Account Management</string>
+    <string name="accounts_add">Internet Mail Account</string>
+    <string name="accounts_add_hint">Add an email address</string>
+    <string name="accounts_delete">Delete</string>
+    <string name="accounts_delete_question">Delete %1$s from this smartphone? Its messages stay on the server.</string>
+    <string name="setup_title">Email Setup</string>
+    <string name="setup_address">Email address:</string>
+    <string name="setup_password">Password:</string>
+    <string name="setup_password_hint">An app password: Gmail, Outlook and iCloud make one in the account\'s security settings.</string>
+    <string name="setup_imap">Incoming server:</string>
+    <string name="setup_smtp">Outgoing server:</string>
+    <string name="setup_port">Port:</string>
+    <string name="setup_continue">Next</string>
+    <string name="setup_busy">Checking your email address…</string>
+    <string name="setup_done">Your email address %1$s is set up. Its messages will arrive in Messages.</string>
+    <string name="setup_invalid">Type your email address and its password.</string>
+    <string name="setup_auth">The email address or the password is incorrect.</string>
+    <string name="setup_certificate">The server\'s certificate cannot be trusted. Nothing was kept.</string>
+    <string name="setup_network">Unable to reach the server. Check your connection and the server names.</string>
+    <string name="setup_refused">This email address is already set up, or cannot be added.</string>
+    <string name="setup_servers">Type the servers of this email address.</string>
+    <!-- sign-in through the browser (OAuth), Edit and the signature. D, except Use
+         Auto Signature, Edit and Save (guide 7.1 p. 90, B). -->
+    <string name="setup_browser">Sign In With Browser</string>
+    <string name="setup_browser_hint">%1$s: or sign in through the browser, without an app password.</string>
+    <string name="setup_browser_off">Browser sign-in (Gmail, Outlook) is off in this build of Bold7.</string>
+    <string name="setup_browser_unavailable">Browser sign-in is not available for this email address. Type an app password.</string>
+    <string name="setup_browser_cancelled">The sign-in was not completed. Nothing was kept.</string>
+    <string name="setup_no_browser">No browser to sign in with.</string>
+    <string name="setup_invalid_address">Type your email address.</string>
+    <string name="accounts_edit">Edit</string>
+    <string name="edit_use_signature">Use Auto Signature</string>
+    <string name="edit_signature">Signature:</string>
+    <string name="edit_signature_default">Sent from my BlackBerry® smartphone</string>
+    <string name="edit_save">Save</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static, as the BBKB one. MtkSettings (versionName 14) declares no <overlayable>: idmap2
+         then accepts any preinstalled overlay (default policies), which /system_ext/overlay
+         gives. MediaTek's own com.mediatek.MtkSettingsResOverlay (/vendor/overlay, priority 1)
+         already overlays it that way, on one string only. Its signature plays no part. -->
+    <overlay
+        android:targetPackage="com.android.settings"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 Settings overlay" />
+</manifest>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Background of the framework's NumberPicker (values/widgets.xml): under the trackpad focus,
+     the chosen row (the middle third of the three rows) in OS 7's focus band,
+     border_spinboxbutton~focus.png (A; sim-274, sim-275, C: the focused column's chosen value
+     is white on it); nothing otherwise. A drawable with a focused state also stops Android from
+     drawing its own grey focus block over the column. NumberPicker takes the focus from the
+     keys only (the touch goes to its text field), so this shows only with the trackpad. A
+     resource of the overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <layer-list>
+            <item
+                android:drawable="@drawable/bold7_chosen"
+                android:gravity="fill_horizontal|center_vertical"
+                android:height="57px" />
+        </layer-list>
+    </item>
+</selector>

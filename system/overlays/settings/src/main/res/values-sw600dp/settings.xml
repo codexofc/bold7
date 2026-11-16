@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same toolbar height as values/settings.xml for this configuration, which Android's own
+     table qualifies (48 dp landscape, 64 dp on wide screens). -->
+<resources>
+    <dimen name="mtrl_toolbar_default_height">32px</dimen>
+    <dimen name="abc_action_bar_default_height_material">32px</dimen>
+</resources>

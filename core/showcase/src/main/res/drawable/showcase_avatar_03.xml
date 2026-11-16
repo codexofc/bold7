@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mei Zhang: a made-up person of the showcase, drawn for Bold7 (Apache 2.0). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96">
+    <path android:pathData="M0,0 H96 V96 H0 Z" android:fillColor="#DCD3EE" />
+    <path android:pathData="M46,14 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.18" />
+    <path android:pathData="M29,42 C28,21 38,17 48,17 C59,17 68,21 67,42 L67,57 C63,60 59,59 58,57 L38,57 C37,59 33,60 29,57 Z" android:fillColor="#23201F" />
+    <path android:pathData="M6,96 C6,78 22,67 48,67 C74,67 90,78 90,96 Z" android:fillColor="#4F9A5E" />
+    <path android:pathData="M41,50 H55 V64 Q48,70 41,64 Z" android:fillColor="#CDA885" />
+    <path android:pathData="M41.5,67 L48,77 L54.5,67 Z" android:fillColor="#CDA885" />
+    <path android:pathData="M29.3,43 a3.2,5 0 1,0 6.4,0 a3.2,5 0 1,0 -6.4,0 Z" android:fillColor="#DDB590" />
+    <path android:pathData="M60.3,43 a3.2,5 0 1,0 6.4,0 a3.2,5 0 1,0 -6.4,0 Z" android:fillColor="#DDB590" />
+    <path android:pathData="M32.5,41 a15.5,18.5 0 1,0 31.0,0 a15.5,18.5 0 1,0 -31.0,0 Z" android:fillColor="#E9BF98" />
+    <path android:pathData="M32,42 C31,24 40,20 48,20 C57,20 65,24 64,42 C62,32 57,28 48,28 C40,28 34,32 32,42 Z" android:fillColor="#23201F" />
+    <path android:pathData="M38.5,38 Q42,36.4 45,38" android:strokeColor="#1F1C1B" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M51,38 Q54,36.4 57.5,38" android:strokeColor="#1F1C1B" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M40.2,43 a1.8,2 0 1,0 3.6,0 a1.8,2 0 1,0 -3.6,0 Z" android:fillColor="#2A2423" />
+    <path android:pathData="M52.2,43 a1.8,2 0 1,0 3.6,0 a1.8,2 0 1,0 -3.6,0 Z" android:fillColor="#2A2423" />
+    <path android:pathData="M43.5,51 Q48,54.5 52.5,51" android:strokeColor="#90765E" android:strokeWidth="1.6" android:strokeLineCap="round" />
+    <path android:pathData="M36.8,43 a5.2,4.6 0 1,0 10.4,0 a5.2,4.6 0 1,0 -10.4,0 Z" android:strokeColor="#3B3B3B" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M48.8,43 a5.2,4.6 0 1,0 10.4,0 a5.2,4.6 0 1,0 -10.4,0 Z" android:strokeColor="#3B3B3B" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M47,42.5 Q48,41.5 49,42.5" android:strokeColor="#3B3B3B" android:strokeWidth="1.5" android:strokeLineCap="round" />
+</vector>

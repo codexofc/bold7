@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static, as the other RROs. Unlike SystemUI and BBKB, PermissionController declares
+         <overlayable>: idmap2 maps only the resources of the group named here, and only for an
+         overlay whose partition is in its policies (odm|oem|product|system|vendor; /system_ext
+         counts as system). Google's own GooglePermissionControllerOverlay (/product/overlay)
+         targets the same group. Its signature plays no part. -->
+    <overlay
+        android:targetPackage="com.google.android.permissioncontroller"
+        android:targetName="PermissionControllerStyles"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 PermissionController overlay" />
+</manifest>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Label of an OS 7 dialog button (values/dialogs.xml): #202121 on the grey button, the darkest of
+     "Close" on sim-19 (C; core/design DialogColors.ButtonText), white on the blue focus (sim-19,
+     sim-47, C) and while pressed (D), at 40 % when disabled (D, no capture). A resource of the
+     overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:color="#66202121" />
+    <item android:state_pressed="true" android:color="#ffffffff" />
+    <item android:state_focused="true" android:color="#ffffffff" />
+    <item android:color="#ff202121" />
+</selector>

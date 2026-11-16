@@ -1,0 +1,115 @@
+<resources>
+    <!-- navigator.mo, locale fr, of BlackBerry 10.3.3. -->
+    <!-- The tray's views in French: from memory of a French 9900 (S), not checked against a French firmware. -->
+    <string name="panel_frequent">Fréquentes</string>
+    <string name="panel_all">Toutes</string>
+    <string name="panel_favourites">Favoris</string>
+    <string name="panel_media">Médias</string>
+    <string name="panel_downloads">Téléchargements</string>
+    <!-- The home's menus in French: no French capture or firmware, D throughout. -->
+    <string name="home_launch">Lancer</string>
+    <string name="home_mark_favourite">Marquer comme favori</string>
+    <string name="home_unmark_favourite">Ne plus marquer comme favori</string>
+    <string name="home_move">Déplacer</string>
+    <string name="home_move_to_folder">Déplacer vers le dossier</string>
+    <string name="home_hide">Masquer l\'icône</string>
+    <string name="home_unhide">Afficher l\'icône</string>
+    <string name="home_delete">Supprimer</string>
+    <string name="home_full_menu">Menu complet</string>
+    <string name="home_maximise_panel">Agrandir le panneau</string>
+    <string name="home_restore_panel">Restaurer le panneau</string>
+    <string name="home_add_folder">Ajouter un dossier</string>
+    <string name="home_show_all">Tout afficher</string>
+    <string name="home_options">Options</string>
+    <string name="home_open_folder">Ouvrir le dossier</string>
+    <string name="home_edit_folder">Modifier le dossier</string>
+    <string name="home_delete_folder">Supprimer le dossier</string>
+    <string name="home_folder_root">Accueil</string>
+    <string name="folder_name">Nom du dossier :</string>
+    <!-- UniversalSearchUI_fr.qm and UniversalSearchTTS_fr.qm of BlackBerry 10.3.3. -->
+    <string name="search_dial">Composer :</string>
+    <string name="search_extended">Recherche étendue</string>
+    <string name="search_contacts">Contacts</string>
+    <string name="search_settings">Options</string>
+    <string name="setting_wifi">Wi-Fi</string>
+    <string name="setting_bluetooth">Bluetooth</string>
+    <string name="setting_airplane">Mode Avion</string>
+    <string name="setting_network">Réseau et Internet</string>
+    <string name="setting_display">Affichage</string>
+    <string name="setting_sound">Son et vibreur</string>
+    <string name="setting_battery">Batterie</string>
+    <string name="setting_apps">Applications</string>
+    <string name="setting_notifications">Notifications</string>
+    <string name="setting_storage">Stockage</string>
+    <string name="setting_location">Localisation</string>
+    <string name="setting_security">Sécurité</string>
+    <string name="setting_date">Date et heure</string>
+    <string name="setting_languages">Langues</string>
+    <string name="setting_accessibility">Accessibilité</string>
+    <string name="setting_nfc">NFC</string>
+    <string name="setting_all">Paramètres</string>
+    <string name="search_documents">Fichiers</string>
+    <string name="search_music">Musique</string>
+    <string name="search_videos">Vidéos</string>
+    <string name="search_pictures">Images</string>
+    <string name="search_calendar">Calendrier</string>
+    <string name="search_text_messages">Messages texte</string>
+    <string name="search_calls">Appels</string>
+    <string name="search_call_in">Entrant</string>
+    <string name="search_call_out">Sortant</string>
+    <string name="search_call_missed">Manqué</string>
+    <string name="setting_data_usage">Consommation des données</string>
+    <string name="setting_roaming">Réseau mobile</string>
+    <string name="setting_vpn">VPN</string>
+    <string name="setting_wallpaper">Fond d\'écran</string>
+    <string name="setting_dnd">Ne pas déranger</string>
+    <string name="setting_battery_saver">Économiseur de batterie</string>
+    <string name="setting_default_apps">Applications par défaut</string>
+    <string name="setting_privacy">Confidentialité</string>
+    <string name="setting_accounts">Comptes</string>
+    <string name="setting_keyboard">Clavier</string>
+    <string name="setting_developer">Options pour les développeurs</string>
+    <string name="setting_about">À propos du téléphone</string>
+    <string name="setting_cast">Caster</string>
+    <string name="setting_print">Impression</string>
+    <!-- A row of the notification list that opens nothing. -->
+    <string name="hub_unable_to_open">Impossible d\'ouvrir %1$s</string>
+    <!-- Sound profiles in French: no French capture or firmware, D throughout. -->
+    <string name="profile_select">Sélectionner un profil</string>
+    <string name="profile_alerts_off">Toutes alertes désactivées</string>
+    <string name="profile_normal">Normal</string>
+    <string name="profile_loud">Fort</string>
+    <string name="profile_medium">Moyen</string>
+    <string name="profile_silent">Silencieux</string>
+    <string name="profile_vibrate">Vibreur seulement</string>
+    <string name="profile_phone_only">Appels uniquement</string>
+    <string name="profile_change_sounds">Modifier sons et alertes</string>
+    <!-- The list of notifications under the banner; French wording is our own (D). -->
+    <string name="notices_messages">Messages</string>
+    <string name="notices_text_messages">Messages texte</string>
+    <string name="notices_phone">Téléphone</string>
+    <string name="notices_calendar">Calendrier</string>
+    <string name="notices_missed_call">Appel manqué</string>
+    <!-- Manage Connections: French wording is our own (D). -->
+    <string name="connections_title">Gérer les connexions</string>
+    <string name="connections_mobile">Réseau mobile</string>
+    <string name="connections_wifi">Wi-Fi</string>
+    <string name="connections_bluetooth">Bluetooth</string>
+    <string name="connections_nfc">Communication en champ proche</string>
+    <string name="connections_on">Activé</string>
+    <string name="connections_all_off">Tout désactiver</string>
+    <string name="connections_restore">Rétablir</string>
+    <string name="connections_alarm_title">Régler l\'alarme</string>
+    <string name="connections_alarm">Alarme</string>
+    <string name="connections_alarm_on">ACTIVÉE</string>
+    <string name="connections_alarm_off">DÉSACTIVÉE</string>
+    <string name="connections_options_title">Options et état</string>
+    <string name="connections_networks">Réseaux et connexions</string>
+    <string name="connections_networks_sub">Options du mobile, du Wi-Fi, du Bluetooth, du NFC, etc.</string>
+    <string name="connections_wifi_network">Réseau Wi-Fi</string>
+    <string name="connections_wifi_network_sub">Se connecter aux réseaux Wi-Fi et les gérer</string>
+    <string name="connections_service">État du service</string>
+    <string name="connections_service_sub">Détail du service et des connexions</string>
+    <string name="connections_options">Options</string>
+    <string name="connections_options_sub">Options générales et paramètres de l\'appareil</string>
+</resources>

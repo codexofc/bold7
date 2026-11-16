@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <title>Bold7</title>
+  <!-- Bold7 logo: a 7 whose bar is a chrome keyboard fret, inside a chrome-ringed optical trackpad. -->
+  <defs>
+    <linearGradient id="graphite" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4048"/>
+      <stop offset="1" stop-color="#16191d"/>
+    </linearGradient>
+    <linearGradient id="chromeRim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f6f8"/>
+      <stop offset="0.5" stop-color="#8d959e"/>
+      <stop offset="1" stop-color="#dfe3e7"/>
+    </linearGradient>
+    <linearGradient id="chromeSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f7f8"/>
+      <stop offset="0.6" stop-color="#cfd4d9"/>
+      <stop offset="1" stop-color="#b4bbc2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4fb0ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4fb0ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="116" height="116" rx="26" fill="url(#graphite)"/>
+  <circle cx="60" cy="60" r="44" fill="url(#glow)"/>
+  <rect x="28" y="28" width="64" height="64" rx="17" fill="#0e1013" stroke="url(#chromeRim)" stroke-width="5"/>
+  <path d="M64 46 H79 L60 82 H45 Z" fill="#ffffff"/>
+  <rect x="41" y="40" width="38" height="9" rx="2.5" fill="url(#chromeSoft)"/>
+</svg>

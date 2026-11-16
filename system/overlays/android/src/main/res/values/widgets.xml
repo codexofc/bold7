@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Framework widgets drawn by the apps themselves, as OS 7 as values allow: date and time pickers, drop-down lists, menus, the text
+     selection bar. Same rule as dialogs.xml
+     for private references: same id in android.jar and on the Q25. -->
+<resources>
+    <!-- Date and time pickers in columns (spinner, 1) instead of calendar and clock (2): OS 7 sets
+         a date or a time in spin boxes, one per field (border_spinboxbutton~focus.png, A), which
+         the columns are. Widget.Material.DatePicker and .TimePicker
+         read these two integers, nothing else does. DatePickerDialog hides the calendar next to
+         the columns (date_picker_dialog.xml). -->
+    <integer name="date_picker_mode_material">1</integer>
+    <integer name="time_picker_mode_material">1</integer>
+
+    <!-- The columns: OS 7's spin boxes (sim-156, sim-274, sim-275, C): three rows of 57 px (the
+         wheel 171 px high, internalMaxHeight, the divider distance 57 px), 27 px text, at least
+         78 px wide (the open list's width, BBOS7-VISUEL.md §8), the text in the theme's colour
+         (light in the dialogs, dark in an app's own screen). The chosen row is marked by two
+         2 px lines in the menus' filet colour (#43454A, D) while the column is not focused, and
+         by OS 7's focus band under the trackpad focus (drawable/number_picker_focus_bold7.xml).
+         Every item of the Q25's style copied, those changed noted. The light pickers derive from
+         this style. -->
+    <color name="picker_divider_bold7">#ff43454a</color>
+    <style name="Widget.Material.NumberPicker" parent="@*android:style/Widget.NumberPicker">
+        <item name="android:background">@drawable/number_picker_focus_bold7</item>
+        <item name="android:solidColor">@android:color/transparent</item>
+        <item name="android:selectionDividerHeight">2px</item>
+        <item name="*android:internalLayout">@*android:layout/number_picker_material</item>
+        <item name="*android:internalMaxHeight">171px</item>
+        <item name="*android:internalMinWidth">78px</item>
+        <item name="*android:selectionDivider">@color/picker_divider_bold7</item>
+        <item name="*android:selectionDividersDistance">57px</item>
+        <item name="*android:virtualButtonPressedDrawable">?android:attr/selectableItemBackground</item>
+    </style>
+    <!-- The text of the columns (the input field of number_picker_material, which also gives the
+         wheel's neighbours their size): BBAlpha Sans 27 px, the colour Body1's (the theme's). -->
+    <style name="TextAppearance.Material.NumberPicker" parent="@android:style/TextAppearance.Material.Body1">
+        <item name="android:textSize">27px</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- Menus (overflow, popup, context popup) of the framework: OS 7's full menu box,
+         border_menu.png (A; sim-04, sim-44, C), #212429 with its border, in the place of Android's
+         rounded panel, whatever the app's theme (the rows' text is written light in
+         layout/popup_menu_item_layout.xml). Its padding puts the first row 17 px under the top
+         border and 5 px over the bottom one (tools/import-assets.sh dialogues). No elevation (the
+         image has its shadow). Where Android puts it stays Android's: under the overflow button,
+         not against the screen's left and bottom edges (D).
+         Only styles no app derives from: AppCompat's popup menus derive from
+         Widget.Material.PopupMenu and .Light.PopupMenu (Base.Widget.AppCompat.Light.PopupMenu),
+         61 packages of the Q25 do, none from these four. The DeviceDefault popup styles (empty on
+         the Q25), the overflow (its two items kept; Light.PopupMenu.Overflow derives from it) and
+         the context popup (its item kept). -->
+    <style name="Widget.DeviceDefault.PopupMenu" parent="@android:style/Widget.Material.PopupMenu">
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.PopupMenu" parent="@android:style/Widget.Material.Light.PopupMenu">
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <!-- ListPopupWindow of the DeviceDefault apps (an app's own popup list, not a
+         menu: the menus above derive from Material's, whose popupMenuStyle names them): the same
+         box and no elevation, so a popup list wears OS 7's menu whatever the rows' layout. -->
+    <style name="Widget.DeviceDefault.ListPopupWindow" parent="@android:style/Widget.Material.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.ListPopupWindow" parent="@android:style/Widget.Material.Light.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.Material.PopupMenu.Overflow" parent="@android:style/Widget.Material.PopupMenu">
+        <item name="android:dropDownHorizontalOffset">-4dp</item>
+        <item name="android:overlapAnchor">true</item>
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.Material.ContextPopupMenu" parent="@android:style/Widget.Material.ListPopupWindow">
+        <item name="android:overlapAnchor">true</item>
+        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+
+    <!-- The list of the framework's drop-down popups in DeviceDefault apps: the row under the
+         trackpad focus or the finger in the full menu's focus band (drawable/menu_row_bold7.xml;
+         sim-04, sim-44, C), no line between rows (sim-44: none inside a group, C). The menus
+         use this selector; spinners and suggestions set their own (dropDownSelector), Android's.
+         The DeviceDefault styles, empty on the Q25, and not Widget.Material.ListView.DropDown:
+         AppCompat's drop-down lists (Base.Widget.AppCompat.ListView.DropDown) derive from that
+         one. -->
+    <style name="Widget.DeviceDefault.Light.ListView.DropDown" parent="@android:style/Widget.Material.Light.ListView.DropDown">
+        <item name="android:listSelector">@drawable/menu_row_bold7</item>
+    </style>
+    <style name="Widget.DeviceDefault.ListView.DropDown" parent="@android:style/Widget.Material.ListView.DropDown">
+        <item name="android:listSelector">@drawable/menu_row_bold7</item>
+    </style>
+
+    <!-- the drop-down lists of choice fields (Spinner) and of suggestions
+         (AutoCompleteTextView) in DeviceDefault apps: OS 7's open choice list (sim-156 to
+         sim-161, sim-270 to sim-272, BBOS7-VISUEL.md §8, C): border_inplace.png #212429, rows of
+         57 px, the value centred in #CCCCCC, the chosen one (under the trackpad focus or the
+         finger) white on border_spinboxbutton~focus.png (A), no elevation. The rows' look is
+         the DeviceDefault drop-down item (below) and the layouts of the two simple rows
+         (layout/simple_*); a layout of the app's own keeps its own text colour (D: dark on this
+         box in a light app, the earlier lot's worry; the framework's rows and those of apps that
+         use them are the common case). Spinner and AutoCompleteTextView of the Material styles
+         (Theme.Material apps, not DeviceDefault) stay Android's. -->
+    <style name="Widget.DeviceDefault.Spinner" parent="@android:style/Widget.Material.Spinner">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.Spinner" parent="@android:style/Widget.Material.Light.Spinner">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <!-- The styles the DeviceDefault themes really name. Their spinnerStyle
+         is ?attr/dropDownSpinnerStyle (aapt2 dump of the Q25's framework-res.apk), i.e.
+         Widget.DeviceDefault(.Light).Spinner.DropDown, whose parents are Material's, not the two
+         styles above: the panel stayed Android's light one under the rows' light text
+         (#CCCCCC on #F4F5F6, contrast 1.4). Same three items; the action bar's drop-down too. -->
+    <style name="Widget.DeviceDefault.Spinner.DropDown" parent="@*android:style/Widget.Material.Spinner.DropDown">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.Spinner.DropDown" parent="@*android:style/Widget.Material.Light.Spinner.DropDown">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Spinner.DropDown.ActionBar" parent="@*android:style/Widget.Material.Spinner.DropDown.ActionBar">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.Spinner.DropDown.ActionBar" parent="@*android:style/Widget.Material.Light.Spinner.DropDown.ActionBar">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.AutoCompleteTextView" parent="@android:style/Widget.Material.AutoCompleteTextView">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <style name="Widget.DeviceDefault.Light.AutoCompleteTextView" parent="@android:style/Widget.Material.Light.AutoCompleteTextView">
+        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
+        <item name="android:popupElevation">0px</item>
+    </style>
+    <!-- The rows: text in the list's colours (grey, white when chosen); the spinner's centred,
+         the suggestions' at the start (D: OS 7's suggestions are a left-aligned menu). Their
+         light variants derive from these (empty on the Q25). -->
+    <style name="TextAppearance.DeviceDefault.Widget.DropDownItem" parent="@android:style/TextAppearance.Material.Widget.DropDownItem">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/spin_text_bold7</item>
+    </style>
+    <style name="Widget.DeviceDefault.DropDownItem" parent="@android:style/Widget.Material.DropDownItem">
+        <item name="android:textAppearance">@android:style/TextAppearance.DeviceDefault.Widget.DropDownItem</item>
+        <item name="android:paddingStart">6px</item>
+        <item name="android:paddingEnd">6px</item>
+    </style>
+    <style name="Widget.DeviceDefault.DropDownItem.Spinner" parent="@android:style/Widget.DeviceDefault.DropDownItem">
+        <item name="android:gravity">center</item>
+        <item name="android:textAlignment">center</item>
+    </style>
+
+    <!-- The options panel, what the Q25's Menu key opens in every app: with a permanent menu key
+         (no navigation bar on the Q25), PhoneWindow shows this panel, not the action bar's
+         overflow popup (without this, the Menu key's menu stayed Android's).
+         Its list and rows are inflated with the panel's own theme, panelMenuListTheme, which is
+         one of these two private themes in every Material and DeviceDefault theme; nothing else
+         uses them. Each keeps its parent and its window animation, and becomes OS 7's full menu
+         (BBOS7-VISUEL §4; sim-04, sim-44, C):
+         - the list (listViewStyle): border_menu.png for background, its padding putting the
+           first row 17 px under the top border; no line between rows; the focus band;
+         - the rows (list_menu_item_layout reads these two attributes): 57 px, the text 7 px from
+           the box's border at the start and 7 at the end (6 px inside the padding);
+         - the rows' text (itemTextAppearance, which ListMenuItemView applies to the title over
+           its layout's): BBAlpha Sans 27 px #E1E3E5, white under the focus;
+         - no elevation: the image has its shadow.
+         Its place on the screen is the list's layout (layout/expanded_menu_layout.xml). -->
+    <style name="Theme.Material.CompactMenu" parent="@android:style/Theme.Material">
+        <item name="android:listViewStyle">@style/MenuList.Bold7</item>
+        <item name="android:windowAnimationStyle">@*android:style/Animation.DropDownUp</item>
+        <item name="android:background">@null</item>
+        <item name="android:itemTextAppearance">@style/MenuText.Bold7</item>
+        <item name="android:windowElevation">0px</item>
+        <item name="android:listPreferredItemHeightSmall">57px</item>
+        <item name="android:listPreferredItemPaddingStart">6px</item>
+        <item name="android:listPreferredItemPaddingEnd">6px</item>
+    </style>
+    <style name="Theme.Material.Light.CompactMenu" parent="@android:style/Theme.Material.Light">
+        <item name="android:listViewStyle">@style/MenuList.Bold7</item>
+        <item name="android:windowAnimationStyle">@*android:style/Animation.DropDownUp</item>
+        <item name="android:background">@null</item>
+        <item name="android:itemTextAppearance">@style/MenuText.Bold7</item>
+        <item name="android:windowElevation">0px</item>
+        <item name="android:listPreferredItemHeightSmall">57px</item>
+        <item name="android:listPreferredItemPaddingStart">6px</item>
+        <item name="android:listPreferredItemPaddingEnd">6px</item>
+    </style>
+    <style name="MenuList.Bold7" parent="@android:style/Widget.Material.ListView">
+        <item name="android:background">@drawable/bold7_menu</item>
+        <item name="android:divider">@null</item>
+        <item name="android:dividerHeight">0px</item>
+        <item name="android:listSelector">@drawable/menu_row_bold7</item>
+        <item name="android:cacheColorHint">@android:color/transparent</item>
+    </style>
+    <style name="MenuText.Bold7" parent="@android:style/TextAppearance">
+        <item name="android:textSize">27px</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/menu_text_bold7</item>
+    </style>
+    <!-- The panel's window background when its list fills the width (expanded_menu_layout.xml):
+         nothing, so only the box shows, the app around it. panelFullBackground of every Holo and
+         Material theme, read by PhoneWindow's panels only. -->
+    <item name="menu_background_fill_parent_width" type="drawable">@android:color/transparent</item>
+
+    <!-- Text selection bar (FloatingToolbar): OS 7 has none (a selection's actions are in the menu,
+         sim-52, C). Its height and its buttons' width those of a full menu row, 57 px (D); square
+         corners no more: the box's (config_dialogCornerRadius, dialogs.xml). Its colours stay
+         Android's (white, the app's text). -->
+    <dimen name="floating_toolbar_height">57px</dimen>
+    <dimen name="floating_toolbar_menu_button_minimum_width">57px</dimen>
+</resources>

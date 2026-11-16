@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900. The 9900 had no flashlight: every text here is D. -->
+<resources>
+    <string name="app_name">Flashlight</string>
+    <string name="title">Flashlight</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+    <string name="state_in_use">The flash is in use by another application.</string>
+    <string name="state_no_flash">This device has no flash.</string>
+    <string name="act_turn_on">Turn On</string>
+    <string name="act_turn_off">Turn Off</string>
+    <string name="act_close">Close</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

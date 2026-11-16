@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A dialog button of OS 7 (docs/BBOS7-VISUEL.md §12), drawn behind its label (values/dialogs.xml):
+     border_button.png, a white at 85 % that gives #AFB1B4 over the box (A; sim-19, C), and
+     border_button~focus.png under the trackpad focus (A; sim-19, sim-47, C), and while pressed
+     (D: the 9900 shows the focus where the finger is). Disabled: the grey image (D, no capture).
+     Each image has 3 px of shadow and edge around the button: the views that carry it are 6 px
+     wider and higher than the button (layout/alert_dialog_button_bar_material.xml). The
+     9-patches come from tools/import-assets.sh dialogues. A resource of the overlay, not a
+     layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:drawable="@drawable/bold7_button" />
+    <item android:state_pressed="true" android:drawable="@drawable/bold7_button_focus" />
+    <item android:state_focused="true" android:drawable="@drawable/bold7_button_focus" />
+    <item android:drawable="@drawable/bold7_button" />
+</selector>

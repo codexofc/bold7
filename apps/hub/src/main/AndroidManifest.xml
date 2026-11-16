@@ -1,0 +1,78 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Reading the Hub (dev.bold7.hub.data.HubContract): Bold7's apps only, all signed by
+         keys/cascade.jks. -->
+    <permission
+        android:name="dev.bold7.permission.READ_HUB"
+        android:protectionLevel="signature" />
+
+    <!-- The sources without a role, granted once by tools/install.sh, never
+         asked on screen. READ_SMS and READ_CALL_LOG are hard restricted: install.sh exempts them
+         first. READ_CONTACTS gives the senders' names. -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Mail: only to the servers of the accounts the user enters and, for a
+         browser sign-in, to Google's or Microsoft's token endpoint; the redirect is heard
+         on the loopback address only, no exported component. Nothing else. Push by IMAP IDLE in
+         this process, no foreground service: the network followed by ConnectivityManager, the partial wake lock held while a response is handled, IDLE renewed
+         every 15 minutes by an exact alarm allowed in Doze (USE_EXACT_ALARM, granted at install). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Not direct boot aware: the Hub's database lives in credential-encrypted storage and
+         nothing of it is readable before the first unlock. No backup: it holds messages.
+         allowBackup alone leaves the device-to-device transfer of targetSdk 31+; the extraction
+         rules exclude every domain from both. -->
+    <!-- The default SMS app and the dialer are asked by package (the counts of the kinds path leave
+         out the notifications that repeat a text or a call): an app sees only the packages it declares,
+         and these two have a launcher activity. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".HubApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:label="Messages Service">
+
+        <!-- The Hub, read only: its items, its counters and the opening of a notification for the
+             launcher (READ_HUB), its counters (per account and per kind) only for SystemUI. SystemUI cannot request our
+             signature permission, its manifest is not ours: it reads the two counters paths with
+             STATUS_BAR (signature|privileged), which it holds. Nothing but counts goes through
+             that path; the opening checks READ_HUB itself (HubProvider.call). To check on the
+             Q25 with the lock screen, its first reader. -->
+        <provider
+            android:name=".Provider"
+            android:authorities="dev.bold7.hub.data"
+            android:exported="true"
+            android:permission="dev.bold7.permission.READ_HUB">
+            <path-permission
+                android:path="/counts"
+                android:readPermission="android.permission.STATUS_BAR" />
+            <path-permission
+                android:path="/kinds"
+                android:readPermission="android.permission.STATUS_BAR" />
+        </provider>
+
+        <!-- Bound by system_server only (BIND_NOTIFICATION_LISTENER_SERVICE, signature), once
+             tools/install.sh allows it (cmd notification allow_listener). -->
+        <service
+            android:name=".HubListener"
+            android:exported="true"
+            android:label="Messages Service"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

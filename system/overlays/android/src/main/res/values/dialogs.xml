@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The framework's dialogs as OS 7's (docs/BBOS7-VISUEL.md §12): one
+     dark box for every dialog theme, Material and DeviceDefault, light and dark. Names, parents and
+     uses checked against the Q25's framework-res; every private reference below (@*android:,
+     *android:) has the same id in the SDK's android.jar and on the Q25, which is what an overlay
+     compiles and what the device reads (a private id that drifted cannot be referenced from
+     here). The overlay's own drawables and colors named below (res/drawable, res/color, and the
+     9-patches tools/import-assets.sh dialogues makes) are reached through these values only, never
+     from a layout: system_server reads the layouts. -->
+<resources>
+    <!-- Corners of what the framework rounds by ?android:attr/dialogCornerRadius (the text
+         selection bar, SystemUI's panels): the box's, about 11 px on border_popup.png (A, its
+         curve read by eye). The dialogs themselves draw border_popup.png. -->
+    <dimen name="config_dialogCornerRadius">11px</dimen>
+
+    <!-- The two roots of the framework's dialog themes: every Material dialog theme derives from
+         one of them, and Theme.DeviceDefault.Dialog (dark) from the first. Both draw OS 7's box,
+         dark in both: OS 7 has one dialog, whatever the app (sim-19 over a light list, sim-62 over
+         Options, C). The light one is the dark one here (Theme.Material.BaseDialog for parent,
+         instead of Theme.Material.Light.BaseDialog): its text, lists and controls take the dark
+         theme's light colours, so the Material light dialogs (Theme.Material.Light.Dialog, .Alert,
+         .MinWidth, .NoActionBar..., what Theme.Material.Light gives an app's AlertDialog) are
+         dark. None of the Q25's 250 packages derives a theme from Theme.Material.Light.Dialog
+         that sets a light background without its text colours(seven
+         themes; only MtkTeleService's call waiting dialog sets a background, with its text
+         colours).
+         - windowBackground: border_popup.png (A), as a 9-patch whose padding is the inside of its
+           border, so the layouts count from there; its shadow (1 px at the sides, 2 below)
+           stays inside the window, which centres the box 2 px above the middle, as on sim-19
+           (C). No elevation: Android's shadow would add to the image's.
+         - No dim behind (sim-19, sim-47, sim-62: the screen under the box is unchanged, C).
+         - dialogPreferredPadding: the text's 19 px from the box's border (sim-19, C), the
+           border pixel taken by the padding: the lists' rows (listPreferredItemPadding) start
+           where the text does.
+         - The lists: rows in the full menu's text (#E1E3E5, white on the band,
+           27 px), the menu's focus band under the trackpad or the finger, OS 7's check boxes
+           and radio buttons (layout/select_dialog_*). -->
+    <style name="Theme.Material.Dialog" parent="@*android:style/Theme.Material.BaseDialog">
+        <item name="android:windowBackground">@drawable/bold7_box</item>
+        <item name="android:windowElevation">0px</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:dialogPreferredPadding">18px</item>
+        <item name="android:textAppearanceListItemSmall">@style/MenuText.Bold7</item>
+        <item name="android:textColorAlertDialogListItem">@color/menu_text_bold7</item>
+        <item name="android:listChoiceBackgroundIndicator">@drawable/menu_row_bold7</item>
+        <item name="android:listChoiceIndicatorSingle">@drawable/radio_bold7</item>
+        <item name="android:listChoiceIndicatorMultiple">@drawable/check_bold7</item>
+    </style>
+    <style name="Theme.Material.Light.Dialog" parent="@*android:style/Theme.Material.BaseDialog">
+        <item name="android:windowBackground">@drawable/bold7_box</item>
+        <item name="android:windowElevation">0px</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:dialogPreferredPadding">18px</item>
+        <item name="android:textAppearanceListItemSmall">@style/MenuText.Bold7</item>
+        <item name="android:textColorAlertDialogListItem">@color/menu_text_bold7</item>
+        <item name="android:listChoiceBackgroundIndicator">@drawable/menu_row_bold7</item>
+        <item name="android:listChoiceIndicatorSingle">@drawable/radio_bold7</item>
+        <item name="android:listChoiceIndicatorMultiple">@drawable/check_bold7</item>
+    </style>
+
+    <!-- The light DeviceDefault dialog themes, which every light app and system_server's error
+         dialogs use (alertDialogTheme of Theme.DeviceDefault.Light and .DayNight), set their light
+         colours themselves (80 items each, on the Q25): each becomes its dark twin, parent and all
+         (an overlaid style replaces the whole entry), so the box shows light text. What derives
+         from them follows by id: Theme.DeviceDefault.Dialog.Alert.DayNight, .Dialog.AppError
+         (system_server), System.Dialog and .Alert, Settings.Dialog.NoActionBar, the Material
+         Components "Framework" overlays of apps, SystemUI's Theme.SystemUI.Dialog (whose 8 items
+         change no text colour) and the date and time pickers below. The DeviceDefault dark ones
+         are left as they are: they already draw this box (Theme.Material.Dialog above). -->
+    <style name="Theme.DeviceDefault.Light.Dialog" parent="@android:style/Theme.DeviceDefault.Dialog" />
+    <style name="Theme.DeviceDefault.Light.Dialog.Alert" parent="@android:style/Theme.DeviceDefault.Dialog.Alert" />
+    <style name="Theme.DeviceDefault.Light.Dialog.MinWidth" parent="@android:style/Theme.DeviceDefault.Dialog.MinWidth" />
+    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar" parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.MinWidth" parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar.MinWidth" />
+    <style name="Theme.DeviceDefault.Light.Dialog.FixedSize" parent="@*android:style/Theme.DeviceDefault.Dialog.FixedSize" />
+    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.FixedSize" parent="@*android:style/Theme.DeviceDefault.Dialog.NoActionBar.FixedSize" />
+    <!-- The other light dialog themes that set their light colours themselves on a parent that is
+         now dark: the same, so no dark text lands on the box. SystemUI.Dialog (63 items) and the
+         Settings ones (71 and 80) of the framework; Light.Voice (77), the voice assistant's
+         window, takes Material's dark one (there is no DeviceDefault dark Voice). -->
+    <style name="Theme.DeviceDefault.SystemUI.Dialog" parent="@android:style/Theme.DeviceDefault.Dialog" />
+    <style name="Theme.DeviceDefault.Settings.Dialog" parent="@android:style/Theme.DeviceDefault.Dialog" />
+    <style name="Theme.DeviceDefault.Settings.Dialog.Alert" parent="@android:style/Theme.DeviceDefault.Dialog.Alert" />
+    <style name="Theme.DeviceDefault.Light.Voice" parent="@android:style/Theme.Material.Voice" />
+
+    <!-- Date and time picker dialogs: Android lays its ThemeOverlay over the app's own theme, so
+         they took the app's colors and Android's inset panel. The alert theme of every other
+         dialog (the box, dark), with their own alert style (no title) kept. -->
+    <style name="ThemeOverlay.Material.Dialog.DatePicker" parent="@android:style/Theme.DeviceDefault.Light.Dialog.Alert">
+        <item name="android:alertDialogStyle">@*android:style/DatePickerDialog.Material</item>
+    </style>
+    <style name="ThemeOverlay.Material.Dialog.TimePicker" parent="@android:style/Theme.DeviceDefault.Light.Dialog.Alert">
+        <item name="android:alertDialogStyle">@*android:style/TimePickerDialog.Material</item>
+    </style>
+
+    <!-- The title of the dialog windows that are not alerts (Dialog.setTitle) and of the share
+         sheet's Personal / Work tabs and SystemUI's device management dialog: the dialog's text,
+         BBAlpha Sans 27 px, bold as the alerts' (layout/alert_dialog_title_material.xml, D). Its
+         colour stays the theme's, light on every dialog box. The style is public: an app may use
+         it too, and gets this size. -->
+    <style name="TextAppearance.DeviceDefault.DialogWindowTitle" parent="@android:style/TextAppearance.Material.DialogWindowTitle">
+        <item name="android:textSize">27px</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- The parent of every Material and DeviceDefault alert button bar style (empty on the Q25,
+         Widget.Material.ButtonBar's background of @null inherited). ButtonBarLayout reads its
+         private allowStacking (obtainStyledAttributes with no default style: the row's XML
+         attributes, its XML style, then the theme, which never sets it on the Q25). A layout
+         attribute cannot name a private attribute, so the overlay's
+         alert_dialog_button_bar_material (and Bold7SystemUI's) gives the bar this style: false,
+         the bar stays the vertical one it is written as and never reorders its buttons. The
+         scroll views that take this style through buttonBarStyle do not read it. -->
+    <style name="Widget.Material.ButtonBar.AlertDialog" parent="@android:style/Widget.Material.ButtonBar">
+        <item name="*android:allowStacking">false</item>
+    </style>
+
+    <!-- OS 7's dialog button (sim-19, sim-47, sim-62, C; border_button.png and its ~focus, A):
+         grey, label #202121, blue under the trackpad focus and while pressed, label white;
+         BBAlpha Sans 27 px as written, no ripple. The image's 3 px of edge and shadow belong to
+         the view: 57 px for a 51 px button, the label 20 px from the button's sides (23 from the
+         view's, theme.xml GreyBorderDef, A). The dialogs' bar sets its widths and the label's
+         baseline (layout/alert_dialog_button_bar_material.xml); a lone button elsewhere is as
+         wide as its label, its label centred.
+         It is the buttonBarButtonStyle of every DeviceDefault dialog theme and of many
+         DeviceDefault windows (dark ones, NoActionBar, Settings, InputMethod, SystemUI): their
+         button bars take the same buttons, as OS 7 had one button. SystemUI's dialog buttons
+         derive from it (Bold7SystemUI). -->
+    <style name="Widget.DeviceDefault.Button.ButtonBar.AlertDialog" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:minWidth">0px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:background">@drawable/dialog_button_bold7</item>
+        <item name="android:textColor">@color/dialog_button_text_bold7</item>
+        <item name="android:textSize">27px</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingStart">23px</item>
+        <item name="android:paddingEnd">23px</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- The buttons of the crash and "isn't responding" dialogs of system_server (app_error_dialog,
+         app_anr_dialog, the only two layouts that use this private style): the dialog button
+         above, stacked as the alerts' (their layouts). The Q25's style with its two icon items
+         dropped; parent kept. -->
+    <style name="aerr_list_item" parent="@android:style/Widget.Material.Light.Button.Borderless">
+        <item name="android:textAppearance">?android:attr/textAppearanceListItemSmall</item>
+        <item name="android:minWidth">0px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:background">@drawable/dialog_button_bold7</item>
+        <item name="android:textColor">@color/dialog_button_text_bold7</item>
+        <item name="android:textSize">27px</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingStart">23px</item>
+        <item name="android:paddingEnd">23px</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- The accent of the dark themes, which every dialog now is: the light themes' (the palette's
+         accent1_600), instead of Material's pale shade 100, so a check box or a
+         progress bar in a dialog keeps the app's light-theme accent. -->
+    <color name="accent_device_default_dark">@android:color/system_accent1_600</color>
+</resources>

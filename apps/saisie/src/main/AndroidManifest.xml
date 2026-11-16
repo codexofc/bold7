@@ -1,0 +1,41 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Options (apps/launcher) reaching Typing's settings and personal list (TypingContract):
+         Bold7's apps only, all signed by keys/cascade.jks. -->
+    <permission
+        android:name="dev.bold7.permission.TYPING_OPTIONS"
+        android:protectionLevel="signature" />
+
+    <!-- No launcher activity and no settings activity: the input method is chosen by
+         tools/install.sh (ime set), its options are Options'. Not directBootAware: before the first
+         unlock Android takes BBKB, which is, and the PIN at boot is typed as without Bold7; the
+         learned words and the personal list (TypingStore) live in credential-encrypted storage.
+         No backup: allowBackup alone leaves the device-to-device transfer of targetSdk 31+, the
+         extraction rules exclude every domain from both. -->
+    <application
+        android:name=".SaisieApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:label="@string/app_name">
+
+        <provider
+            android:name=".OptionsProvider"
+            android:authorities="dev.bold7.saisie.options"
+            android:exported="true"
+            android:permission="dev.bold7.permission.TYPING_OPTIONS" />
+
+        <!-- Exported for the system to bind it, behind BIND_INPUT_METHOD (signature, system only). -->
+        <service
+            android:name=".SaisieService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>

@@ -1,0 +1,14 @@
+# Baseline profile of the launcher (docs/PERF.md): what ART compiles ahead of time. AGP packs it
+# into the APK; system/module turns it into Bold7Launcher.apk.prof beside the priv-app, the
+# file ART Service reads for a system app.
+#
+# Everything of ours and of the Kotlin libraries we ship, not a list of hot paths. The
+# launcher dex is small, and every path of it is hot at some point (touch reception, reducers,
+# the home's views, springs, StateFlow collection): a recorded profile (Macrobenchmark on the
+# Q25) would only trim what is compiled, worth it if the odex size ever matters.
+Ldev/bold7/**;
+HSPLdev/bold7/**;->**(**)**
+Lkotlin/**;
+HSPLkotlin/**;->**(**)**
+Lkotlinx/coroutines/**;
+HSPLkotlinx/coroutines/**;->**(**)**

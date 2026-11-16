@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SystemUI's own dialogs (Internet, media output, screen recording, volume panel, the alerts
+     of SystemUIDialog): their title and buttons as the framework dialogs' (OS 7's box, title and stacked buttons), instead of a centred 24 sp title and pill
+     buttons. Their window theme, Theme.SystemUI.Dialog, derives from the framework's
+     Theme.DeviceDefault.Light.Dialog, which Bold7Android makes dark: the box and light text come
+     from there. The power menu and the toasts are system/sysui's. Values only.
+     Each style replaces SystemUI's whole entry, parent included, and takes for parent the
+     framework style that Bold7Android already dresses: the parent of each is checked against
+     the Q25's framework-res, and the four names against MtkSystemUI. -->
+<resources>
+    <!-- Title of SystemUIDialog's alerts (alert_dialog_title_systemui) and of the media output
+         dialog: the framework dialogs' title, BBAlpha Sans 27 px bold, aligned to the start, white
+         on the box as the framework alerts' (Bold7Android, layout/alert_dialog_title_material.xml:
+         D, OS 7's dialogs have no title). The volume panel sets its own centring in its layout
+         and keeps it. -->
+    <style name="TextAppearance.Dialog.Title" parent="@android:style/TextAppearance.DeviceDefault.DialogWindowTitle">
+        <item name="android:textColor">#ffffffff</item>
+    </style>
+
+    <!-- The filled pill (positive), the outlined pill (negative, neutral) and the large one
+         (other buttons of SystemUIDialog's alerts): one button for all three, the framework
+         dialogs' own, OS 7's grey button, blue under the trackpad focus (Bold7Android), no
+         pill. Its drawables are Bold7Android's, reached through the framework style. -->
+    <style name="Widget.Dialog.Button" parent="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog" />
+    <style name="Widget.Dialog.Button.BorderButton" parent="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog" />
+    <style name="Widget.Dialog.Button.Large" parent="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog" />
+
+    <!-- Width of SystemUIDialog's windows (Internet, media output, screen recording...): the
+         inside of OS 7's widest box, 648 px less its two border pixels, as the framework's alerts
+         (Bold7Android, dialog_min_width_major). SystemUIDialog.getDefaultDialogWidth adds the
+         background's padding to it (5 px on each side, the box's border and edge,
+         border_popup.png): a 656 px window, the framework alerts' own. Four layouts also take it
+         as their root width (internet_connectivity_dialog, media_output_dialog,
+         media_session_end_dialog, volume_panel_dialog): 646 px, the content area of that window,
+         so nothing is cut. Dialogs on a transparent background (PrivacyDialog, ContrastDialog,
+         MediaProjectionAlertDialog) have no box: a 646 px window less the 16 dp margins of their
+         root. The land and sw600dp entries stay: SystemUI runs portrait on this square sw554
+         screen. -->
+    <dimen name="large_dialog_width">646px</dimen>
+</resources>

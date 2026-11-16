@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Seen only in Android's keyboard settings. D: the entry of OS 7's Options that holds
+         the typing style (Options > Typing and Language > Typing, guide 7.1 p. 213). -->
+    <string name="app_name">Typing</string>
+</resources>

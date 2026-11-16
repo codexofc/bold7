@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in Bold7 does not work, crashes or breaks the phone.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems are reported privately, see SECURITY.md. Remove phone numbers, names and message contents from everything you paste.
+  - type: input
+    id: benos
+    attributes:
+      label: BenOS version
+      description: Settings, About phone, Build number (or `adb shell getprop ro.build.display.id`).
+      placeholder: BenOS-...
+    validations:
+      required: true
+  - type: input
+    id: module
+    attributes:
+      label: Bold7 module version
+      description: As shown on the Bold7 card of the KernelSU manager.
+      placeholder: "0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installer or update
+        - Uninstall
+        - Home screen
+        - Status bar or notifications
+        - Lock screen
+        - Messages or email
+        - Phone
+        - Contacts, Calendar, Clock or Tasks
+        - Other app
+        - Typing or trackpad
+        - Dialogs or menus in another app
+        - Sounds
+        - Performance
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. From the home screen, ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output of `adb logcat -s Bold7` around the problem, or the installation log shown by the KernelSU manager.
+      render: text
+  - type: checkboxes
+    id: boot
+    attributes:
+      label: Boot
+      options:
+        - label: The phone did not boot normally and I used KernelSU's safe mode.

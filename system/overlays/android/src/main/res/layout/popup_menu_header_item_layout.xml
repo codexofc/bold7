@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the title of a context menu shown as a popup (ContextMenu.setHeaderTitle), a
+     header row of the list. OS 7's menus have no title (D: its context menu is the full menu),
+     so this one is a row of the full menu, as layout/popup_menu_item_layout.xml: 57 px, BBAlpha
+     Sans 27 px, baseline 37 px, 6 px inside the box, #E1E3E5 (Android's header text is dark
+     grey on a light theme, unreadable on the dark box), the box as wide as its text, its 196 dp
+     minimum gone. A copy of the Q25's own layout, its id and view type kept. Only framework
+     references. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="57px"
+    android:paddingStart="6px"
+    android:paddingEnd="6px">
+
+    <TextView
+        android:id="@android:id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:firstBaselineToTopHeight="37px"
+        android:textSize="27px"
+        android:fontFamily="sans-serif"
+        android:textColor="#ffe1e3e5"
+        android:layout_gravity="top"
+        android:singleLine="true"
+        android:ellipsize="marquee"
+        android:fadingEdge="horizontal"
+        android:textAlignment="viewStart" />
+
+</FrameLayout>

@@ -1,0 +1,10 @@
+# Baseline profile of the test app (docs/PERF.md), the model of the apps':
+# AGP packs it into the APK; the dexMetadata task turns it into essai-release.dm, installed beside
+# the APK by `adb install-multiple`, which ART reads for an app in /data.
+#
+# Deliberately simple: everything of ours (the components of core/ui with the demo) and of the Kotlin
+# library, as the launcher's: a recorded profile would only trim what is compiled.
+Ldev/bold7/**;
+HSPLdev/bold7/**;->**(**)**
+Lkotlin/**;
+HSPLkotlin/**;->**(**)**

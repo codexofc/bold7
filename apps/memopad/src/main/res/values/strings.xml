@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900 (docs/BBOS7-VISUEL.md §32, §34.2): B for the guide's
+     (p. 206), C for the captures (sim-254 to sim-266), D for mine. -->
+<resources>
+    <string name="app_name">MemoPad</string>
+    <string name="title">MemoPad</string>
+    <!-- The list's hint, as Contacts' (C, sim-178). -->
+    <string name="search">Search</string>
+    <!-- Guide p. 206 (B): "click New Memo"; the row's label has its colon (sim-254, C), no note. -->
+    <string name="new_memo">New Memo:</string>
+    <string name="no_memos">* No Memos *</string>
+    <string name="no_title">(No Title)</string>
+    <!-- The menus (guide p. 206, B: Save, Delete). -->
+    <string name="act_new">New Memo</string>
+    <string name="act_edit">Edit</string>
+    <string name="act_options">Options</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_save">Save</string>
+    <string name="act_close">Close</string>
+    <!-- The form (D for the labels, B for "title" and "memo"). -->
+    <string name="field_title">Title:</string>
+    <string name="edit_title">Edit Memo</string>
+    <string name="act_find">Find</string>
+    <string name="find_label">Find:</string>
+    <string name="not_found">Text not found.</string>
+    <string name="act_clear_field">Clear Field</string>
+    <string name="new_title">New Memo</string>
+    <!-- MemoPad Options (sim-263, C). -->
+    <string name="options_title">MemoPad Options</string>
+    <string name="opt_actions">Actions</string>
+    <string name="opt_confirm_delete">Confirm Delete:</string>
+    <string name="opt_entries">Number of Entries:</string>
+    <!-- Dialogs, as Contacts' (sim-193 and sim-199, C). -->
+    <string name="delete_question">Delete %1$s?</string>
+    <string name="cancel">Cancel</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="discard">Discard</string>
+    <!-- Status messages (D). -->
+    <string name="not_saved">The memo could not be saved.</string>
+    <string name="not_deleted">The memo could not be deleted.</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

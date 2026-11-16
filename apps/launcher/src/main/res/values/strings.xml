@@ -1,0 +1,122 @@
+<resources>
+    <!-- The navigator's own strings (sys.navigator, navigator.mo of BlackBerry 10.3.3) -->
+    <!-- The tray's views (sim-02, sim-11 to sim-14 of the 9900 simulator, C). -->
+    <string name="panel_frequent">Frequent</string>
+    <string name="panel_all">All</string>
+    <string name="panel_favourites">Favourites</string>
+    <string name="panel_media">Media</string>
+    <string name="panel_downloads">Downloads</string>
+    <!-- The home's menus: sim-17 (short menu) and sim-04 (full menu), C; the opposites
+         (Unmark, Unhide, Restore Panel) after the theme's sm_unmark_favourite and sm_unhide
+         glyphs, D for their words. -->
+    <string name="home_launch">Launch</string>
+    <string name="home_mark_favourite">Mark as Favourite</string>
+    <string name="home_unmark_favourite">Unmark as Favourite</string>
+    <string name="home_move">Move</string>
+    <string name="home_move_to_folder">Move to Folder</string>
+    <string name="home_hide">Hide Icon</string>
+    <string name="home_unhide">Unhide Icon</string>
+    <string name="home_delete">Delete</string>
+    <string name="home_full_menu">Full Menu</string>
+    <string name="home_maximise_panel">Maximise Panel</string>
+    <string name="home_restore_panel">Restore Panel</string>
+    <string name="home_add_folder">Add Folder</string>
+    <string name="home_show_all">Show All</string>
+    <string name="home_options">Options</string>
+    <string name="home_switch_application">Switch Application</string>
+    <string name="home_open_folder">Open Folder</string>
+    <string name="home_edit_folder">Edit Folder</string>
+    <string name="home_delete_folder">Delete Folder</string>
+    <string name="home_folder_root">Home</string>
+    <string name="folder_name">Folder Name:</string>
+    <!-- The universal search typed from the home: the names of the categories as the
+         tiles of OS 7 write them (sim-54), docs/BBOS7-VISUEL.md, § 9; "Composer" is D. -->
+    <string name="search_dial">Dial:</string>
+    <string name="search_extended">Extended Search</string>
+    <string name="search_contacts">Contacts</string>
+    <string name="search_settings">Options</string>
+    <!-- The Android Settings pages the search finds, by their Android names. -->
+    <string name="setting_wifi">Wi-Fi</string>
+    <string name="setting_bluetooth">Bluetooth</string>
+    <string name="setting_airplane">Airplane mode</string>
+    <string name="setting_network">Network &amp; internet</string>
+    <string name="setting_display">Display</string>
+    <string name="setting_sound">Sound &amp; vibration</string>
+    <string name="setting_battery">Battery</string>
+    <string name="setting_apps">Apps</string>
+    <string name="setting_notifications">Notifications</string>
+    <string name="setting_storage">Storage</string>
+    <string name="setting_location">Location</string>
+    <string name="setting_security">Security</string>
+    <string name="setting_date">Date &amp; time</string>
+    <string name="setting_languages">Languages</string>
+    <string name="setting_accessibility">Accessibility</string>
+    <string name="setting_nfc">NFC</string>
+    <string name="setting_all">Settings</string>
+    <string name="search_documents">Files</string>
+    <string name="search_music">Music</string>
+    <string name="search_videos">Videos</string>
+    <string name="search_pictures">Pictures</string>
+    <string name="search_calendar">Calendar</string>
+    <string name="search_text_messages">Text Messages</string>
+    <!-- Not on the BlackBerry 10 category bar: our own. -->
+    <string name="search_calls">Calls</string>
+    <string name="search_call_in">Incoming</string>
+    <string name="search_call_out">Outgoing</string>
+    <string name="search_call_missed">Missed</string>
+    <string name="setting_data_usage">Data usage</string>
+    <string name="setting_roaming">Mobile network</string>
+    <string name="setting_vpn">VPN</string>
+    <string name="setting_wallpaper">Wallpaper</string>
+    <string name="setting_dnd">Do Not Disturb</string>
+    <string name="setting_battery_saver">Battery Saver</string>
+    <string name="setting_default_apps">Default apps</string>
+    <string name="setting_privacy">Privacy</string>
+    <string name="setting_accounts">Accounts</string>
+    <string name="setting_keyboard">Keyboard</string>
+    <string name="setting_developer">Developer options</string>
+    <string name="setting_about">About phone</string>
+    <string name="setting_cast">Cast</string>
+    <string name="setting_print">Printing</string>
+    <!-- A row of the list of notifications that opens nothing. -->
+    <string name="hub_unable_to_open">Unable to open %1$s</string>
+    <!-- Sound profiles: "Select a Profile" and its rows, sim-28 and sim-29 (C). -->
+    <string name="profile_select">Select a Profile</string>
+    <string name="profile_alerts_off">All Alerts Off</string>
+    <string name="profile_normal">Normal</string>
+    <string name="profile_loud">Loud</string>
+    <string name="profile_medium">Medium</string>
+    <string name="profile_silent">Silent</string>
+    <string name="profile_vibrate">Vibrate Only</string>
+    <string name="profile_phone_only">Phone Calls Only</string>
+    <string name="profile_change_sounds">Change Sounds and Alerts</string>
+    <!-- The list of notifications under the banner: the 9900's apps (sim-26, gsm 021, ps 33240, C). -->
+    <string name="notices_messages">Messages</string>
+    <string name="notices_text_messages">Text Messages</string>
+    <string name="notices_phone">Phone</string>
+    <string name="notices_calendar">Calendar</string>
+    <string name="notices_missed_call">Missed Call</string>
+    <!-- Manage Connections: sim-23, sim-24, sim-117 (C); the Options and Status
+         subtitle with Bluetooth from gsm 007 (C), the Q25 having Bluetooth. -->
+    <string name="connections_title">Manage Connections</string>
+    <string name="connections_mobile">Mobile Network</string>
+    <string name="connections_wifi">Wi-Fi</string>
+    <string name="connections_bluetooth">Bluetooth</string>
+    <string name="connections_nfc">Near Field Communication</string>
+    <string name="connections_on">On</string>
+    <string name="connections_all_off">All Off</string>
+    <string name="connections_restore">Restore</string>
+    <string name="connections_alarm_title">Set Clock Alarm</string>
+    <string name="connections_alarm">Alarm</string>
+    <string name="connections_alarm_on">ON</string>
+    <string name="connections_alarm_off">OFF</string>
+    <string name="connections_options_title">Options and Status</string>
+    <string name="connections_networks">Networks and Connections</string>
+    <string name="connections_networks_sub">Options for Mobile, Wi-Fi, Bluetooth, NFC etc.</string>
+    <string name="connections_wifi_network">Wi-Fi Network</string>
+    <string name="connections_wifi_network_sub">Connect to and manage Wi-Fi networks</string>
+    <string name="connections_service">Service Status</string>
+    <string name="connections_service_sub">View service and connection details</string>
+    <string name="connections_options">Options</string>
+    <string name="connections_options_sub">General options and device settings</string>
+</resources>

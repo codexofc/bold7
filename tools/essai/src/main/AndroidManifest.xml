@@ -1,0 +1,43 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Asked by PermissionActivity only, to show PermissionController's request dialog; always
+         refused during the tests. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <application android:label="Essai Bold7">
+        <!-- Not exported: started by root only (su -c am start), as the test sessions do. -->
+        <activity
+            android:name=".ToastActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <activity
+            android:name=".ThemeActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <activity
+            android:name=".MaterialThemeActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light" />
+        <activity
+            android:name=".DarkThemeActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault" />
+        <activity
+            android:name=".PermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <activity
+            android:name=".HangActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <!-- The components of core/ui; its own bars, no Android action bar. -->
+        <activity
+            android:name=".DemoActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+        <!-- The measure of typing latency: Shift alone, the delay on the screen only. -->
+        <activity
+            android:name=".KeyLatencyActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+    </application>
+</manifest>

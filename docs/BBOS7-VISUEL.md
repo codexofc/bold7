@@ -1,0 +1,1122 @@
+# Visual reference: BlackBerry OS 7.1 on the Bold 9900
+
+This document is the source for everything Bold7 shows or plays, element by element: value, source, reliability, and how it is adapted to the Q25's square screen. It is built from the official 9900 simulator, the 9900's 7.1 firmware and period captures.
+
+## Sources and reliability
+
+Each statement carries a grade:
+
+- **A**: the 9900's 7.1 firmware (images, `.pme` layouts, fonts, sounds, values of the binary `theme.xml`);
+- **B**: official RIM documentation (7.1 user guide, simulator help);
+- **C**: native capture from a real device or from the official simulator, measured to the pixel;
+- **D**: deduction, in particular any layout recalculated for the square screen;
+- **by eye**: looked at on a capture without measurement or source, to be confirmed before drawing anything.
+
+A and B are the F and M of the grades in README.md and CONTRIBUTING.md. The captures under `assets-private/reference-bbos7/` are the maintainer's reference set and are not published (they show BlackBerry's interface); their identifiers (sim-NN, gsm NNN, ps NNNNN, vid-NN) name each capture so that a value can be traced, and anyone can take the same captures on the official simulator.
+
+| Abbreviation | File or folder |
+|---|---|
+| theme | `assets-private/bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/` (default "BlackBerry 7" theme, 640x480, extracted by `tools/extract-bbos7.py`) |
+| theme.xml | `theme/theme.xml`, zlib stream of a binary XML; the quoted values (`key = value`) are readable as is in the decompressed stream |
+| pme | compiled SVG layout of the theme (`homescreen-banner.pme`, `banner.pme`, `lockscreen.pme`, `volume_overlay.pme`); its `x-object:/…?…` parameters are read with `strings`, the coordinates stay binary |
+| fonts | `assets-private/bbos7-9900/fonts/net_rim_font_latin_truetype/` (BBAlpha Sans, TTF) |
+| sounds | `assets-private/bbos7-9900/sounds/net_rim_bb_medialoader_ringtones_640x480_01{a,b}_t/` and `net_rim_bb_profiles_tunes/` |
+| sim | `assets-private/reference-bbos7/simulateur/sim-NN-*.png`: **official 9900 simulator, OS 7.1.0.318**, native 640x480 capture by `SaveLcdSnapshot` (C). Provenance in `assets-private/reference-bbos7/SOURCES.md` |
+| gsm | `assets-private/reference-bbos7/gsmarena-9900/NNN-*.jpg`: real 9900 on **OS 7.0**, native 640x480, JPEG (C) |
+| ps | `assets-private/reference-bbos7/phonescoop-9900/`: real 9900, enlarged 1.25 times by the site (reduced C) |
+| manual | `assets-private/reference-bbos7/manuels/BlackBerry_Bold_9900-9930_UserGuide_7.1_US.pdf` (B) |
+
+The 9900 has a 640x480 screen at 287 ppi, the Q25 a 720x720 screen at 295 ppi: a 9900 pixel and a Q25 pixel are almost the same size (2.7 % apart). **All measurements are in 9900 pixels and carry over unchanged to the Q25.** The simulator's colours are quantised to RGB565 (hence `#313031` instead of `#303030`): the value read is given, and the theme image, when there is one, is authoritative.
+
+Caveats on the sources. The firmware at hand carries the `Wind` suffix (a carrier) and contains a China Unicom boot video: anything that could come from a carrier is flagged. The simulator is generic (RIM), but its wallpaper, its network ("Simulated Network", EDGE) and its installed apps are not necessarily those of a factory 9900. The GSMArena captures are on 7.0; they are only used for cross-checking.
+
+### Piloting the simulator
+
+To take a reference capture next to a Q25 capture, the simulator is driven without a mouse, from the simulator folder, with `WINEPREFIX=$HOME/.wine-bold7-simulateur WINEDEBUG=-all`:
+
+- launch at 100 %, screen only (a 640x480 window that fits on the Mac screen, no blocking dialog): the original command line followed by `/show-plastics=false /zoom=1 /automate /automate-timeout=1`. Without `/zoom=1`, the simulator shrinks to fit the screen and the native capture comes out at 418x313;
+- commands: one per line on the standard input of `wine fledgecontroller.exe /session=9900`, the command list coming from the binary's `…Command` classes and from `fledge-user.chm`: `KeyPress(K)` then `KeyRelease(K)`, `TrackballRoll(dx,dy)` (negative dy is down), `TrackballPress` then `TrackballRelease` (click; held 2 s, short menu), `StringInjection("text")`, `Pause(s)`, `RemoteCallCreation("5551234")`, `RemoteCallDisconnection("5551234")`, `SaveLcdSnapshot(C:\\cap\\name.png)` (path with doubled backslashes; the file arrives one or two seconds late);
+- keys (`KeyT` enumeration in `enums.txt` and `9900.conf` inside `fledge.dat`): Menu = `FRONT_CONVENIENCE`, Back = `ESCAPE`, Send = `SEND`, End = `END`, lock = `LOCK`, volume = `VOLUME_UP` / `VOLUME_DOWN`, letters `A` to `Z`, `ENTER`, `SPACE`, `_0` to `_9`, Backspace = `BACKSPACE` (`DEL` is rejected). A held letter (a pause between `KeyPress` and `KeyRelease`) types its capital, as on the real keyboard: for a password, `KeyPress` and `KeyRelease` with no pause, and a pause between two letters.
+- locking with the password (`bold`): type L, O, C, K on the home screen and open **Password Lock** (sim-90); the `LOCK` key only locks the keyboard. With the screen off, `ESCAPE` wakes it on "Device is locked"; **`U`** picks Unlock (the trackpad click and `ENTER` do nothing there), then the letters one by one (`StringInjection` types nothing here) and `ENTER`. Always finish with the right password: past the allowed number of attempts, the simulator wipes everything.
+
+## Summary
+
+| Element | Key values (9900 pixels) | Sources | Reliability | Reference capture |
+|---|---|---|---|---|
+| Home screen banner | 640x93; BannerTime time 52 px `#F7F7F7` centred; date and network BBAlpha Sans Condensed 27 px | `homescreen-banner.pme`, `banner_background.png` | A, C | sim-02 |
+| Indicator row | 640x47 under the banner, speaker on the left, notifications in the centre, magnifier on the right | `indicator_bar_background.png` | A, C | sim-03 |
+| Collapsed drawer | 46 px tab (y 337 to 382), one row of 6 icons (y 383 to 479) | | C | sim-02 |
+| Expanded drawer | tab y 140 to 185, 6-column grid of 106.7 px, 97 px rows, 3 rows visible | | C | sim-06 |
+| Icon | 92x92, at the top of its cell, centred; no label under the icon | theme app images | A, C | sim-06 |
+| Icon focus | whole cell (≈ 106x97), gradient `#088DEE` to `#0753B4` | `icon_underlay~focus.png` (90x95) | A, C | sim-08 |
+| Home screen focus | a single image for the speaker, the notifications, the magnifier, the tab and the icons: `icon_underlay~focus.png` stretched, corners kept; only the banner has its own | `icon_underlay~focus.png`, `banner_background~focus.png` | A, C | sim-72, sim-73, sim-74, sim-79, sim-81 |
+| Focused app label | in the tab in place of the view name, 3 s | theme.xml `tab-label-animation-*` | A, C | sim-08 |
+| Views | Frequent, All, Favourites, Media, Downloads, looping | | C | sim-11 to sim-14 |
+| Full menu | background `#212429`, 57 px rows and 3 px separators between groups, BBAlpha Sans 27 px `#E1E3E5`, blue focus `#088FF0` to `#1666DC`, against the left edge, no icon | `border_menu.png` | A, C | sim-04, sim-44 |
+| Short menu | 337 px box, 3 columns of 111 px, 119 px rows, `sm_*.png` image 82x55 and Condensed 17 px label, Full Menu in the last cell | `sm_*.png`, `sm_full_menu.png` | A, C | sim-17, sim-52 |
+| Notification list | 46 px rows from y 141 under the indicator row, black veil at 83 %, drawer hidden; header per app (counter icon, white name), rows time, sender, summary in `#DFDFDF`; blue focus across the full width; a click on the area opens and closes, Escape closes | `net_rim_Ribbon_UnreadCount-icons33x29.png` | A, C | sim-26, sim-100 to sim-107 |
+| Manage Connections | white panel under the banner, checkboxes, All Off button (Restore after it), then Set Clock Alarm and Options and Status | `border_groupboxfull`, `border_groupboxtitlebar`, `net_rim_Manage_Connections-icons30x30` | C, A | sim-23, sim-24, sim-112 to sim-120 |
+| App switcher | dark veil, a row of icons, name above, blue focus; at most 5 columns over 3 rows | theme.xml | A, C | sim-05 |
+| Profiles | dark popup "Select a Profile", 7 profiles, Change Sounds and Alerts button | | C | sim-28 |
+| Universal search | white field in the indicator row, results as icons, 6 columns | theme.xml | A, C | sim-54 |
+| Lock | home screen banner without the magnifier, padlock 10 and 20 px from the bottom right corner, "Device is locked" dialog, "Enter Password:" entry as asterisks, "Incorrect password!" | `lockscreen.pme`, `net_rim_KeyLockSystem.png`, `border_find.png` | A, C | sim-64, sim-65, sim-85 to sim-88 |
+| Boot | black background, white BlackBerry logo 332x58 centred, 532x6 bar at y 435 | | C | sim-01 |
+| Dialog | text width plus 40 px (124 with an icon), at most 90 % of the screen, background `#212429`, stacked 51 px buttons every 74 px, 0.545 of the box wide, blue when focused, `#AFB1B4` otherwise | `border_popup.png`, `border_button*.png`, `dialog_*.png` | A, C | sim-19, sim-47, sim-62 |
+| Status message | a dialog box with no button, left-aligned text, centred | `border_popup.png` | A, C | sim-42 |
+| Volume | `vol-bg.png` window 273x82 centred, output icon at (22, 22), 16-image bar at (70, 35), while a sound plays; in the call screen, the app's slider | `volume_overlay.pme`, `vol-*.png` | A, C | sim-108, sim-109 |
+| Power off | holding the End key powers off without asking; Full Power Off or Turn Off with automatic power-on | `net_rim_PowerOff.png` | B | |
+| App launch | no splash screen seen | | C (weak) | sim-110a, sim-110b |
+| Messages | 67 px status bar, 56 px date headers, 71 px two-level rows, 42 px status icon at x 15, text at x 64 | `net_rim_Message-icons42x42.png` | A, C | sim-43, sim-53, gsm 027 |
+| Text Messages | list of 71 px rows; thread without a status bar, 65 px contact strip, 77 px bubbles for one line (`#E5EBF3` sent, `#CAE6F2` received) on grey `#B2B2B2`, 66 px field strip | `default_avatar.png`, `net_rim_Message-icons32x32.png`, `border_reply_field.png`, `smiley_button.png` | A, C | sim-53, sim-50, sim-52, gsm 023 |
+| Options (§ 17, § 27) | black 35 px title, Search field, 71 px rows with an icon, 27 px title and grey 23 px subtitle; screens in group boxes | `cat_*.png`, `border_groupbox*` | C, A | sim-57, sim-30, sim-31, sim-91a |
+| App status bar | 67 px on two lines (Messages), 35 px on one line (call); Bold7 uses the two-line one for all apps (§ 18) | `banner.pme`, `net_rim_Ribbon_*` strips | A, C | sim-43, sim-48, sim-18 |
+| Phone (§ 26) | call screen on `background_calldisplay.png`, 130 px frame, caller Condensed 36, state and timer Condensed 25 `#B3B3B3`, 82 px bar with 1 or 4 touch buttons; log in 66 px rows under "My Number" and "Find Contact or Dial a Number" | `activecallscreen.pme`, `phone_*.png`, `net_rim_Phone-icons42x42.png` | A, C | sim-18, sim-109, sim-130 to sim-144 |
+| Clock (§ 27) | black screen without a status bar, `face_370.png` dial and hands in eight images per hand, AM/PM and day badges in BBAlpha Sans 27; 305x67 alarm bar; Set Alarm with three lists (hour, minute, ON / WEEKDAYS / OFF); "Daily Alarm" alert and the current time, Snooze (5 min.) above Dismiss; stopwatch `face_316.png`, time to the hundredth, two 305x67 buttons | `net_rim_bb_clock_faces_480`, `net_rim_bb_clock_lib`, `border_clock_button.png`, `net_rim_alarm_reminder.png` | A, C | sim-153 to sim-177 |
+| Contacts (§ 29) | list in 72 px rows and a rule, 67 px picture at (3, 3), New Contact first, focus on the first contact; contact card in Options boxes, focused value on a blue strip; editing in 43 px `border_form` fields every 50 px | `addressbook_contact.png`, `border_groupbox*`, `border_form.png`, `edit.png`, `save.png` | A, C | sim-178 to sim-199 |
+| Predictive input (§ 35) | the typed word in white on `#2B8FFF`, underlined if unknown; below, `#212429` frame of 10 px, three 45 px cells 2 px apart, blue `#0C83EA` to `#1766DB` when focused, grey `#D7D7D7` to `#AFB1B4`, BBAlpha Sans 27 (bold: completion, regular: correction, italic: unknown typed word) | | C | sim-93 to sim-97 |
+| Font | BBAlpha Sans 27 px (text), Condensed 27 px (banner, tabs); theme default "BBAlpha Sans 8pt" | fonts, theme.xml | A, C | |
+| Default sounds | ringtone Spirit, email Sanguine Remix, SMS Confidence, BBM Action, calendar and tasks Shimmer, browser Sunrise | | C | sim-31 to sim-41 |
+
+## 1. Home screen banner
+
+**What the 9900 shows.** Reference capture: `sim-02-accueil-tiroir-replie.png` and `sim-03-accueil-replie-2-manques.png` (C), cross-checked with gsm 001 and 020 (7.0, same layout).
+
+**Background and height.** The banner covers y 0 to 92, i.e. **640x93**, exactly `banner_background.png` (640x93, A). It is translucent: the wallpaper shows through, darkened (C). Its bottom edge is a one-pixel light rule at y 92 then a dark one at y 93 (`banner_divider.png`, 640x1, A; C).
+
+**Layout** (measured on sim-03, C; parameters from `homescreen-banner.pme`, A):
+
+| Element | Theme parameters (A) | Measurement (C) |
+|---|---|---|
+| Battery, top left | `BatteryLevel?width=50&height=25`; images `net_rim_Indicator_BatteryLevel-icons50x25.png` (600x75 strip: 12 levels, 3 states) and `lightning_bolt_00` to `_11` for charging | light part x 4 to 51, y 6 to 16 |
+| Date, under the battery | `CurrentDateTime?clocktype=date`, BBAlpha Sans font (FontManager) | "Fri 13 Nov" x 7 to 124, y 36 to 55; `BBAlphaSansCondensed.ttf` rendered at 27 px: same width (120 against 118) |
+| Network, top centre | `layout?…&width=342&align=center&anchor=320` (Roaming 28x28 then SystemStatus) | "Simulated Network" x 206 to 435 (centre 320.5), y 4 to 23; Condensed 27 px (232 against 230) |
+| Time, centre | `CurrentDateTime?clocktype=time&font-family=BannerTime&font-size=52&ampmSize=20&fill=F7F7F7&width=208&align=center`; font `BannerTime.cbtf` (a RIM format, not a TTF) | "00:44" x 268 to 386, y 36 to 77: digits 42 px high |
+| Coverage, top right | `Coverage?font-family=BBAlpha Sans Condensed&width=82` | "edge" then signal, x 522 to 634, y 4 to 28 |
+| Signal | `SignalLevel?align=left&width=49&height=19`; `net_rim_Ribbon_SignalLevel-icons49x19.png` (9 states) | in the same area, right of "edge" |
+| Wi-Fi, under the signal | `net_rim_Ribbon_WlanSignalLevel-icons30x24.png` (6 states of 30x24) | around x 595 to 625, y 33 to 55 (by eye) |
+| Alarm | `AlarmIndicator?width=21&height=21` | not seen (no alarm set) |
+| Notification indicators | three `GridIndicators` 190 px wide (zones 1 to 3, `hpadding=10`), group `hs_banner_dynamic_indicators` | see the next row |
+
+**Indicator row** (y 93 to 139, **640x47**, `indicator_bar_background.png` 640x47, A; C). On the left the profiles speaker (x 4 to 41, y 101 to 122), in the centre the notification counters ("2" followed by the missed call icon, x 297 to 340, y 104 to 127), on the right the search magnifier (x 602 to 624, y 101 to 121; button `banner_search_button.png` 43x43, A). Gsm 001 shows the same row with "1" and the messages envelope (C, 7.0). The speaker changes image with the profile (`net_rim_bb_profiles_app.*`, A).
+
+**Trackpad focus** (C, sim-22, sim-25, sim-28): the trackpad moves from the drawer to the indicator row, then to the banner. Three targets: **the whole banner** (blue background over 640x93; a click opens Manage Connections, § 6), **the central notifications area** (blue strip from x ≈ 47 to 593; a click opens the notification list, § 5), **the speaker** and **the magnifier** (a blue square each). The missed call icon gets a red cross when its area has focus (C, sim-25).
+
+**Focus images and positions** (measured to the pixel on sim-72 to sim-74, sim-79, sim-81, C; A). Every home screen focus is the same gradient `#088EEF` to `#0752B3`, that of `icon_underlay~focus.png`, except the banner:
+
+| Target | Image | Position (9900 pixels) | Edges |
+|---|---|---|---|
+| Banner | `banner_background~focus.png` (640x92, `_bs1`) | x 0 to 639, y 0 to 91 | square corners |
+| Speaker | `icon_underlay~focus.png` stretched | x 0 to 44, y 94 to 138 (45x45) | the image's rounded corners, to the pixel (the top left corner repeats the alphas `06`, `63`, `B4` of its first row) |
+| Notifications | the same | x 45 to 594, y 93 to 138 (550x46) | rounded corners |
+| Magnifier | the same | x 595 to 639, y 94 to 138 | rounded corners |
+| Tab | the same | full width, y 142 to 184 (43 rows), under the edge mask (`homescreen_mask_p`) that darkens it | hidden by the mask |
+| Icon | the same | the cell | rounded corners |
+
+The image is therefore a 9-patch: its corners (5 px) stay at the pixel, the rest stretches, gradient included. `tab~focus.png` (120x43, navy `#20558A` to `#141D29`) is not the home screen one: it is the tab strip of an app.
+
+**Focus movement** (C, sim-72 to sim-81, sim-84). Up: icon in the first row, tab, centre of the indicator row, banner; with the drawer expanded, it stays expanded. Down: from the banner to the centre of the row, from the speaker, the centre or the magnifier to the tab, from the tab to **the last focused icon** (sim-80: Calendar, not Messages). Sideways: the speaker, the centre and the magnifier follow each other; the banner does not move (sim-84).
+
+**On the Q25.** The same images to the pixel; the speaker and the magnifier as 45 px squares at the edges, the notifications between them (x 45 to 674), the tab over 720 px (D for the width).
+
+**Text.** White `#FFFFFF` measured (C); the theme gives `#F7F7F7` for the time (A). No visible shadow.
+
+**On the Q25 (720x720).** Images and text to the pixel, no enlargement. The banner becomes 720x93 and the row 720x47: `banner_background.png` and `indicator_bar_background.png` stretch in width only if they are uniform from one column to the next, otherwise they are re-centred with their edge extended (D, to be checked on the images). Anchors kept as is: battery and date 4 and 7 px from the left edge, network and time centred on x 360 instead of 320, coverage and Wi-Fi 6 px from the right edge (D).
+
+## 2. App drawer and grid
+
+**What the 9900 shows.** Reference captures: sim-02 (collapsed), sim-06 (expanded), sim-07 and sim-08 (focus), sim-09 and sim-10 (scrolling), sim-11 to sim-14 (views) (C); gsm 001 to 005 (C, 7.0).
+
+**Three heights.**
+
+- **Collapsed to one row** (simulator state at startup, sim-02): tab y 337 to 382 (46 px, light rules at y 337 and 382), one row of icons y 383 to 479 (97 px) (C).
+- **Expanded** (Maximise Panel menu item, sim-06): the tab rises just under the indicator row, y 140 to 185 (rule at y 186), the grid covers y 187 to 479 (293 px, 3 rows) (C).
+- **Hidden**: gsm 001 (7.0) shows the home screen without any icon, with only a ▲ handle at the bottom of the screen (C). Not reproduced in the simulator.
+
+**View tab** (C, sim-02, sim-11 to sim-14). The view name is centred ("All" x 304 to 331, y 349 to 368, BBAlpha Sans Condensed 27 px, white); the names of the neighbouring views stick out, cut at both edges, darker ("uent" on the left, "Favou" on the right). Measured circular order: **Frequent, All, Favourites, Media, Downloads**, then Frequent again. Left-right trackpad on the tab changes view; when focused, the whole tab becomes a 640 px blue strip (sim-07, sim-72: the stretched icon focus, not `tab~focus.png`, see § 1, C). The 7.1 guide (manual, p. 22 to 24) describes the same panels and "Manage Panels" to hide them (B).
+
+Default content in the simulator (C): All = 27 icons over 5 rows (including the folders Instant Messaging, Applications, Games and the icons Setup, Options, Sounds, Manage Connections, Help, Power Off); Favourites empty; Media = Music, Pictures, Videos, Video Camera, Podcasts; Downloads empty; Frequent = recently opened apps (Text Messages, BlackBerry Messenger, Setup).
+
+**Grid** (sim-06, difference against the empty view sim-11, C):
+
+| Measurement | Value |
+|---|---|
+| Columns | 6, icon centres at x 55, 160, 265, 372, 478, 585: a 106.7 px pitch (640/6) |
+| Rows | 97 px pitch; first row at y 187 (expanded) or 383 (collapsed) |
+| Visible rows | 3 expanded, 1 collapsed; gsm 003 confirms 6x3 on the real 9900 (C, 7.0) |
+| Icon | **92x92** image (`net_rim_bb_addressbook_app.AddressBook.png`, `net_rim_bb_clock.png`… from the theme, A), placed at the top of its cell (Contacts: y 187 to 279) and centred horizontally (x 327 to 419 for the fourth column); the icons draw their glyph over about 61 to 76 px with a transparent margin (A) |
+| Label | **none under the icon**: the app name shows in the tab when it has focus (sim-08: "Messages", C) |
+| Order | the view's own, free (Move in the short menu, § 4) |
+
+**Bold7 app icons and names.** Tables `core/icons/src/main/res/raw/bbos7_icons.tsv` (package, icon, source file, provenance) and `bbos7_apps.tsv` (name, hidden or not, source). An Android app that has an OS 7 equivalent carries the theme's 92x92 icon (A, `net_rim_theme_BlackBerry7_640x480_b`) and the name from the 7.1 guide (B, p. 16 to 18): Browser, Options (Settings), Messages (Bold7's own app; Gmail keeps its name with the icon of an email account `Messages.service`, like an account on the 9900 in gsm 020, C), Text Messages (Bold7 Messages opened on its texts; Google Messages, hidden, is called "Google Messages" there, D), Phone, Contacts, Calendar, Clock, Calculator, MemoPad (Keep), Maps, Camera, Pictures, Music, Voice Notes Recorder, Files, Wallet, BlackBerry App World (Play Store, 100x100 icon from the `.cod`). Two deliberate choices, not BBOS 7 sources: X (`com.twitter.android`) carries the 9900's Twitter name and icon (`twitter_t.png` from the Twitter `.cod`, 92x92, A; C sim-06, where it is the home screen icon), and SoundCloud (`com.soundcloud.android`) takes the role of Music, instead of YouTube Music. With Google TV and YouTube Music uninstalled, the OS 7 Videos icon is no longer shown by any app; YouTube keeps the theme's YouTube icon. No Android icon is ever shown raw.
+
+**Generated icon for an app not in the table** (A for the template, D for the proportions). The theme contains the OS 7 shortcut template, three 92x92 images: `shortcut_underlay` (dark rounded square, blue-grey top `#22 24 25` in the middle, drop shadow), `shortcut_mask` (rounded square of **62x62 at (15, 15)**), `shortcut_overlay` (white 64x64 outline at (14, 14)). The Facebook and Twitter icons in sim-06 are its rendering: full image inside the outlined square (C). Bold7 rule: `shortcut_underlay` background, then the app image clipped by the mask, then the outline. Image: monochrome layer of the adaptive icon in white, long side at 60 % of the mask (D, by eye); adaptive icon without a monochrome layer: its two layers fill the mask (like Facebook); old square icon: fills the mask, otherwise long side at 75 % of the mask (D, by eye). The whole at 92x92 pixel for pixel (`TileGeometry(92)`, `Dimens.ICON` = 92: no icon is reduced any more).
+
+**Icon focus** (sim-08, C; A). A blue rectangle covers the whole cell, x 2 to 107 and y 187 to 283 (≈ 106x97), in a vertical gradient `#088EEF` at the top to `#0753B4` at the bottom: it is `icon_underlay~focus.png` (90x95, same colours at the same heights, A) stretched to the cell. The icon stays drawn on top, unchanged.
+
+**Label in the tab.** When an icon is focused, the tab replaces the view name with the app name, with a fade (sim-07: "Email" half transparent during the transition, C). Theme durations (A, theme.xml): `tab-label-animation-duration-intro = 200`, `-outro = 200`, `-roll-over = 3000`, `-pane-inactivity = 550` (ms). Reading: 200 ms fade, app name held 3 s then back to the view name (D). Checked with the trackpad, drawer collapsed as well as expanded: the app name is there 1 s and 2 s after the focus, the view returns before 4 s (sim-82, sim-83, C); a focus that does not change (Escape, End, a capture taken later) leaves the view name. The Q25 had a defect here: the tab kept the name from a previous step because it was not redrawn (fixed).
+
+**Drawer with the trackpad** (C, sim-70, sim-71, sim-75 to sim-78b). Collapsed, the trackpad moves the focus within the row without leaving it (sim-76, sim-77); **downwards, it expands the drawer**, the focus staying on its icon (sim-71): the collapsed row never scrolls. The simulator ignores a single step down (sim-70) and expands on the second step within the same second; a simulator step is not necessarily a real trackpad step: Bold7 expands on the first step (D). Expanded, upwards, the drawer does not collapse (see § 1). **Escape** collapses the drawer to the first row, the focus moving to the same column in that row (sim-75: from BlackBerry Messenger, row 2, to Text Messages). **End** on the home screen changes nothing, drawer expanded and focus included (sim-78a, sim-78b).
+
+**Scrolling.** The trackpad moves one cell; the grid scrolls by one row when the focus leaves the visible area (sim-09, sim-10: rows 3 to 5 visible at the end, C). Theme animations (A): `animation-duration-tabmanager-portrait = 300` in `EASINGCURVE_QUADRATIC_OUT` (view change), `animation-easingcurve-tabmanager-vertical = EASINGCURVE_QUADRATIC_INOUT` (drawer rising and lowering, D), `animation-duration-portrait = 250`, `max-swipe-time = 550`, `moves-to-transition-horizontally = 25`.
+
+**Badges.** An icon with something new carries a red star at the top right (Phone with missed calls, sim-15; Messages, an email account and Text Messages in gsm 020, C). It is the theme's `new_overlay.png` (92x92, A), the 32x35 star placed at (60, 12) of the image, drawn over the icon in its place: matched to the pixel on Phone in sim-15 (star at x 69, y 296 for an icon at 9, 284, RMS error 0.008, C). `new_overlay_banner.png` (33x29) is the star of the banner counters, `large_new_indicator.png` (50x50) another size, neither on the grid. Bold7 rule: Messages carries the star for any new Hub item, Text Messages for a new text, an app for whatever new it holds (Phone, its missed calls; an app, its notifications), Calendar for an invitation; new = unread, arrived after the last visit (`HubBadges`). Opening the icon removes the star ("Open each item that has this indicator. For example, to remove it from the Messages icon, click the icon", guide 7.1 p. 31, B): Messages sees everything, Text Messages only the texts. No star on a folder (D: no capture).
+
+**Text Messages next to Messages** (C, sim-02, sim-03, sim-06, gsm 020). The 9900 home screen has two icons for the same app: Messages (`net_rim_bb_messaging_app.Messages.png`), then, after the email accounts, Text Messages, the black handset with a yellow bubble. Its image is `net_rim_bb_messaging_app.sms_and_mms.png` (bytes identical to `.mms.png`, A): placed in its cell, on the 106 px pitch and at the top of the row like Messages and Contacts, it matches the icon in all three captures (RMS error 0.011 to 0.017); `.sms.png` is the same image shifted by 2 px and only lines up 2 px off the cell. The guide (p. 87, B): "You can also set a separate icon to appear on the home screen for text messages. Depending on your theme, a separate icon might already appear by default". Bold7: an `activity-alias` of Messages (`dev.bold7.messages.TextMessages`) that opens the list on the texts view, title "Text Messages" (sim-48, sim-53 show it in the centre of the status bar: the Bold7 status bar still shows the network there), Escape returning to that view then to the home screen (D). A new icon for an app already in All is placed right after it (D, from the order in sim-03), not at the end of the list.
+
+**On the Q25 (720x720).** 92x92 icons and focus kept to the pixel. Width: **6 columns of 120 px** (720/6, D) rather than 7 of 103 px. Checked during the design work: 7 columns would give a cell closer to the 9900's (102.9 against 106.7 px, 13.3 px apart for 6 columns), but 6 keep what is recognised in use: each app's place (its row and column, hence the number of trackpad moves to reach it and the effect of Move), the 6x3 grid of gsm 003 and the 6 columns of the universal search (`universal-search-default-columns-count = 6`, A); the extra 80 px go to the space between icons (28 px instead of 15), never to their size. The focus then stretches to 120x97 just as it already stretches to 106x97 (D). Height: banner 93 + row 47 + tab 46 leave 534 px, i.e. **5 rows of 97 px** expanded (485 px) and 49 free px spread as a top margin of the grid (D). Collapsed: one row at the bottom, tab above it, as on the 9900 (D).
+
+## 3. Folders
+
+**What the 9900 shows** (sim-15, sim-16, C). A folder is a grid icon (`background_folder_1` to `_5`, 38x50, and `folder01` to `folder16` from the theme, A). Open, it replaces the grid: under the tab, a header line with the small folder icon (x 6 to 38) and its name ("Instant Messaging", BBAlpha Sans 27 px white, x 57, y 202 to 230 on sim-16), on a strip y 187 to ≈ 223 slightly lighter than the darkened background below, whose bottom edge forms a tab (`background_folderview.png` 480x39, A). The simulator's folder is empty: the grid of a filled folder is not captured yet. Home screen menu: Add Folder; short menu: Move to Folder (C).
+
+**On the Q25 (720x720).** Header to the pixel, full width; content as a grid like § 2 (D).
+
+## 4. Menus
+
+### Home screen menu (Menu key)
+
+sim-04 (C), gsm 011 (C, 7.0): **Switch Application, Maximise Panel, Add Folder, Manage Panels, Options** (with Restore Panel instead of Maximise Panel once expanded, to be checked). The menu sits against the left edge, at the bottom, 266 px wide (x 0 to 265); it covers the grid.
+
+### Full menu (Menu key in an app)
+
+sim-44, sim-45 (Messages), sim-51 (SMS thread) (C); ps 33263 (reduced C).
+
+| Measurement | Value |
+|---|---|
+| Position | against the left edge, its left border off screen; resting on the bottom of the screen (its bottom border off screen), its top at most 3 px under the app's status bar (y 70 in Messages): on the home screen, five rows leave it at y 164 |
+| Width | that of the longest label: text at x 7, right edge 7 px after its advance ("Switch Application" 252 px, edge at x 266 on sim-04; "View Saved Messages" 299 px, edge at x 313 on sim-44); the submenu arrows widen nothing |
+| Background | `#212429` (border `#1E2125`, rounded corners); image `border_menu.png` 40x40 in 9 slices (A), stretched from 18 to 21 in both directions; its top border pixel (row 2) at y 70 on sim-44 |
+| Rows | **57 px**, no rule between two rows of the same group; between two groups a 3 px separator, its rule `#43454A` in the middle (sim-04: rules at y 239, 299, 359, none between Manage Panels and Options; sim-44: Search by and Display Style at 57 px). 17 px from the top edge to the first row, 5 px under the last |
+| Text | BBAlpha Sans 27 px ("Maximise Panel": 206 px measured, 207 rendered), `#E1E3E5`, baseline 37 px under the top of the row |
+| Focus | the whole row, 57 px, linear gradient `#088FF0` to `#1666DC` (no highlight measured), from x 0 to the right edge; white text |
+| Submenu | ► arrow on the right (`arrow_menu.png` 15x12, A): Compose Other, Search by, Display Style; Attach in email composition (sim-292, C): the image against the right edge of the panel (its triangle from x 424 to 430, y 392 to 403, on a row starting at y 369 and an edge at x 437), 23 px under the top of the row. Drawn by `core/ui` for an entry marked `submenu`; on the focus strip, the same image (D) |
+| Overflow | the rows scroll under the top edge, starting 3 px below it (sim-45: Search cut at y 73); at the last row, the scroll shows the bottom 5 px. Blue 10x5 px arrows (gradient `#189CF7` to `#0B7CE6`, 2 px tip), 8 px left of the right edge: ▲ 16 px under the top of the scrolling area once it has scrolled, ▼ 8 px above the bottom of the screen as long as it scrolls, even at its end (sim-45). These are not `menu_up_arrow.gif` and `menu_down_arrow.gif`, which are white |
+| First item | Switch Application in every menu (C); the initial focus is on the default action (Compose Email, Send), not on the first row |
+
+Messages content (C): Switch Application; Compose Email, Compose Other ►; Search, Search by ►, Display Style ►, View Folder, View Saved Messages; Message Notifiers; Options.
+
+### Short menu (trackpad held, or a click in some contexts)
+
+sim-17 (home screen icon), sim-52 (SMS thread) (C); ps 33242, 33262 (reduced C).
+
+- Grid of actions with icon and label, 3 columns of **111 px** (box 337 px wide, x 151 to 487 on sim-17 and sim-52, centred), rows of **119 px**: 2 rows, y 117 to 358 (sim-17); 3, y 57 to 417 (sim-52). Centred vertically with its 4 px shadow (2 px above the middle);
+- **opaque** background (same values over the wallpaper of sim-17 and the grey of sim-52): frame `#434A58` then `#616B7F`, fill in a gradient `#466782` at the top, `#527590` in the middle, `#4A6C86` at the bottom, corners of about 6 px (by eye); between two rows a dark rule then a light one, lighter towards the middle (`#4D6B84` to `#2A3B49`, `#567791` to `#7D96AA`);
+- each action: an `sm_*.png` image of 82x55 (A, themes `_b` and `_bs1`), centred, 8 px under the top of the cell; its label in BBAlpha Sans **Condensed 17 px** white ("Full Menu" 71 px, "Send" 37 px: same widths when rendered), centred, baseline 95 px under the top of the cell, on two lines 21 px apart if it exceeds the focus width ("Add Smiley", 86 px, fits; "Check Spelling", 113 px, wraps);
+- focus: rounded blue square of 107x105 (2 px inside the cell, 6 px under its top), gradient `#0C84EA` to `#1766DB`, behind the icon and the label, which stays white;
+- Full Menu: image `sm_full_menu.png` (BlackBerry logo, theme `_bs1`, A);
+- **Full Menu** always in the last cell (C);
+- home screen: Mark as Favourite, Move, Move to Folder, Hide Icon, Launch (default focus), Full Menu;
+- SMS thread: Add to Contacts, Check Spelling, Clear Field, Add Smiley, Send (default focus), Select, Clear Conversation, Switch Application, Full Menu.
+
+**On the Q25 (720x720).** Menus to the pixel (width, rows, font), against the left edge and resting on the bottom as on the 9900; the full menu shows up to 10 rows instead of 6 (its top at most at y 128 out of 720, D) and its top at most 3 px under the top of the app page (D, the status bar being Android's, above the page). Short menu centred in 720 px (D), at most 8 actions plus Full Menu (D). Code: `MenuLayout.kt` (pure, `MenuLayoutTest`), `MenuView.kt`. The framework menus take the `border_menu.png` box, the 57 px rows, the 27 px `#E1E3E5` text and the focus strip: the Menu key panel (`expanded_menu_layout`, `CompactMenu` themes) against the left edge and resting on the bottom, its left and bottom borders off screen, 324 px wide (D); the overflow menu (`popup_menu_item_layout`, with the group separator) where Android places it, under the ⋮.
+
+## 5. Notification list
+
+sim-25 to sim-27, sim-100 to sim-107 (C); gsm 012, 021 (C, 7.0); ps 33240.
+
+**Opening and closing** (C). A click on the central area of the indicator row unrolls the list under that row; the drawer disappears, the wallpaper darkens, the focus stays on the area (sim-100). A second click on the area closes it (sim-107), Escape too (sim-106); the drawer comes back, the focus stays on the area. The simulator has no swipe from the top: on the Q25, a downward swipe on the banner opens the list (D, it replaces Android's shade), a touch below the rows closes it (D).
+
+**Content** (C). One section per app: a header with the status icon and the app name ("Phone", "Messages", "Text Messages", "Calendar"), then one row per **unopened** item, newest at the top: time, sender or number, summary cut with "…" ("04:13  5559876  Missed Call: …"). The list shows every unopened item, the row counter only the new ones (sim-100: "1" and three missed calls, two of them already seen). Gsm 012 shows the same list for Messages ("13:45 Kyle Test email"), gsm 021 Messages then Text Messages, ps 33240 Messages then Calendar, with a 12-hour time written "8:10p". The header icon is the counter image in `net_rim_Ribbon_UnreadCount-icons33x29.png` (A; the red-barred phone of sim-26, the envelope of gsm 012).
+
+**Measurements** (C, sim-100 to sim-103, 9900 pixels):
+
+| Element | Value |
+|---|---|
+| First row | y 141 (y 140 dark, under the row) |
+| Row height, header included | 46 px (header y 141 to 186, rows y 187 to 232, 233 to 278) |
+| Header rule | 1 px on its last line (y 186), white at 15 % over the veil |
+| Veil | black at 83 %: 0.17 of the wallpaper remains (four points measured against the closed home screen) |
+| Header icon | 33x29 image at x 3, y 148 (its ink from x 8, y 150) |
+| Header name | x 43, baseline y 174, white `#FFFFFF`, BBAlpha Sans 27 px |
+| Time, sender, summary | x 2, 92 and 266, baseline 32 px under the top of the row, `#DFDFDF`; the summary's "…" up to x 613; "Dee Dee…" (gsm 021) cut before x 240 |
+| Focus | 46 px strip across the full width, `#088FF0` to `#1666DC` (the list focus, `Focus.RowTop` and `RowBottom`), white text; the header takes focus too (sim-101) |
+
+**Trackpad** (C). From the area, downwards: the header, then row by row; the focus stays on the last one (sim-103); upwards from the first row of the list, back to the area (deduced from the reverse direction, D). The area loses focus when a row has it.
+
+**Click on a row** (C, sim-104, sim-105). The item is opened: its row leaves the list at once. For a missed call, the 9900 asks "Call 5551234?" (Call, Cancel); Escape leaves the list open, focus on the first row. Bold7 opens the item in its app (the notification's intent) and marks it opened in the Hub (D); for a missed call, the Bold7 Phone shows "Call …?" over the list (§ 26).
+
+**LED** (C, M). The simulator controller writes `LED: on (0x003f0000)` then `LED: off`: red, lit for about 170 ms every 2.2 s during an incoming call; the guide (p. 15) says red for a new message, if the profile asks for it. Bold7: red, same durations for a notification (D), through Android (`config_intrusiveNotificationLed` and its default colour and durations, framework RRO).
+
+**Arrival of a notification** (B, S). Nothing covers the screen: a profile's notifier only has its sound, its volume, the LED and the vibration (guide p. 29), the red LED signals the new message (p. 15), the banner counter goes up and the item waits in the list; no window, no card (recollection, S: no capture shows a message arriving, the simulator does not receive SMS). OS 7 exceptions: the incoming call takes the whole screen (sim-18, § 26), and missed calls open a dialog "You have 2 new missed calls." (sim-19, C; § 26). Bold7 turns off Android's heads-up cards; it keeps those of calls, alarms and full-screen intents, for safety (D, not OS 7: a call or an alarm from a third-party app must never go unnoticed).
+
+**On the Q25 (720x720).** Rows and font to the pixel, time and name columns kept, summary extended by 80 px, up to x 695 (D). 12 rows visible instead of 7 (D), then the list scrolls (with the trackpad, the focus drives it; with a finger, like an Android list). Sections in the order of the banner counters (Messages, Text Messages, Phone, Calendar), then one per other app under its home screen name and the "?" bubble of the counters, the most recent app first (D). Opening and closing without animation (D, no animation recorded). A click on a header opens the section's app when it has one (D).
+
+## 6. Manage Connections and Options and Status
+
+sim-23, sim-24 (C); gsm 006, 007 (C, 7.0). A click on the whole banner (§ 1) unrolls under it a white panel with sections:
+
+- **Manage Connections**: Mobile Network (state in green "Simulated Network", box checked), Wi-Fi ("On" in green, checkbox), Near Field Communication (checkbox), **All Off** button on the right;
+- **Set Clock Alarm**: Alarm, "OFF";
+- **Options and Status**: Networks and Connections, Wi-Fi Network, Service Status, Options, each with a grey subtitle.
+
+Measurements: sections separated by a grey strip `#DDDDDD`; section titles in bold grey (`border_groupboxtitlebar*`, A, probable); section header y 96 to ≈ 139, then 60 px rows (rules `#D9DCDE` at y 199, 259, 319) for checkboxes as well as two-level rows. The banner stays visible and keeps its blue focus above (sim-23). The guide (p. 257 to 275) describes Manage Connections and "Turn All Connections Off" (B); the 7.1 screen says "All Off".
+
+**Detailed measurements** (sim-23, sim-24, sim-112 to sim-120, C; y from the bottom of the banner, at 93):
+
+- **Boxes**: `border_groupboxfull.png` (A, 20x64: two rows of grey `#DDDDDD`, border `#C6C6C6`, rounded corners, white, bottom border `#C6C6C6` then two shadow rows `#CDCDCD`, `#D7D7D7`) placed from x 0 to 639, the white from x 5 to 634; its title bar `border_groupboxtitlebar.png` (A) over the first 46 rows, its rule `#D4D4D4` at 45. Three boxes one under the other, 3 px apart (bottom edge at 287, next box at 290: sim-23, rows 380 and 383). Bold grey title `#7C7E80` (`ListColors.GroupTitle`), BBAlpha 23 (width of "Manage Connections": 268 px), baseline 36 under the top of the box, x 12.
+- **Checkboxes**: 60 px rows from 46, rule `#D9DCDE` from x 9 to 630 between two rows and before the button row; 30 px glyph from `net_rim_bb_manage_connections_lib/images/net_rim_Manage_Connections-icons30x30.png` (A: mobile network, Wi-Fi, Bluetooth, alarm, NFC, an unused sixth; the second row, white, under the focus) at x 14, centred; black name BBAlpha 27 at x 55, baseline 41; green state `#008000` ("Simulated Network", "On") right-aligned, 6 px before the checkbox; checkbox `net_rim_system_Check-icons27x27.png` (A) 12 px from the edge, centred. **When focused, only the checkbox turns blue** (focus column of the strip), the row stays white (sim-112).
+- **All Off**: grey `border_button.png` button (A) of 51 px, 5 px under the rule, its right edge 13 px from the screen's, as wide as its label plus 20 px on each side (118 for "All Off", 138 for "Restore"), blue when focused (sim-113). A click turns off whatever was on, the label becomes **Restore** (the guide says "Restore Connections") and the panel stays open (sim-117); Restore turns back on what was on. A box checked by hand forgets the Restore: the button goes back to All Off (sim-119).
+- **Set Clock Alarm**: 44 px row, alarm glyph, "Alarm" baseline 33, "OFF" in black aligned 12 px from the edge. When focused, blue strip from x 9 to 630, 2 px under the rule and 2 px above the edge (sim-114), text and glyph white.
+- **Options and Status**: 81 px rows, black title 27 on 36, grey subtitle `#808080` 23 on 68, at x 9; rules between rows; blue strip when focused, white text (sim-24, sim-116). Subtitle of Networks and Connections: "Options for Mobile, Wi-Fi, NFC, etc." on the simulator without Bluetooth, "Options for Mobile, Wi-Fi, Bluetooth, NFC etc." on a 9900 that has it (gsm 007, C).
+- **Focus and scrolling**: the banner keeps the focus on opening (sim-23); the first step down takes it away (sim-112). The panel scrolls just enough to show the focused row, at the bottom going down, at the top going up (sim-115, sim-118); the last one shows the end of the panel (sim-116). Escape closes (sim-120).
+
+**On the Q25 (720x720).** Full-width panel under the banner, measurements to the pixel; what is on the right keeps its distance to the right edge (D). Four checkboxes (the Q25 has Bluetooth and NFC: gsm 006). The panel is 816 px tall for 627 visible: it scrolls (D). A touched checkbox row toggles, a touched button acts, a touch on the banner closes (D, the 9900 has no such touches). "On" for Bluetooth and NFC when on (D, modelled on Wi-Fi); the name of the connected Wi-Fi network (gsm 006) is not shown: Android only gives it with the location permission (D, deviation). Alarm shows ON when Android has an alarm scheduled (D for the word).
+
+## 7. App switcher
+
+sim-05 (C, long press on Menu); theme.xml (A): `application-switcher-default-columns-count = 5`, `-rows-count = 3`, `application-switcher-animation-on = false`, separator `tabmanager_header_line_bottom`.
+
+The screen darkens (black veil at ≈ 70 %, by eye), the name of the focused app appears above ("Messages", white, centred), then a row of icons of the open apps, **home first** (house), focus as a blue square of 106 px (x 161 to 266 for the second slot, y 186 to ≈ 277), no animation. Probable frame `border_app_switcher.png` (40x40, A); it is not visible in the capture.
+
+**On the Q25 (720x720).** Up to 5 columns and 3 rows like the theme, centred in 720 px (D): slot of 106 x 97, focus of 106 x 92, each row centred on the screen and the block centred vertically, name in 27 px white, baseline 16 px above the first row (sim-05: 160 for a row at 186). Focus starts on the most recently used app when opened from home (C), on the one before when opened from an app (D). Click: opens; Escape, Menu, a touch outside the slots: close; the "Home Screen" entry returns to home (B).
+
+## 8. Sound profiles
+
+sim-28, sim-29 (C); gsm 010 (C, 7.0); manual p. 159 to 163 (B).
+
+A click on the speaker opens a dark "Select a Profile" popup (bold white title), anchored below the indicator row, x 65 to 562: **All Alerts Off, Normal (checked ✓), Loud, Medium, Silent, Vibrate Only, Phone Calls Only**, each with its speaker icon (`net_rim_bb_profiles_app.*` and `~focus`, A). Rows of 53 px, blue focus `#0F7AE6`. At the bottom, a full-width grey button **Change Sounds and Alerts**, which opens Phone Ringtone, Sounds for Selected Profile, Sounds for Contacts, Profile Management (sim-30). The manual adds custom profiles (B).
+
+**Measurements** (sim-28, sim-29, C). Box with edges at x 64 to 575 (512, 80 % of 640) and y 32 to 443, background `#212429`; bold title 27 px, baseline 71, rule `#43454A` at y 80; rows of 53 px from y 82 (blue band of Normal y 135 to 187, from x 78 to 562); 52 px icon at x 78, text at x 139 (baseline 36 below the top of the row), white check mark of 21x16 ending at x 548; end-of-list rule, grey button of 477x51 8 px below that rule (x 82 to 558, baseline 35), blue when focused, 18 px of box below it. The simulator shows only six rows (285 px window, blue scroll arrow); opening puts the focus on the active profile (sim-28, gsm 010).
+
+**On the Q25 (720x720).** Popup at pixel size, centred horizontally (x 104 to 615, D), anchored at y 32 as on the simulator; the 7 profiles fit without scrolling (D, the box goes down to y 529). List icons: `net_rim_bb_profiles_app.{default, loud, medium, quiet, discreet, off, phoneonly}` (Normal, Loud, Medium, Silent, Vibrate Only, All Alerts Off, Phone Calls Only), and their `~focus` on the focused row (A; the bare `.png`: custom profile, not implemented). **Behaviour**: Silent = LED blinking only, Vibrate Only = vibration, All Alerts Off = everything off, including contact alerts (manual p. 161, B); each profile that rings has its own volume: Normal 7 out of 10 (sim-31, C), **Loud 10 and Medium 5 are D**, mapped onto the Q25's 15 steps; on Android, Silent and All Alerts Off are two priority Do Not Disturb modes (alarms and media), the second also holding back the LED and previews.
+
+## 9. Universal search
+
+sim-54 to sim-56 (C); gsm 008, 009 (C, 7.0); theme.xml `universal-search-default-columns-count = 6`, `animation-duration-search = 400`, `EASINGCURVE_LINEAR` (A).
+
+Typing a letter on the home screen replaces the indicator row with a white field with a grey border (y 96 to 134, blue cursor) and a settings wrench on the right; below it, "Dial: +" when what is typed can be a number, then the results **as icons on 6 columns**, name under the icon with the matched letters in bold and the number of results in parentheses ("Options (35)"), then "Web Suggestions from Bing" and "Extended Search" (C). The banner stays at the top. Focus: blue square behind the icon and its label (sim-56).
+
+**On the Q25 (720x720).** 6 columns of 120 px like the grid (D). Implemented in `apps/launcher/.../search/SearchPanel.kt`: 38 px field at y 96, 43 px microphone on the right, "Dial:" row of 47 px, tiles of 120x134 (92 px icon at the top edge of the tile, at its own size: the Options wrench is 61 px wide on sim-54 as in the firmware image, name in 17 px, baseline 119, or 109 and 130 with the count, read from sim-56), "Extended Search" band of 35 px at the bottom of the screen. "Web Suggestions from Bing" is not implemented (no network access that was not asked for). A category tile, when chosen, opens the list of its results (D). The 7.1 guide (p. 24) has no "Dial from Home Screen" option: the option is **Launch by Typing** (Universal Search or Application Shortcuts); the "Dial:" row is what dials from search.
+
+## 10. Lock screen
+
+sim-64, sim-65, sim-85 to sim-90 (C); sim-42; `lockscreen.pme` (A); 7.1 guide p. 24, 30, 64 and 318 (B); CrackBerry photos (photos, 7.x).
+
+- **Keyboard lock** (Lock key, no password): the screen turns off; a key press shows the bubble "Screen and Keypad are locked. Press the Lock button to unlock" (sim-42, C, § 13) **over the screen that was showing** (home in the simulator, icon row included, C). The guide (p. 30, B): "To unlock the keyboard and screen, press the Lock key and slide your finger up".
+- **Password lock**: the **Password Lock** app (yellow padlock, found through search, sim-90) or the inactivity timeout (guide p. 318, B). Screen (sim-64, C): the wallpaper full screen (`Image?src=wallpaper&width=640&height=480`, A), the home banner and its indicator row unchanged (same 52 px `BannerTime`, same indicators, profile speaker, counters, A; "2" and the missed call in the middle, C), **no magnifier** and no drawer, and a **padlock** at the bottom right. The theme also provides the owner name and information (`OwnerInfo`, BBAlpha Sans Condensed bold 35 and 29 px, 580 and 500 px wide, white with a 60 % black outline, A; "Message on Lock Screen" setting, guide p. 24, B; the CrackBerry photo shows them below the row, on the left, the name in large type, by eye); `lock-screen-banner-height = 126` (A).
+- **Padlock**: `net_rim_KeyLockSystem.png` (92x92, A), its ink from x 557 to 610 and from y 375 to 449 on sim-64 (difference against the default wallpaper), the image's ink starting at (19, 7): the image sits **10 px from the right edge and 20 px from the bottom** (C).
+- A key press (Escape in the simulator) turns the screen back on and opens the "**Device is locked**" dialog (sim-65, C): icon `lock_screen_icon.png` (80x80, padlock with an orange keyhole, A), stacked buttons Unlock (focus), Cancel, then below a **rule** `#878787` (y 380, from x 206 to 432, 60 px from the box edges, 21 px below Cancel and 21 px above Emergency) **Emergency** with the handset `phone_emergency-icons32x32.png` (A, by eye against the capture), the box ending 22 px below that button (C). The trackpad moves from one button to the next (sim-89).
+- **Unlock** (U key) opens "**Enter Password:**" (sim-85, C): the dialog box (x 36 to 603, y 170 to 304: the screen minus 36 px on each side, centred like dialogs, 2 px above the middle), the label in BBAlpha Sans 27 white (ink from x 59, capitals from y 202 to 221, so baseline 52 px below the top edge), a **field** `border_find.png` (A, pixel-exact against the capture: dark ring `#20292F` from x 58 to 581 and from y 230 to 281, white gradient) and a blue **cursor** of 9x32 px (x 69 to 77, y 240 to 271, `#088FF0` to `#1666DC`). Each character typed: a black **asterisk**, 14 px advance (sim-86, C). Escape returns to the locked screen.
+- **Wrong password** (sim-87, C): an "**Incorrect password!**" dialog with the exclamation mark and an OK button; OK returns to "Enter Password:", empty. No attempt counter on screen after two wrong attempts; the number of allowed attempts is set in Options, Security, Password (guide p. 318, B), beyond which the phone wipes everything (B).
+- **Emergency** (sim-88, C): "Are you sure you want to make an emergency call?", question icon, Cancel (focus), Police, Ambulance, Fire and more below an arrow; the guide (p. 64, B): "press the key > Emergency. Press the Send key".
+
+**On the Q25 (720x720)** (`system/sysui`, `Lock.kt`, `LockFace.kt`, `Bouncer.kt`):
+
+- Home banner and row at pixel size, at the positions of `HomeBanner` (`core/design`, the launcher's), over 720 px of width; time in BBAlpha Sans Condensed until `BannerTime` is available (the theme also has `LockBannerTime.cbtf`, not decoded); speaker according to Android's ringer mode (Normal, Vibrate, Silent, as on home); counters computed like those of an app's status bar (`counters`), from what Android's lock screen shows. Padlock 10 and 20 px from the bottom right corner (D). Owner: Android's single text ("Lock screen message"), its first line as the name, the rest as information, at x 30 and 10 px below the row (D, by eye).
+- Unlocking without a code: Android's **swipe up**, the one in the guide (B). With a code: the same swipe (or a key press, as Android decides) opens the entry directly: **"Device is locked" does not exist on the Q25** (D), since Android has no step between the locked screen and its entry; Cancel is Android's Back key; **Emergency** sits below the field, with its rule, at the measurements of sim-65 (D for merging the two boxes), and calls Android's emergency button (its confirmation is Android's, not the one of sim-88).
+- Entry: the box of sim-85 with its measurements, centred on the screen height and on the width of Android's bouncer (546 px, `keyguard_security_width`, instead of 648: D), **over the whole locked screen** (sim-85: the background pixels under the box are those of sim-64, neither black nor dimmed, C), appearing and leaving without animation (D); "Enter Password:" for PIN and password alike (the 9900 only has a password, D); one asterisk per character Android holds.
+- Screen off and locked: nothing lights up for a notification (guide p. 15, B: the LED, the sound, the vibration), no always-on display and no pulse; the locked screen background without Android's 20 % dimming (sim-64, C).
+- An Android message other than its prompt, until something is typed again: the dialog of sim-87 without an OK button (typing resumes directly, D), "Incorrect password!" for Android's "Code incorrect" or "Mot de passe incorrect", otherwise Android's text (timeout, reason the code is required). Verification, attempts, timeouts and wipe remain Android's (a repository rule).
+- French labels ("Mot de passe :", "Mot de passe incorrect !", "Urgence"): by eye, no capture and no readable firmware string in French.
+- **SIM PIN and PUK at boot**: **no 9900 source**. The 7.1 guide (p. 324, B) only says how to set the PIN (Options > Device > Advanced System Settings > SIM Card > Menu > Enable Security), not what appears at boot; no `sim-*` capture; the firmware strings are compressed (only `PUK Blocked` and traces of `net_rim_bb_sim.cod` are readable). The Q25 therefore uses the "Enter Password:" box (sim-85, C), measurements included, with labels by eye (D): "Enter SIM PIN:", "Enter SIM PUK:", "Enter New SIM PIN:", "Confirm New SIM PIN:" (in French "PIN de la SIM :", "PUK de la SIM :", "Nouveau PIN de la SIM :", "Confirmer le PIN de la SIM :"), on Android's black; the messages and the count of remaining attempts are Android's words, in the exclamation-mark dialog of sim-87 (D). **Capture to take in the simulator**: set a PIN on the simulated SIM through the guide's path, restart the simulator, then capture the boot prompt (`sim-NN-sim-pin.png`), the same with two digits typed, the response to a wrong PIN (`sim-NN-sim-pin-incorrect.png`, with its attempt count if it shows one) and, if the simulator can block it, the PUK prompt (`sim-NN-sim-puk.png`); note whether Enter or the trackpad click confirms, and whether the box has Emergency.
+
+## 11. Boot screen
+
+sim-01 (C, native capture at the end of boot); `fen-demarrage-debut.png`, `fen-demarrage-milieu.png` (reduced window, C).
+
+Black background `#000000`; white BlackBerry logo (seven dots and word), **332x58** (x 154 to 485, y 190 to 247), centred horizontally; progress bar of **532x6** (x 54 to 585, y 435 to 440): track `#313031`, white fill with a vertical gradient `#FFFFFF` to `#A5A2A5`, advancing from left to right for the whole load (≈ 25 s in the simulator under Wine). Before that, a few seconds of white screen on the window side (not the device screen, D). The firmware contains `PowerOn640x480.mp4` (480x360, 4.9 s) in a `chinaunicom` package: it is a carrier video, not the default screen (A, discarded).
+
+**On the Q25 (720x720).** Logo and bar at pixel size, centred on x 360; logo at the same relative height (centre at 46 % of the height, y ≈ 331) and bar 45 px from the bottom (y 675 to 680) (D). Built as `bootanimation.zip` by `bootanim.py`. The logo does not exist as a file in the firmware (the boot screen is drawn by the native system): `tools/import-assets.sh demarrage` cuts it out of sim-01 (x 154, y 190, 332x58). The bar is drawn by `bootanim.py`: track `#313031`, fill in six rows `#FFFFFF`, `#F7F3F7`, `#DEDFDE`, `#CECBCE`, `#B5B7B5`, `#A5A2A5` (column x 54 of sim-01). On the three captures the fill covers 99, 386 and 499 px of the 532 (fen-demarrage-debut, fen-demarrage-milieu, sim-01): curve not measured (uneven steps: by eye), no final fade visible (C). Fill duration on the Q25: 13.7 s, the measured Android boot time (D, to be measured again).
+
+## 12. Dialogs
+
+sim-19, sim-20, sim-47, sim-61 to sim-63, sim-65 (C); theme images (A).
+
+| Measurement | Value |
+|---|---|
+| Box | `border_popup.png` 40x40 (A, same edge pixels as the captures: `#565A5D` at the top, `#4D5154` on the sides, `#494C4F` at the bottom), stretched between 18 and 21. **Width follows the text**: from the left edge pixel to the right one, the text advance plus 40 px without an icon (sim-19: x 100 to 538 for 399 px), plus 124 with one (sim-62: x 77 to 561 for 361 px; sim-65: 348 for 223); at most the screen minus 5 % on each side (`popup-screen-margin-percentage = 5`, A), the text wrapping at the preceding space (sim-62, sim-42). sim-47 is 12 px wider than the rule (352 for 215): unexplained difference. Centred, its 4 px shadow included (2 px above the middle) |
+| Icon | to the left of the text, an 80x80 image whose drawing is 50x50 in the middle, 20 px from the left edge and 22 px below the top edge: `dialog_question.png` (sim-47), `dialog_exclamation.png` (sim-62), translucent white outline on the box (A; `dialog_question_dark.png`, a solid dark square, is not the one in the captures) |
+| Text | BBAlpha Sans 27 px white ("You have 2 new missed calls." 394 px measured, 396 rendered), **left-aligned** 19 px from the edge (103 with an icon), lines of 32 px, baseline 25 px below the top of the line; the content (icon or text) starts 22 px below the top edge, the text centred on the icon's height (sim-47, sim-62) |
+| Buttons | **stacked and centred**, 51 px high, the first 24 px below the content, then every 74 px; the bottom of the box 41 px below the last one (sim-19, sim-47, sim-62; 22 px on sim-65, which the screen crops). All the same width: 0.545 of the box (238 for 439, 265 for 485, within 1 px), or the longest label plus 20 px on each side (`GreyBorderDef … right=20 … left=20`, theme.xml, A) if that is wider (sim-65, Emergency). Text centred 27 px, baseline 35 px below the top; first letter underlined, a 2 px line 1 px below the baseline ("Save", "Discard", "Cancel", "Unlock"; not on sim-19) |
+| Focused button | `border_button~focus.png` 60x102 (A): edge `#004099`, highlight `#2E9FF2`, gradient over 21 rows to `#1766DB`; the top 26 rows and the bottom 5 keep their pixels, the plain middle shrinks (sim-19: 26 plain rows out of 51), white text |
+| Unfocused button | `border_button.png` (A), a white at 85 % that gives, over the box, the measured grey `#AFB1B4` (`#C8CACC` at 217 over `#212429`), text `#202121`; `border_buttongrey.png`, almost white, is not the dialogs' one |
+| Separator | dark rule above a button of another kind (Emergency, sim-65) |
+| Entry | sim-61: box without buttons, label "New Password:" and white field with a grey border, blue cursor. Measurements (C): box of 135 px, `border_find.png` field of 56 px, 20 px from the left edge and 19 from the right, 4 px below the label; Bold7: `TextDialog` in `core/ui`, 648 px wide on the Q25 (D), Enter confirms and Escape cancels (D) |
+
+**On the Q25 (720x720).** Same rules at pixel size, centred in 720 px: the box goes up to 648 px (D). Code: `DialogLayout.kt` (pure, `DialogLayoutTest` against sim-19, sim-62, sim-42), `Dialog.kt`.
+
+**Framework dialogs.** The dialogs the framework draws for other apps take the same box through the framework RRO (`system/overlays/android`): `border_popup.png` as a 9-patch, dark in every dialog theme (light themes become their dark twins), no scrim, title and message in BBAlpha Sans 27 px white at the positions above, stacked buttons of 51 px every 74 px, 0.545 of the box or the label plus 20 px on each side. Differences (D): the box always has its maximum width, 648 px (a box at the width of the text would crush the fields of app dialogs); Android's title becomes a first line in bold; the icon is the app's; buttons in the order positive, negative, neutral; no underlined letter.
+
+## 13. Status messages (in place of toasts)
+
+sim-42 (C): it is **the box of a dialog without buttons**: `border_popup.png` (A, same edge pixels), x 48 to 590 and y 184 to 290, white text 27 px left-aligned 19 px from the edge, two lines wrapped by the dialog width rule ("… Press" 503 px, the box 543), 22 px above the text and 20 px below it; centred on the screen (its middle at y 237, like dialogs), not "at the top". It disappears on its own; duration not measured (2 s, by eye).
+
+**On the Q25 (720x720).** Same rules, centred (D). Code: `status()` in `Dialog.kt` in the apps; Android's toasts, drawn by SystemUI for apps targeting SDK 30 and above, take the same box (`DialogView` from `core/ui` in `Toast.kt` of `system/sysui`), with no app icon and no animation (D); their duration stays Android's (2 s and 3.5 s). Those that an app targeting SDK 29 or below draws itself take the same box through the framework RRO (`toast_frame`, `transient_notification`), white text left-aligned, two lines at most.
+
+## 14. Volume
+
+sim-108 (C), `volume_overlay.pme` (A). On the home screen, the volume keys show nothing (C, negative finding); during a call, the call screen shows the volume in its own slider at the top right, with no window (sim-109, C); **while a sound is playing** (a ringtone from Ringtones), a window in the middle of the screen (sim-108):
+
+| Measurement | Value |
+|---|---|
+| Background | `vol-bg.png` 273x82 (one-pixel transparent edge, shadow on the last row), at x 183, y 199 of the 640x480: **centred** on both axes, to the pixel |
+| Output icon | `vol-loudspeaker.png` (23x38) at (22, 22) of the background; the theme also has `vol-headset`, `vol-handset`, `vol-bluetooth` and their `-mute` (in the theme's second `.cod`, `_bs1`) |
+| Bar | `vol-011.png` (180x12) at (70, 35) of the background: the 16-image form (`absoluteVolume15` in the `.pme`: `vol-0.png` empty, then `vol-001.png` to `vol-015.png`, 12 px per step), not the 11-image one (`vol-0` to `vol-10`) |
+| Duration | gone by the next capture, about one second later, once playback ended: not timed |
+
+Rest of the theme not seen: `vol-relative*.png` (relative volume, Bluetooth), `noVolumeControlMsg`, `btAccessoryName`.
+
+**On the Q25 (720x720).** At pixel size, centred on the screen (x 223, y 319). Icon according to the output Android picks by default (Bluetooth, then wired, otherwise handset for a call and loudspeaker for the rest), the `-mute` one when the stream is muted, at zero, or when ringer and notifications are on vibrate or silent (D: OS 7 left this to profiles), over the empty bar. The other icons keep the left and middle position of the loudspeaker (D). It also appears during a call and on the home screen, since Android has no other volume display (D); 3 s without a key press, Android's duration (D); no fade and no slide (D). A call on the loudspeaker keeps the handset icon (D). Code: `Volume.kt` and `VolumeHud.kt` in `system/sysui`, images `vol_*.png` (`tools/import-assets.sh systeme`).
+
+**High volume warning** (sim-340 to sim-343, C). OS 7 warns before Audio Boost (Media > Media Options, "Audio Boost:" checkbox, guide p. 140, B: "Read the warning on the screen and if you want to proceed, click Yes"): the OS 7 dialog (§12), question mark on the left, two paragraphs separated by an empty line, "WARNING: You are about to activate Audioboost and exceed the recommended safe output volume limits of the BlackBerry smartphone.  Damage to your hearing may result.  Consult the website before proceeding." and "IMPORTANT REMINDER: Hearing experts warn against the use of portable media players at a high volume. If you experience ringing in your ears or any discomfort, immediately discontinue use of the media player and consult with a physician." (two spaces after some full stops), then the stacked buttons **Proceed**, **Cancel**, **Learn More** and a "Don't show again" checkbox; taller than the 9900 screen, it scrolls with the trackpad (blue arrows at the top and bottom right). The focus on opening was not seen (the capture shows the top of the text).
+
+**On the Q25.** Android's dialog that comes before a headphone volume above the safety threshold (`SafetyWarningDialog`, Yes or No) takes that dialog: the OS 7 wording, Proceed on Android's Yes, Cancel on its No, focus on Cancel (D). Learn More (no website to open) and "Don't show again" (Android has no such choice, and offering it would weaken the warning) are left out, as is the empty line between the paragraphs, so that the whole fits without scrolling (D). Android's sound dose warning (CSD), which OS 7 did not have, keeps its words and buttons in the same box (D). The threshold, the decision and the obligation to choose remain Android's. Code: `HearingWarning.kt` in `system/sysui`.
+
+## 15. Messages
+
+sim-43 to sim-46 (C, empty inbox); gsm 027, 028 (C, 7.0, populated inbox); ps 33245.
+
+- App status bar on two lines, **67 px** (§ 18);
+- date headers of **56 px** (y 67 to 122) with a `#D9DCDE` rule below: the first 56 rows of `background_list_header.png` (640x75, A: `#D5D6D7` at the top, `#ADADAE` at the 56th, the gradient of gsm 027), black centred text ("Fri 16 Sep 2011"), BBAlpha Sans 27 px, baseline 37 px below the top; when focused, the blue gradient of the rows and white text (sim-53);
+- two-level rows: status icon on the left (envelope, BlackBerry logo for a system message), sender in black (bold if unopened, gsm 022), time on the right, subject or start of the text in grey below; light grey rules;
+- row measurements (sim-53 on 7.1 and gsm 027 to 029, C): **70 px and a rule** (y 124 to 194); status icon of **42x42** at x 15, 14 px below the top of the row (a cell of the strips `net_rim_Message-icons42x42.png` of the `_b` theme and `net_rim_Phone-icons42x42.png` of the `_bs1` theme, A, located by image search: RMS difference 0.006 on sim-53, 0.02 on gsm 027, 0.03 on gsm 028; the 38 px strips give 0.12 to 0.16); sender BBAlpha Sans 27 px at x 64, baseline 32 below the top; time in 23 px black on the same baseline, its ink ending at x 634 (5 px from the edge); subject, text or number ("Mobile:" followed by the number for a call, gsm 028) in 23 px grey, baseline 62;
+- strip cells, read by eye (only those cited above are measured): row 0 e-mail, 1 text, 3 text with paper clip; column 1 unread (yellow), 2 read (white), 3 and 12 red cross, 4 green quill (sent: the conversation of sim-53, whose last message went out), 5 to 7 clocks (pending), 8 waves, 9 check mark, 10 "D", 11 "R"; row 3, columns 22 and 23, dark and light BlackBerry (system message, the light one on gsm 027); phone strip: column 0 received, 1 placed (gsm 028), 2 missed orange, 3 missed grey;
+- scrolling: blue arrows `navigation_up_arrow.gif` and `navigation_down_arrow.gif` (19x9, A) against the right edge, at the top of the list (y 66) and at the bottom of the screen (y 471), as long as there is more to see on that side (gsm 027);
+- filtered view (gsm 029): the centre of the status bar shows the view (the account's e-mail address) instead of the network; in Bold7, an account's icon opens Messages on that account, its address as the window title;
+- menus (7.1 guide, B): on a message Open (p. 52), Mark Read and Mark Unread (p. 94-95), Delete (p. 94); on a date Mark Prior Read (p. 31, 95) and Delete Prior (p. 94); Compose Text Message (p. 103); confirmations Confirm Delete and Confirm Mark Prior Read, on by default (p. 89). The firmware's internal names are "opened" (`ICON_MARK_OPENED`, `ICON_MARK_PRIOR_OPENED` in `net_rim_bb_messaging.cod`, images `sm_mark_opened`), the 7.1 labels "Read";
+- inbox shortcuts (7.1 guide p. 51-52, B): Enter opens, C composes, Alt U read or unread, W flag, Alt F flags, Alt I received messages and incoming calls, Alt O drafts and sent, Alt V voicemail, Alt S text messages, Alt P calls, Escape all messages; Shift Space and Space one screen, T top, B bottom, U next unread, J and K next and previous related message;
+- empty inbox: "* No Messages *" centred on a blue band (sim-43, C);
+- full menu in § 4; composing an e-mail (sim-46): full screen without status bar, To, Cc, Subject fields, body, greyed-out send button at the top right.
+
+The simulator's inbox could not be filled (sent SMS do not appear there, no e-mail): the row measurements come from Text Messages and gsm 027.
+
+**On the Q25 (720x720).** Rows and headers at pixel size; ≈ 9 rows visible instead of 6 (D). The time and the scroll arrow stay against the right edge (D). Code: `apps/messages` (`Inbox.kt`, `Actions.kt`, `InboxState.kt`, pure and tested; `MessageRowView.kt`, `MessagesActivity.kt`).
+
+**E-mail.** Pixel measurements, C. Reading (gsm 030): full screen, background `#DDDDDD`; white header box, border `#C6C6C6` at y 2 and 97, from x 4 to 636; "From: Kyle" in 27 px dark grey `#3D3D3D` to `#404040`, x 10, baseline 32; the subject in bold 27, baseline 63; the date ("16 Sep 2011 13:36") in about 20 px (14 px digits), baseline 88; the body in 27 px black at x 14, first baseline 138, 35 px per line; the white of the body from x 5 to 634. Menu (gsm 032): Find, Select Text | Get Plain Text | **Reply** (focus), Forward, Forward As ►, Reply To All…; the expanded header there shows "Received Using:" and "Folder: Inbox". Composing (sim-46): `#DDDDDD` band of 60 px, send button 86x51 from x 548 to 634, y 3 to 54, `send_email.png` (52x31, A) inside, pale with no recipient; white boxes with a `#C6C6C6` border from x 4 to 636 followed by two shadow lines (`#CDCDCD`, `#D7D7D7`): To and Cc (border at y 60 and 131, two lines of 35 px, "To:" at x 14, "Cc:" at x 10), Subject (y 136 to 175, "Subject:" in bold), the body (from y 180); blue scroll arrow at the bottom right. "Changes made!" (sim-47): Save focused, Discard, Cancel. Bold7: `MailActivity`, `ComposeMailActivity`, `MailAccountsActivity` (Bold7's own setup screens, D), HTML read as text.
+
+## 16. Text Messages
+
+sim-48 to sim-53 (C); gsm 022 to 026 (C, 7.0).
+
+- **Icon**: see § 2, "Text Messages next to Messages".
+- **List** (sim-53): status bar with "Text Messages" in the centre; 56 px date header; one row per conversation of **71 px** (y 124 to 194): green bubble icon (x 18 to 53), name or number in black BBAlpha Sans 27 px (x 66), time on the right (x 569 to 632), last message in grey below; rule `#D8D8D8`.
+- **Thread** (sim-50, sim-52, C 7.1; gsm 023, C 7.0 for a received bubble), measured:
+  - **no status bar**; black band of **65 px** (y 0 to 64): the contact image, `default_avatar.png` (115x115, `_bs1` theme, A) **scaled down to 49x49 at 8, 8** as the 9900 draws it (RMS difference 0.019 on sim-50), then the name in BBAlpha Sans 27 px white at x 66, baseline 30 ("513": digits the height of those of a 27 px row of sim-53). gsm 023 (7.0) adds a second line ("Received one minute ago") that sim-50 (7.1, sent messages) does not have;
+  - grey background `#B2B2B2`; one bubble per message, **oldest at the top**, the latest above the field (sim-52);
+  - **sent bubble**: border `#888C91` from x 4 to 615 (4 px from the left edge, 24 from the right), surrounded by a one-pixel `#A5A5A5` line; corners of about 5 px; fill with a gradient `#F3F6FA` (row 70) to `#E5EBF3` (row 101), plain after that; **tail** below the bottom edge, on the left: right side at x 10, hypotenuse from (19, 145) to (10, 154), so 9 px high, 6 px from the bubble's edge;
+  - **received bubble** (gsm 023, JPEG): from x 24 to 635 (4 px from the right edge), gradient `#E4F5FC` to `#CAE6F2`, border `#7A8D94`, tail at the bottom right;
+  - one line of text gives a bubble of **77 px** (edges at y 69 and 145); the next starts 19 px below the bottom edge (y 164 on sim-52), the first 4 px below the band;
+  - inside the bubble (from its top edge, sim-50): "Me" (or the contact's name, gsm 023) in BBAlpha Sans bold ≈ 21 px `#2F3033` 9 px from the edge, baseline 28; the time ("00:33", 58 px wide, 57 rendered in 21 px) `#2F3033` ending 9 px before the right edge, baseline 23; a `#C7CDD4` rule at 37 px, 7 px in from each edge; the status icon, a 32x32 cell of `net_rim_Message-icons32x32.png` (`_b` theme, A, located on sim-50 with an RMS difference of 0.002: row 1, column 9, the check mark) at 7, 39; the text in 27 px black at x 40, baseline 64; the bottom edge 12 px below the last baseline;
+  - cells of that strip read by eye for the other states: row 1 column 5 clock (pending), 10 check "D" (delivered), 11 check "R" (read), 12 red cross (failed); row 2 columns 15 and 16, orange and grey dots (the grey one on the received bubble of gsm 023, C; the orange one for an unread received message, D);
+  - **field band** at the bottom, **66 px** (y 414 to 479): gradient `#313842`, `#212429` (y 444), `#181818`; the field `border_reply_field.png` (31x25, A, in 9 slices: white from 13 to 17 and from 13 to 16, same values as sim-50 column 300) from x 3 to 565, y 419 to 473; the text 27 px black 13 px from the field's edge (gsm 025), baseline 39 below its top; the cursor, a 9x32 bar in the blue focus gradient (`#088FF0` to `#1666DC`), 12 px below the top of the field; `smiley_button.png` (40x40, A) at x 584, y 427;
+  - **full menu** (sim-51, field filled): Send (focus), then Switch Application, Switch Input Language/Method, Show Symbols, Check Spelling, Clear Field, Clear Conversation, the rest cut off; **short menu** (sim-52): Add to Contacts, Check Spelling, Clear Field, Add Smiley, Send (focus), Select, Clear Conversation, Switch Application, Full Menu; images `sm_chat_send` (`_bs1`, difference 0.03 on the focused cell), `sm_clear_input` (`_bs1`), `sm_cancel_generic` (`_b`, difference 0.009, the yellow cross of Clear Conversation) (A);
+  - 7.1 guide (B, p. 103 to 105): Compose Text Message from Messages, To by name or number, "Type a message. Press the [key] key" (the key's image is missing from the text: Enter, as in every compose flow in the guide); **Delete Message** on a highlighted message, **Clear Conversation** which keeps the thread open, **Delete** in the list which erases the whole thread.
+- **Composing** (sim-49, gsm 025): a 64 px black band instead of the contact one, "To:" white 27 px at x 2, baseline 42, and the same `border_reply_field.png` field from x 52 to 635, y 4 to 59; gsm 025 (7.0) shows a second empty To below the first filled one (multiple recipients); same entry band at the bottom.
+- **To.** 7.1 guide p. 103 (B): in To, type a contact name, **Menu > Choose Contact** then a contact, or type a number then Enter; "the number of recipients depends on the carrier". gsm 025 (C, 7.0): a filled recipient reads **"Batman (Mobile)"** (name, then the number type in parentheses), **one To line per recipient**, and an empty line below; the fields are **60 px** apart (white of rows 11 to 56 then 71 to 116), the band ends at 125 (64 + 60 = 124 in Bold7, the 2 px difference put down to the compression of the 7.0 capture, D). gsm 023 (C, 7.0): the thread band shows **the contact's photo** in place of the default image, and the name followed by the type ("Dee Dee (Mobile)"). In Bold7, the photo takes the place and size of the default image (49 px at 8, 8, D); a group keeps the default image (D). **Without a capture (D)**: the list of suggested contacts while a name is typed (the Options rows, `ListItemView`, below the To band, the name above the number and its type, or the types of its numbers if it has several; down from the To line moves through it, then to the field); a click on a name takes the focused contact, or the first one; a contact with several numbers asks for the number in an OS 7 dialog with one button per number ("Mobile: 06…", like Select Contact in Contacts); after a choice, the focus moves to the message field; Del on a recipient's line removes it; Choose Contact at the top of the menu, on To only, image `sm_address_book_app` (`_b`, A); several recipients make a group named after its members separated by commas. A single chosen recipient who already has a conversation: its history appears below To before sending (by design, D: gsm 025 shows nothing below To). Code: `Recipients.kt` and `ConversationState.kt` (pure and tested), `AndroidContactBook.kt`, `ThreadBandView`, `ConversationActivity`.
+
+**On the Q25 (720x720).** Bands, bubbles, fonts and margins at pixel size; bubbles keep their 4 and 24 px from the edges and widen to 692 px, the extra 80 px going to the text (D); ≈ 6 one-line bubbles visible instead of 3 (589 px of thread instead of 349, D). Code: `apps/messages` (`Thread.kt`, `ConversationState.kt`, `Conversation.kt`, `Bridge.kt`, pure and tested; `ThreadViews.kt`, `ConversationActivity.kt`), tokens `ThreadColors` and `ThreadDimens` (`core/design`).
+
+**Deduced for the thread (D).** A bubble with trackpad focus: a 2 px blue border (no capture of a focused bubble). An MMS image: below the text, at its width and at most 240 px high, 6 px above; other attachments counted on one 21 px line (no capture of an MMS in a thread). The time of a message from another day: "12 Nov 23:05". The name of a group member on their received bubbles: their number. The field does not grow: a longer text shows its end. The band's second line (gsm 023) is not drawn.
+
+**Emoticons.** sim-145 to sim-152 (C, 7.1), gsm 024 (C, 7.0); firmware `net_rim_bb_sms` (A).
+
+- **Opening**: the smiley button to the right of the field takes the focus one step right from the end of the text: `smiley_button_focus_indicator.png` (56x56, A) 7 px left of and 8 px above the button (sim-146); its click opens **Add Smiley**, which is also in the short menu (sim-52) and in the full menu, after Clear Conversation and Start Selection (sim-150), image `sm_add_emoticon.png` (`_bs1`, A).
+- **The list** (sim-145): the dialog box (`border_popup.png`, `#212429`, A), centred (edges x 37 and 602, y 27 and 448 on the 9900); at the top the title of the focused emoticon, its first shortcut then its name (":) Smile"), white, BBAlpha Sans 27 px, centred, baseline 43 px below the edge; below, **7 columns** of 69 px cells, the first 41 px right of the edge and 53 px below it, the image from the strip `smileys_45x45.png` (A) 12 px from the cell's edge; the focus, a one-pixel white frame around the cell, corners cut diagonally by 3 px; 23 px below the last row. The 9900 shows 5 rows and scrolls, with the blue arrows at the bottom then at the top right (sim-147); **the last, incomplete row is centred** (sim-147).
+- **Focus**: right at the end of a row does not move to the next one, the focus stays (sim-145 to sim-147, C); left at the start likewise (D); up and down change row; towards the centred last row, the nearest cell (D). Click or Enter: the list closes, the image goes into the field at the cursor, the cursor after it (sim-148); Escape closes (D, like every dialog).
+- **In the field** (sim-148): the image at 27x27 (`smileys_27x27.png`, A), its bottom 3 px below the text baseline; one Backspace deletes it at once. A typed shortcut (":)") **stays as text** in the field (sim-149).
+- **In the bubbles**: the SMS module has an emoticon parser ("Invalid character found while parsing smilies at index", `net_rim_bb_sms.cod`, A) and the list of texts it recognises, several per emoticon (`:) :-) =-) =)`): a received or sent shortcut was drawn as an image in the thread (A for the existence of the conversion, no capture of a bubble). Its exact rule (where a shortcut starts and ends) is in the code, not read: a shortcut is only converted at the start of the text or after a space, and followed by the end, a space or punctuation (D), so that "http://" or "a:)b" stay text.
+
+The 45, in strip order (index = cell), with their names (sim-152, C), the parser's texts (A) and the emoji that is sent (D):
+
+| # | Name (C) | Texts (A) | Emoji (D) |
+|---|---|---|---|
+| 0 | Smile | `:)` `:-)` `=-)` `=)` | 🙂 |
+| 1 | Wink | `;)` `;-)` | 😉 |
+| 2 | Sad | `:(` `:-(` `=-(` `=(` | 🙁 |
+| 3 | Angry | `>:O` `>:-O` `>=-O` `>=O` | 😡 (the image is red) |
+| 4 | Big Smile | `:D` `:-D` `=-D` | 😁 |
+| 5 | Crying | `:'(` `='(` | 😭 |
+| 6 | Surprised | `:O` `:-O` `=-O` `=O` | 😮 |
+| 7 | Tongue Out | `:-p` `=-p` `=p` | 😛 |
+| 8 | Cool | `B-)` | 😎 |
+| 9 | Lips Are Sealed | `:x` `:-x` `=-x` `=x` | 🤐 |
+| 10 | Confused | `:s` `:-s` `=-s` `=s` | 😕 |
+| 11 | Embarrassed | `:$` `:-$` `=-$` `=$` | 😳 |
+| 12 | Kiss | `:*` `:-*` `=-*` `=*` | 😗 |
+| 13 | Huh? | `:/` `:-/` `=-/` `=/` | 🫤 |
+| 14 | Heart | `<3` | ❤️ (U+2764 U+FE0F) |
+| 15 | Yes | `(y)` `(Y)` | 👍 |
+| 16 | No | `(n)` `(N)` | 👎 |
+| 17 | Sick | `:&` `:-&` `=-&` `=&` | 🤢 |
+| 18 | Sarcastic | `:>` `:->` `=->` | 😏 |
+| 19 | Laughing | `=D` | 😆 |
+| 20 | Love Struck | `<3<3` | 😍 |
+| 21 | Eyelashes | `;;)` | 🥰 (no emoji flutters its eyelashes) |
+| 22 | ROTFL | `=))` | 🤣 |
+| 23 | Raised Eyebrow | `/:)` `/=)` | 🤨 |
+| 24 | Whew! | `#:-s` `#=-s` | 😅 |
+| 25 | Straight Face | `:\|` `=\|` | 😐 |
+| 26 | Big Hug | `({})` | 🤗 |
+| 27 | Talk to the Hand | `>:/` `>=/` | ✋ |
+| 28 | Broken Heart | `</3` | 💔 |
+| 29 | Angel | `O:)` `O-:)` `O-=)` `O=)` | 😇 |
+| 30 | Nerd | `*nerd*` | 🤓 |
+| 31 | Yawn | `(=\|` `*yawn*` | 🥱 |
+| 32 | Thinking | `=-?` `*thinking*` | 🤔 |
+| 33 | Eyes Rolling | `8-\|` `*eyesrolling*` | 🙄 |
+| 34 | Party | `<=-P` `<=-p` `*party*` | 🥳 |
+| 35 | Devil | `>=)` | 😈 |
+| 36 | On the Phone | `=)]` `*onthephone*` | 📞 |
+| 37 | Call Me | `=-c` `*callme*` | 🤙 |
+| 38 | Can't Watch | `X_X` | 🙈 (a hand over the eyes) |
+| 39 | Gold Star | `(*)` | ⭐ |
+| 40 | Dancing | `\=D/` | 💃 |
+| 41 | Waiting | `*...*` `*waiting*` | 🕒 (the image is a clock) |
+| 42 | Beer | `*beer*` | 🍺 |
+| 43 | Coffee | `~o)` `*coffee*` | ☕ |
+| 44 | Not Interested | `3-\|` | 😒 |
+
+**Rule (D, by design).** An SMS, MMS or RCS message does not carry a BlackBerry emoticon image: Add Smiley puts **the Unicode emoji** from the table into the field, which every recipient sees. The thread draws each emoji of the table, received or sent, with or without the U+FE0F variation selector, with the OS 7 image of its cell (27 px, as in the field); an emoji not in the table stays Android's emoji. A text shortcut is converted for display in the bubbles (the 9900's parser, A), never in the field (sim-149) nor in the text sent. The field also shows the emojis it contains as OS 7 images.
+
+**On the Q25 (720x720), D.** The list keeps its 7 columns (the same positions as on the 9900) and shows its **7 rows without scrolling**: a 566x559 box, centred, so without arrows. A touch on a cell picks it, elsewhere closes.
+
+Code: `apps/messages` (`Emoticons.kt`, pure and tested: table, search in a text, grid; `EmoticonViews.kt`: image in the text, list; `ComposerView` and `ConversationActivity`).
+
+**The field is an editor.** The thread's field is an `EditText` dressed as OS 7 (background, font, measurements and cursor unchanged; no underline, no handles, no selection toolbar, no Android suggestions), so that Bold7's input method (Typing) can write into it; To is still drawn by the band. The Messages search field became an editor in the same way.
+
+**Attachments.** No capture of an MMS in a thread, nor of an attachment in the field, nor of the viewer opened from an SMS: the simulator receives no SMS. Sources: 7.1 guide (B) p. 104 ("press the Menu key > Attach. Click an attachment type. Click a file"), p. 130 (a text message only takes a vCard, an iCalendar or a media file), p. 131 (Open Attachment), p. 153 ("Open a picture attachment in a text message … Save Image > Save"; "To zoom in to the picture, click the trackpad. To zoom out … press the Escape key. To pan … slide your finger on the trackpad") and p. 38 (I, O, 2, 4, 6, 8); sim-292 and sim-293 (C, 7.1: Attach ► in its own group, at the end of the e-mail compose menu); ps 33262 and 33263 (C, reduced: the viewer full screen, the image over the whole surface, no status bar, Zoom in its menus); theme (A): `sm_add_attachment.png`, `sm_open_attachment.png`, `sm_save_image_browser.png`, `sm_zoom_in.png` (82x55), `attachment_generic_picture`, `_generic_video`, `_music`, `_contact`, `_calendar`, `_unknown.png` (52x52), `arrow_menu.png`.
+
+- **Thread menu**: Attach ► in a group of its own, last, on the field (like e-mail composing, sim-292); its entries Picture, Video, Audio, File (D, no source for the labels) open in place of the menu (D, like View in the Calendar). With an attachment in the field: Remove Attachment in place of Attach (D, image `sm_delete`). On a bubble that has an attachment: Open Attachment above Delete Message (position D).
+- **In the field (D)**: a 64 px band above the field band, `#212429` (the middle of the field's gradient): the image thumbnail or the `attachment_*.png` of its kind (52 px, at 6, 6), the name in white 27 px, the size in `#C7CDD4` 21 px. One attachment at a time (the 9900 took several, as a slide show).
+- **Viewer (D except what is sourced above)**: black background, the image fitted to the screen without being enlarged, each click doubles the scale up to 8 times, Escape halves it then closes; one trackpad step pans by an eighth of the screen, a finger drags; full menu Save Image, Zoom; short menu (click and hold) the same with `sm_save_image_browser` and `sm_zoom_in`. Save Image saves straight away to Pictures/Messages and says so (OS 7 first asks for the folder, then Save).
+
+
+## 17. Options (list)
+
+sim-57 to sim-60 (C).
+
+Title "Options" in white on a black band of **35 px** (34 black px and a `#1F1F1F` rule; BBAlpha Sans 27 px at x 5, baseline 25), rounded Search field (y 41 to 88: `border_find.png` 31x25, A, in 9 slices, placed 2 px from the edges of a 60 px band, y 35 to 94, which is the top of `background_find_field.png`, A; "Search" `#ADB0B3` at x 25, baseline 74), then rows of **71 px** (95 to 166, 166 to 236…): category icon of about 44 px on the left (x 14 to 57, theme images `cat_*`, A), black title BBAlpha Sans **27 px** at x 81, grey subtitle BBAlpha Sans **23 px** ("Bluetooth connections, Wi-Fi, mode": 403 px measured and rendered), rule `#D9DCDE`. Focus as a blue band `#088FF0` to `#1666DC` over the 71 px (rule included), full width, white text. Title on a baseline 31 px below the top of the row, subtitle on 60; without an icon (sim-24), text at x 9. Checkboxes (sim-60): rows of 57 px, 27 px label on baseline 37, 27x27 box 12 px from the right edge, a cell of `net_rim_system_Check-icons27x27.png` (A: columns normal, focused, disabled, disabled and focused; rows empty, checked, then arrow, cross, radio buttons); labels and boxes grey when the setting is disabled. Entries: Sounds and Ringtones, Networks and Connections, Display, Typing and Language, Device, Call Management, Security, then the rest further down the scroll. Settings screens (sim-60) group fields into boxes with a bold grey title, with grey drop-down lists (`#AFB1B4`) and checkboxes.
+
+**On the Q25 (720x720).** Rows of 71 px, ≈ 8 visible instead of 5 (D).
+
+## 18. App status bar
+
+`banner.pme` (A); sim-48, sim-43, sim-18, sim-50 (C); gsm 013, 015, 019, 022, 027 (C, 7.0); guide p. 19 and 262 (B).
+
+- **Two lines, 67 px** (Messages, Text Messages): on the left the battery then the time (BBAlpha Sans Condensed, `font-size=32` according to the theme but rendered at 27 px, see the table; `width=127&align=left`, A; "00:34"), in the centre the network or app name ("Text Messages"), on the right coverage, signal and Wi-Fi; second line: notification indicators in the centre (`GridIndicators … font-size=32 … width=253`, A).
+- **One line, 34 px** (the Phone: call log sim-141, incoming call sim-18 and sim-200, call sim-109 and sim-136 to sim-139; also the Calendar, sim-220, without the network name or the battery): network and time on the left, battery, call indicator, Wi-Fi, coverage and signal on the right. Positions in the "One line" paragraph below.
+- **None**: composing an email or an SMS, Options (the screen title takes its place).
+- **App title bar** (Contacts, gsm 013 and 015): the title on the left, on the right the new-messages envelope, Wi-Fi, the BlackBerry logo and the signal, with no battery or time. This is the app's own title bar, not the system's.
+
+**Which one for an Android app.** The theme files both the "banner" and the "twolinebanner" under `banner.pme` (theme.xml, A): the system bar above an app is the two-line one. An Android app draws its own title below it, as Messages does its list. Bold7 therefore uses it for every app, at 67 px (D for this choice; the positions are A and C).
+
+**Positions**, in 9900 pixels, measured on sim-43 (C), parameters from `banner.pme` (A):
+
+| Element | Position on the 9900 | On the Q25 (720 px) |
+|---|---|---|
+| Height | y 0 to 66, the blue list from y 67 | 67 px, `status_bar_height_default` of the framework RRO |
+| Battery | 50x25 frame at (3, 2), visible outline x 4 to 51, y 6 to 22 | same position |
+| Network name | centred on x 320, baseline y 24, BBAlpha Sans Condensed 27 px white; roaming triangle before it (`layout?ids=banner_Roaming;banner_SystemStatus&width=342&align=center`) | centred on x 360, cut with "…" beyond 342 px |
+| Coverage | "edge" drawn from x 520 (ink x 521 to 578), 60 px advance, baseline y 24, Condensed 27 px (`Coverage?font-family=BBAlpha Sans Condensed`) | its advance ends 6 px before the bars frame (x 660) |
+| Bars | 49x19 frame found at (586, 5) by image search (sim-43, gsm 022, and sim-03 on the home screen) | 5 px from the right edge, x 666 |
+| Time | "00:30" drawn from x 4 (ink x 5 to 70, y 36 to 56), baseline y 56, Condensed **27 px** `#F7F7F7`: the firmware TTF rendered at 27 px gives the 66 px width of the capture, at 32 px 79; gsm 022 ("14:32") gives the same positions. The `font-size=32` of `CurrentDateTime?…font-size=32&ampmSize=32&fill=F7F7F7` (A) is therefore not in pixels | x 4, baseline 56 |
+| Counters | "2" drawn from x 294 (15 px advance), baseline y 58, then the 33x29 missed-call frame at (313, 35): 4 px from the advance to the frame, the whole centred on x 320; digit in Condensed 27 px white, like the time (`GridIndicators … font-size=32&fill=white`, A, same unit). Two counters (gsm 022, 7.0): "1" at x 260 and 327, frames at 279 and 346, i.e. 15 px between the first frame and the second digit; area 2 of `banner.pme` has no `hpadding` | centred on x 360 |
+| Wi-Fi | 30x24 frame found at (592, 35), below the bars | 18 px from the right edge, frame at (672, 35) |
+| Status indicators | area 1 (`GridIndicators … area=1 … width=190&height=30&align=right&hpadding=10`), on the right of the second line; not seen on sim-43 | right-aligned, 10 px before the Wi-Fi frame, each centred on the middle of the Wi-Fi (y 47): a 24 px image at y 35 like it (D) |
+| Background | black (sim-43) | black |
+
+**Touch and swipe** (B; D for the swipe). An app's bar opens nothing: the 7.1 guide (p. 33 and 44) places notifications, the alarm and connections in "the areas at the top of the home screen", and an app's bar has neither focus nor click. Bold7 swallows every swipe from an app's bar; the notification list and Manage Connections stay on the home screen banner (§ 5, § 6).
+
+**Coverage** (guide p. 262, B; C): 3G, 4G, H+, EDGE, GPRS in capitals with a data connection; in lower case without one ("edge" in the simulator, which has no data; "EDGE" and "3G" in gsm 019 and 022). Nothing when out of service. The 9900 has no LTE: Bold7 names LTE and NR "4G", the guide's name for the fastest network (D).
+
+**Images** (A), sliced by `tools/import-assets.sh bandeau` into one `banner_*.png` file per state, at their size:
+
+| Indicator | Theme strip | States used | When (Android keeps the decision) |
+|---|---|---|---|
+| Battery | `net_rim_Indicator_BatteryLevel-icons50x25.png`, 12 columns over 3 rows; the first two rows are pixel-identical, the third carries the plug | columns 0 to 10: fill from 0 to 40 px in steps of 4, red at the first step, orange at the second; column 11 ("?") for an unknown level | column = tenth of the level rounded up (1 % shows the red step), plug row when Android says "plugged in"; rule shared with the home screen (`Strips`, `core/design`) |
+| Signal | `net_rim_Ribbon_SignalLevel-icons49x19.png` | OFF, X, 0 to 5 bars, SOS | OFF radio off (airplane mode), X out of coverage, SOS emergency calls only (guide p. 262); Android's 5 levels (0 to 4) on the 6 bars (0, 1, 3, 4, 5, D) |
+| Wi-Fi | `net_rim_Ribbon_WlanSignalLevel-icons30x24.png` | images 1 to 5 (0 is empty); each draws the missing arcs in grey: a medium signal (image 3, level 2) shows the dot and the first arc white, the two large arcs grey | network connected: Android level (0 to 4) + 1 |
+| Roaming | `net_rim_Ribbon_Roaming-icons28x28.png` (7 states: white triangles hollow and filled, red hollow and filled, house, UMA) | filled white triangle (D: the guide only says "triangular") | `ServiceState.getRoaming()`, in service |
+| Alarm | `net_rim_Alarm_Indicator-icons21x21.png` | single | `alarm_clock` slot |
+| Profile | `net_rim_Ribbon_Profile-icons43x43.png` (Normal, Vibrate Only, Silent, Loud, Phone Calls Only, All Alerts Off, custom, Medium, matched through the `net_rim_bb_profiles_app.*` icons), only the 33 rows of the speaker (y 5 to 37 of the frame) | Vibrate Only, Silent, Phone Calls Only | `volume` (vibrate), `mute` (silent), `zen` (Do Not Disturb, D); `banner.pme` has no profile indicator: Bold7 places it with the others (D) |
+| Bluetooth | `net_rim_bluetooth_banner-icons15x25.png` | grey (on), white (device connected) | guide p. 262; "on" through a SystemUI hook |
+| GPS | `net_rim_Ribbon_GPS-icons43x24.png` | on, active (with its waves) | `location` slot in two states, like Bluetooth |
+| NFC | `net_rim_Ribbon_NFC-icons12x24.png` | white (the grey one is not used) | `nfc` slot |
+| Counters | `net_rim_Ribbon_UnreadCount-icons33x29.png` (16 icons; the 25x25 one is the home screen's) | email (0), calendar (4), SMS (6), "?" (7), missed call (14) | see below |
+
+**Order** of the status indicators, from left to right: alarm (`AlarmIndicator` follows the time in `banner.pme`, A), profile (D), Bluetooth, GPS, NFC (order of `msg_banner_dynamic_indicators`, theme.xml, A), then the Android icons with no equivalent, in the Q25's order (RRO `config_statusBarIcons`). 10 px between two (`hpadding=10`, A).
+
+**Counters** (C: sim-43, gsm 022; D for the mapping). One counter per kind of new item: email (`Notification.CATEGORY_EMAIL`), calendar (`CATEGORY_EVENT`), SMS (`CATEGORY_MESSAGE` from Google Messages, the default SMS app), missed call (`CATEGORY_MISSED_CALL`), in the order of the home screen banner (email, SMS, missed call, calendar, D); then all other apps together under the strip's "?" bubble, as on the home screen (D, still to be sourced). The number is Android's (`Notification.number`), at least 1 per notification; an ongoing notification (music, call, download), that of a foreground service and those of the `transport`, `service`, `progress`, `sys` and `status` categories (a paused player keeps `transport`) are not new items and do not count. The notifications are those Android puts in its bar icon area.
+
+**Call-in-progress indicator** (this corrects an earlier reading). `banner.pme` removes `calltimer` (the call duration) and `callforward` from both indicator areas of an app's bar (`omitindicator=:calltimer:callforward:…`, A), but not the call indicator itself: during an answered call, the one-line bar shows image 11 of `net_rim_Phone-icons19x19.png` (theme `_bs1`, A), the handset and its two arrows, frame found to the pixel at (459, 2) on sim-109 (call), sim-138 (speakerphone) and sim-139 (on hold) (C); muted, image 12, the microphone struck through in red, at the same place (sim-136, C). Nothing while ringing (sim-18, sim-200). In the two-line bar (another app during a call), no capture: Bold7 places it with the counters, in the middle of the second line, after them, centred on it (D: `generalindicator`, area 2, does not exclude it). Android's call chip stays hidden with the left side. On the home screen, `homescreen-banner.pme` leaves `calltimer` in its area 2 (`omitindicator=:contentprotection:`, A): that is the launcher's business.
+
+**One line.** The theme files the one-line "banner" and the "twolinebanner" under `banner.pme` (theme.xml, A); each OS 7 app chooses its own: the Phone the single line (sim-141, without a call; sim-18, sim-109), Messages two lines (sim-43). Bold7 therefore puts the bar on one line when the app that sets the bar is Bold7's Phone (`dev.bold7.phone`), with or without a call, and on two everywhere else, call or not (D for this split: no capture of another app during a call). Positions measured on sim-109, sim-18 and sim-141 (C, frames by image search, text by rendering the firmware TTF at 27 px), over 640 px:
+
+| Element | Position on the 9900 | On the Q25 (720 px) |
+|---|---|---|
+| Height | y 0 to 33, the call screen from y 34 | the bar window and the apps' margin stay at 67 px (D, see below) |
+| Network name | "Simulated Network" drawn from x 5 (ink from 7), BBAlpha Sans Condensed 27 px, baseline 26 (the foot of the "N" on y 25, like the foot of the carrier name's first capital on the Q25) | same position, cut at 342 px with the roaming triangle before it |
+| Time | "05:04" drawn 4 px after the name's advance (ink from 246, the name's advance ends at 240), same baseline; without a name, in the name's place (D) | Android's view moved |
+| Bars | frame at (589, 8), 2 px from the right edge | x 669 |
+| Coverage | "edge" drawn from 522, baseline 27 (ink y 6 to 32), 7 px before the bars | |
+| Wi-Fi | frame at (485, 5) | |
+| Call | 19x19 frame at (459, 2) | |
+| Counters | none on the captures (opening the Phone clears the missed call): between the battery and the call, digit then icon, centred on the line (D) | |
+| Battery | frame at (402, 2) with the call, (428, 2) without | Android's view moved |
+| Gap | 7 px between two elements of the row; what is missing leaves no gap (D) | |
+| Android status icons | no capture | to the left of the battery, 7 px before it, centred on the line (a 24 px image at y 5, D) |
+
+Not used: the square with an arrow in the top right corner, over the bars, during a call and while it rings (sim-18, sim-109, sim-200; not on sim-141): no firmware image resembles it (searched across the 7,443 images of both extractions), probably a simulator addition.
+
+On the Q25, the bar window and each app's top margin stay at 67 px under the Phone: the line occupies the top, the rest of the window stays black. Changing the window height every time the Phone comes up would make the content jump by 33 px at each app switch; uncovering the bottom of the window shows the app's status bar colour (the light grey of `Theme.DeviceDefault.Light`, seen on the Q25). For the call screen to start at y 34 like sim-109, the Phone has to draw under the bar and `barBackground` has to uncover the bottom for it (D, Phone app work not done yet).
+
+**Snoozed alarm.** After Snooze, the 9900 shows the same indicator as a set alarm, `net_rim_Alarm_Indicator-icons21x21.png` (A), frame found at (63, 4), to the right of the battery, on the lock screen (sim-337) and on the home screen (sim-338) (C); `Snooze_Indicator.png` (red zZZ, A) is not in the bar. Bold7's Clock arms its snooze with `setAlarmClock`: Android makes it its next alarm, its `alarm_clock` slot appears and an app's bar shows `banner_alarm` in its status indicator position; Bold7's lock screen draws it at (63, 4) as soon as Android has a next alarm (`HomeBanner.ALARM_X`, `ALARM_Y`). In an app's bar, its position stays the one given above for the two-line bar (D: `banner.pme` places `AlarmIndicator` with no capture showing it).
+
+**Slots with no equivalent.** What the 9900 shows in their place, according to the theme, the guide (p. 18 to 21 and 262, status icons) and a survey of the Q25 (none of these slots has a holder there, except `embms`, hidden):
+
+| Slot | What Android puts there | On the 9900 | Bold7 |
+|---|---|---|---|
+| `ime` | the icon an input method asks for (`showStatusIcon`) | nothing in the bar: the input language is shown separately (`*_input.gif`, A; see the input method) | hidden |
+| `secure` | nothing in Android 14 | `ContentProtectionIndicator.png` (A) is content protection, which Android does not have; area 1 of `banner.pme` excludes it | hidden |
+| `cdma_eri` | CDMA roaming | the roaming triangle, which `BannerView` already draws | hidden |
+| `data_connection`, `phone_evdo_signal`, `phone_signal` | old data and signal slots (EVDO, CDMA) | coverage and bars, already drawn | hidden |
+| `embms` | MediaTek eMBMS broadcast | nothing | hidden |
+
+Hidden in an app's bar and on the lock screen (`UNSHOWN_SLOTS`, through the visibility hook that already hides the radio icons), kept in the shade header like the others. None is drawn by eye.
+
+**Not used**: the animated charging bolt (`lightning_bolt_00` to `_05`, 18x29, `batteryStatus_isCharging`); the red star of new messages on the envelope (gsm 013, 022); the BlackBerry logo of connected services (gsm 013, 019: the Q25 has no BlackBerry service); Wi-Fi on without a network.
+
+**On the Q25 (720x720).** Images and text to the pixel; what is centred on x 320 is centred on x 360, what is anchored to the right keeps its distance from the edge (D). The edges are those of the screen: Android reserves 16 px on the right of its bar for its privacy dot (`ongoing_appops_dot_min_padding`, 12 dp, `StatusBarContentInsetsProvider`) and fills it as inner padding (`PhoneStatusBarView.updateLayoutForCutout`); `StatusBarLayout` removes it before every draw where it reappears, the dot keeps its corner (`ScreenDecorations`).
+
+**The order of area 1, to be checked.** gsm 022 (7.0, a real 9900) shows the BlackBerry logo to the right of the Wi-Fi, which shifts to the left (frame at x 556 instead of 592): the Wi-Fi is an area 1 indicator, right-aligned, not a fixed position. In `msg_banner_dynamic_indicators` (theme.xml, A), the order is Bluetooth, Wi-Fi (`wlanindicator`), GPS, NFC…: GPS and NFC would go to the right of the Wi-Fi, Bluetooth to its left. For now Bold7 keeps the Wi-Fi at its sim-43 position and the Android icons to its left (D); following the theme's order requires the Wi-Fi to join Android's row, not done yet.
+
+**Status indicators with no image in the theme** (D). Survey of the Q25, read only (`dumpsys activity service com.android.systemui/.SystemUIService StatusBarIconControllerImpl`, "icon slots"): 36 slots, the 35 of `framework-res.apk` and MediaTek's `embms`, all as `StatusBarIconView` except `wifi` and `mobile` (which `BannerView` draws). The 9900 theme only has images for the alarm, the profile, Bluetooth, GPS and NFC (`net_rim_Ribbon_*` strips); these eighteen slots have none, so Bold7 draws them: `hotspot` (dot and arcs), `vpn` (key), `tty` (teletypewriter), `data_saver` (arrow in a circle), `cast` (screen and arcs), `screen_record` (ring and dot), `camera`, `microphone`, `sensors_off` (struck-through ring), `managed_profile` (briefcase), `sync_active` and `sync_failing` (two rotating arrows, the second with an exclamation mark), `rotate` (phone and arrow), `headset`, `speakerphone` (the shape of the profile's speaker, smaller, with its waves), `call_strength` and `no_calling` (Wi-Fi fan and handset, the second struck through: Wi-Fi calling registered or not), `ethernet` (plug). Style of the strips (taken from `banner_alarm`, `banner_gps_active`, `banner_profile_silent`): 2 px white stroke on a transparent background, softened edges, 24 px high (the height of an area 1 image, D); width from 16 to 26 px depending on the drawing. Drawings made by `tools/import-assets.sh indicateurs` (ImageMagick, `status_*.png`, drawn at 8x then scaled down), with nothing from the firmware: none of these shapes has a source, all are by eye. Order: the five from the theme, then these in the order of `StatusIcons.kt`, then the Android slots Bold7 does not draw (`ime`, `cdma_eri`, `data_connection`, `phone_evdo_signal`, `phone_signal`, `secure`, `airplane`, `battery`, hidden in Bold7's bar or replaced by the banner); `embms` stays first, where SystemUI puts it.
+
+## 19. Fonts and general colours
+
+**Fonts** (A: `BBAlphaSans*.ttf` in the extracted fonts; theme.xml `default-font = BBAlpha Sans 8pt`). Measured by rendering the firmware TTFs and comparing with the captures (C):
+
+| Use | Font | Size |
+|---|---|---|
+| Body text, menus, dialogs, lists | BBAlpha Sans | 27 px |
+| List subtitles | BBAlpha Sans | 23 px |
+| Banner (date, network), view tab | BBAlpha Sans Condensed | 27 px |
+| Banner time | BannerTime (`BannerTime.cbtf`, RIM format) | 52 px, AM/PM 20 px |
+| Time in an app's bar, counters | BBAlpha Sans Condensed | 27 px (C, sim-43 and gsm 022; the theme says `font-size=32`, which is not in pixels, § 18) |
+
+`BannerTime.cbtf` and the other `.cbtf` files are not TTFs. Read by `tools/cbtf.py` (A): a container of 7 sections (name, glyph count, font metrics, offset of each glyph, character ranges with a bit mask, glyphs, a palette of 27 whites with varying alpha); each glyph carries 6 bytes of metrics then its pixels. BannerTime's metrics can be read: digits with an advance of 27 to 30 px ("0" 29, "1" 17), 40 px high (flat) to 42 px (round, 1 px below the baseline), ":" with a 9 px advance and 29 high, AM and PM in 12 px capitals; it also contains `.`, `/`, the Latin letters and four Greek letters (μ.μ. and π.μ.). **The pixels cannot be read yet**: a bit stream (most significant bit first) whose coding is not identified; transparent areas are repeated `011`, opaque areas repeated 8-bit patterns (`00001101`, `00000101`, at every rotation); these are neither raw palette indices (5 bits) nor a simple run-length coding of those indices, and the decoder is native OS code, absent from the theme. Fallback: the banner time in BBAlpha Sans Condensed 54 px ("1" of 39 px, "0" of 41 when rendered, by eye), with BannerTime's advances.
+
+**Colours** (C, and gradients from theme.xml, A):
+
+| Role | Value |
+|---|---|
+| Focus (icon, list, menu, button) | blue gradient; theme.xml `blue_gradient` `#1766DB` to `#088EEF`, `blue_gradient_inverted` `#0B88ED` to `#04B9F7`, `blue_gradient_light` `#74A4E8` to `#6BBBF5` |
+| Menu and dialog background | `#212429` (`gray_gradient` `#222222` to `#666666`, `dark_gray_gradient` `#131313` to `#3F3F3F` in the theme) |
+| Lists | white background, rules `#D8D8D8` to `#D9DCDE`, black text, grey subtext `#7C7E80` (core of the letters in sim-57) |
+| List header | `light_gradient` `#E0DDDA` to `#FBFBFF` (A); measured `#D3D5D4` to `#AEB2B1` on gsm 027 |
+| Banner text | `#F7F7F7` (A), measured white |
+| Grey button | `#AFB1B4`, text `#202121` (the darkest of "Close", sim-19) |
+
+**System palette** (`Palette` and `Theme` in `core/design`, read by SystemUI's `SystemPalette`, which sets the API 34 `system_*` colours in place of Material You, and by the RROs). The 9900 theme has a single accent, the focus blue: `blue_gradient` `#1766DB` to `#088EEF`, `blue_gradient_light` `#74A4E8` to `#6BBBF5`, `blue_gradient_inverted` `#0B88ED` to `#04B9F7` (theme.xml, A), `icon_underlay~focus.png` `#088EEF` to `#0753B4` and `border_button~focus.png` `#1766DB`, edge `#004099` (A). Roles: `colorAccent` and `primary` = `#088EEF` (shade 600), `secondary` = `#1766DB` (700), `#0753B4` (800), `#04B9F7` (500, the active list), `#6BBBF5` (400), light container `#BAD1F3` (200, D: `#74A4E8` mixed half with white, so that `#0753B4` reads on it); the third family, which the 9900 does not have, reuses the same blue one step lower (`#1766DB`, `#0753B4`, `#004099`, D). Error: the red of `new_overlay.png` (`#BA2121`, `#C25C5C` in dark, edge `#9F0000`, A; pastel `#EFC8C8`, D). Dark: black background, surface and floating window `#212429`, edge `#1E2125`, text `#E1E3E5`, rule `#43454A` (menus and dialogs, A and C), secondary text `#AFB1B4` (the button grey, D as text) and tertiary `#8E9094` (D). Light: the lists, white background, text `#000000`, subtext `#7C7E80`, hint `#ADB0B3`, rule `#D9DCDE` (C); surfaces `#F4F5F6` and `#E8EAEB` (D). The palette's greys therefore lean slightly towards blue (`#212429`: 9 less red than blue) rather than a pure grey. Pressed: white at 15 % or black at 10 % (D). None of this has been seen on a 9900 in Material: the role-by-role mapping is a deduction (D).
+
+## 20. Default sounds
+
+Taken from the simulator, **Normal** profile (Change Sounds and Alerts, Edit Profile), sim-31 to sim-41 (C); files in the extracted sounds (A).
+
+| Use | Sound | File | Capture |
+|---|---|---|---|
+| Phone ringtone | **Spirit** (volume 7) | `Spirit.m4a` | sim-31 |
+| Email (Email account) | **Sanguine Remix** | `SanguineRemix.m4a` | sim-33 |
+| Text Messages (SMS) | **Confidence** (volume 8) | `Confidence.m4a` | sim-36 |
+| Level 1, PIN | **Considerate** | `Considerate.m4a` | sim-34, sim-35 |
+| BBM (New Message, Groups, Alert) | **Action** | `Action.m4a` | sim-41 |
+| Calendar, Tasks, Follow Up Flags | **Shimmer** | `Shimmer.m4a` | sim-38 to sim-40 |
+| Browser | **Sunrise** | `Sunrise.m4a` | sim-37 |
+| Alarm | **Evolving Dream**, volume 8 | `Dream.m4a` | sim-171 (Clock Options, § 27) |
+| Timer | **3 Beeps**, volume 8 | `3Beeps.m4a` | sim-173 (Clock Options, § 27) |
+
+**Reliability of the alarm and timer.** The `.cod` files of the clock (`net_rim_bb_clock`, `_lib`, `_faces_480`), of the profiles and of the platform contain no reference to `Dream` or `3Beeps` (UTF-8 search: only the ringtone modules and the language resources name them); the choice lives in the OS data or in the simulator's memory, which was not run at the time. Dream (37.9 s) and 3Beeps (1.1 s, mono) are the only sounds of the extraction made for an alarm and a timer; the simulator has since confirmed it (sim-171 and sim-173: "Evolving Dream" and "3 Beeps" in Clock Options, C).
+
+**In the module.** `system/module/sounds.tsv`, 77 files under `/product/media/audio`, named as the 9900 names them (picker title: the one carried by the firmware AAC, trailing space removed, A; "Evolving Dream", "3 Beeps", "Urgent 1"…; Sonar and the UI sounds have none, the file name split before each capital replaces it, D): `ringtones/` the 34 tones; `notifications/` the 26 shorter than 5 s and Sonar; `alarms/` the 8 longer than 5 s (Antelope, Aspiration, Dream, Morning Blues, Morning Light, Possibilities, Revelation, Seaside) and 3Beeps; `ui/` the 7 sounds the firmware provides and for which Android has a hook: `LowBattery` (low battery, 7.5 s), `ChargingStarted` (Notifier_Connected), `VideoRecord` and `VideoStop`, `NFCSuccess`, `NFCTransferComplete` and `NFCFailure`. The firmware AACs (44.1 or 48 kHz) are copied without re-encoding (their artist, album and genre tags, classification labels such as "Notifier" or "Audio Alert", are emptied), Sonar (WAV) becomes FLAC, the UI sounds Ogg Opus. Defaults set by `tools/sons.sh poser`: ringtone Spirit (C), notification Sanguine Remix (C, the Normal profile's email sound: the global Android sound closest to it, the other categories being handled by channels), alarm Dream (D).
+
+Two differences from the extraction report: chat (BBM) plays **Action**, not Confidence; Level 1 and PIN have their own sound, Considerate. In the Normal profile, the volume of notifications other than SMS and phone is "Silent" by default (vibration only): this is a simulator setting not cross-checked against a real 9900. LED: red for missed calls (`LED: on (0x003f0000)` in the controller output, C).
+
+## 21. Trackpad Sensitivity
+
+Sources: three simulator captures (C), to be filed as `sim-66` to `sim-68`; strings from `net_rim_platformapps_resource__en` (A); 7.1 guide p. 214 (B); 7.1 Javadoc of `net.rim.device.api.ui.Trackball` (B).
+
+| Element | Value | Source |
+|---|---|---|
+| Path | Options > Typing and Language > Trackpad Sensitivity; in search: "Change sound and movement" | B, C |
+| Screen | title "Trackpad Sensitivity" on the black options band; grey background `#DDDDDD` around a white group 5 px from the edges, 4 px below the band; group title "Trackpad" in bold grey `#7C7E80` over a rule | C, A (strings) |
+| Horizontal Sensitivity, Vertical Sensitivity | choice field, **70 by default**, values **100 to 20 in steps of 10** (the list opens with 100 at the top and 20 at the bottom) | C, A ("Horizontal Sensitivity: ", "Vertical Sensitivity: ") |
+| Choice field | 57 px row, label like a checkbox; on the right the `border_button.png` field (A), 186x51 px, 12 px from the right edge, 5 px below the top of the row, the value in black and `arrow_choice.png` (20x8, A) 13 px from its right edge; on trackpad focus, only the field turns blue (`border_button~focus.png`, value and arrow white), the row stays white | C (measured), A |
+| Open list | `border_inplace.png` (A, background `#212429`), 78 px wide, 8 px right of the field's left edge, 57 px rows, values centred `#CCCCCC`, the chosen value white on `border_spinboxbutton~focus.png` (A); on the 640x480 it runs off the top of the screen (513 px high) | C, A |
+| Open list on the square screen | the chosen value on the field's row, the list kept on screen (720 px: it fits entirely) | D |
+| Audible Roll | checkbox, **unchecked by default**; "Turn on or turn off trackpad sounds"; **no sound** in the 9900 firmware: the checkbox is kept and silent, by design | C, B, A (absence) |
+| Saving | Menu > Save, or "Changes made!" (Save, Discard, Cancel) when leaving with changes, like every options screen | B, C (sim-47) |
+
+**What sensitivity does.** The `Trackball` API (B): one count per axis, a step when it passes a threshold, lower as the sensitivity is higher; counts forgotten after a pause ("so a small nudge won't trigger an event"); one axis at a time (`FILTER_XY_SNAP`); acceleration reserved for apps that request it (`FILTER_ACCELERATION`, designed for BrickBreaker). The threshold law and the pause duration are compiled into the `.cod` files: **by eye**, fitted to the Q25 measurement (`docs/DEVICE.md`, "Trackpad"): threshold inversely proportional to sensitivity, 60 counts at 70 (42 at 100, 210 at 20), 200 ms pause, remainder kept beyond a step, an axis reversing direction starts again from zero. Code: `system/module/trackpad/model.h`.
+
+## 22. Wallpapers
+
+- **What the 9900 ships** (A). Fourteen wallpapers as 640x480 PNG, in the modules `net_rim_bb_medialoader_backgrounds_640x480_02a_t` (Arch, Autumn, Beach, Color, Detail, Droplets, Grid) and `_02b_t` (Luminous, Mellow, Morning, Radiant, Range, Rhythm, Water), folder `pictures/`: these are the Media > Pictures images that the user sends to the wallpaper with "Set As Wallpaper" (7.1 guide, "Use a picture as your smartphone wallpaper", B). The default wallpaper is not one of them: it is `background_homescreen.png` from the BlackBerry7 theme (640x480, a different hash from the fourteen), the one in sim-02 (C). Fifteen images in all; the firmware gives no name to the default wallpaper, Bold7 calls it "Default" (D).
+- **Lock screen** (A, C). Same wallpaper as the home screen: the theme draws the lock screen over `Image?src=wallpaper` (sim-64). On the Q25, the wallpaper is Android's, shared between home and lock screen when the user chooses "home and lock screen" (`dumpsys wallpaper`: the lock entry is empty or the same); the lock screen needs no change for this.
+- **Cropping 640x480 to 720x720** (D, the same rule for all fifteen). Scaled without distortion to cover the square: factor 720/480 = 1.5 (960x720), then the central 720 px are kept (120 px lost on each side), Lanczos. No bands, no stretching. The centre because that is where the wallpapers' subject is (by eye) and because the banner covers the top in both cases (93 px out of 480, 140 out of 720, same proportion). The three PNGs with an alpha channel (minimum alpha 0.96) are flattened onto black. The firmware does not say how the 9900 frames an image of another size: no source.
+- **Making them available** (D). Android's picker does not read `/product`; it reads images from storage. The images therefore go into `/sdcard/Pictures/Bold7` (`tools/fonds.sh`), outside any partition, and are removed by `tools/fonds.sh retour`.
+
+## 23. Power off
+
+7.1 guide, p. 13 and p. 301 (B): the End key is also the power key ("End/Power", `power-key-is-end-key` in the simulator configuration, A); **holding it turns the 9900 off, without asking anything**. With automatic power on and off set (Options > Device > Auto On/Off), the Power Off icon on the home screen (`net_rim_PowerOff.png`, A; "Power Off" among the All icons, C) asks **Full Power Off** (off until the next power on) or **Turn Off** (turns back on at the set time, for an alarm or a reminder). No capture: the simulator does not have automatic power on set, and neither the held key nor the icon were tried (they would have turned it off).
+
+**On the Q25 (720x720).** The Q25's power key is separate, and Android asks before powering off; Bold7 keeps the question, in an OS 7 dialog (§12, `DialogView` in `core/ui`): the question mark, "Turn off the device?" (D, the wording of "Device is locked", sim-65), then the stacked buttons **Full Power Off** (B, Android's power off, which is complete), **Restart** (D, Android's restart), **Cancel** (D), **Emergency** (the label and position of sim-65, below Cancel, without the rule), each only if Android offers it; focus on Cancel when opening (D, as on the emergency confirmation of sim-88). Screen not dimmed (sim-19). No countdown: Full Power Off powers off immediately. Turn Off has no Android equivalent. Code: `PowerMenu.kt` and `PowerMenuPanel.kt` in `system/sysui`.
+
+**Shutdown screen.** Nothing says what the 9900 shows between holding the End key and the screen going off: no capture (trying it would have turned the simulator off), nothing in the guide. After Full Power Off or Restart, Bold7 shows a black screen with, in the middle, the OS 7 wait clock, the one it shows during any long task (`osicon_hourglass.gif` from the theme: 35x35, 12 frames of 100 ms, A), with no text and no fade (D, everything else). A restart then continues to the 9900 boot screen (§11). A reboot into recovery (factory reset, Android update) keeps Android's screen, which says what it is doing. Code: `Shutdown.kt` in `system/sysui`.
+
+## 24. Opening an app
+
+sim-110a and sim-110b (C, weak): Music opened from search, the capture following the click already shows the app; the simulator does not allow a closer capture (one to two seconds of delay), but nothing comes in between in any of the opening captures taken (sim-110b, and those of the source survey). The theme has an hourglass (`osicon_hourglass.gif`, 35x35 in 12 frames; `dialog_hourglass.png`, the icon of wait dialogs, A) and a ring of green dots serves as a wait indicator in search (sim-111, C): neither has been seen when opening an app.
+
+**On the Q25 (720x720).** No splash screen: the previous screen stays until the app draws, as for an app that declares `windowDisablePreview` (D). The snapshot of a task brought back (a recent app) stays Android's: it is the image of the app itself. Code: `Splash.kt` in `system/sysui`.
+
+### Screen transitions
+
+**Source** (A): `theme.xml` of the `_b` theme (the same in the 9900 firmware and in the simulator; `_bs1` has none), screen transitions section, decoded by hand from its binary format (see below, no tool in the repository reads it yet). Each rule names a source screen, a destination screen or both, an event, a transition kind and its attributes. The kind and attributes follow `TransitionContext` from RIM's Java API: fade, slide (with direction), wipe, zoom (with scale in percent), none; direction "in" or "out". The rules that concern Bold7:
+
+| Screen | Event | Transition |
+|---|---|---|
+| `homescreen`, when leaving (to any screen) | 4 | zoom, in, scale 75 |
+| `homescreen`, when arriving (from any screen) | 4 | zoom, out, scale 75 |
+| `application-switcher`, when arriving | 2 | zoom, in, scale 110 |
+| `application-switcher`, when leaving | 3 | zoom, out, scale 110 |
+| `menu`, `tooltip` | 2, 3 | none |
+| `statusbar` (probably the banner's connections panel) | 2, 3, 4 | zoom, scale 75 |
+| `todayhomescreen` (home screen of the Today theme, not the default 9900 one) | 4 | a kind not decoded (`0x68`); to the switcher: zoom 110, back 125 |
+
+**Format** (for re-reading): `theme.xml` is zlib-compressed; once decompressed, each rule starts with the byte `0x34` followed by its length, then the attributes `K` (source screen), `L` (destination screen), `M` (duration, as text), `N` (event, `0x32` to `0x34`), then an element whose first byte is the kind (`0x35` fade, `0x36` slide, `0x38` zoom, `0x39` none; `0x65` and `0x68` not decoded) followed by its attributes: `O` the direction (`0x35` in, `0x36` out), `0x32` the direction of a slide, `0x81 0x10` the scale of a zoom (16-bit integer, little-endian). The home screen rule is found by searching for the byte `0x0a` followed by `homescreen`. This reading of the bytes is an inference (D), consistent across the 208 rules (forward and back pairs always invert, the names `calendar-fade-in`, `-zoom-in`, `-right-to-left` land on fade, zoom and slide).
+
+No duration on the zooms (the slides carry one, 250 ms, and two fades 150 ms); no rule for dialogs nor between apps.
+
+**Reading** (D, to be confirmed by video): event 2 is pushing a screen, 3 popping it, 4 both; "in" animates the arriving screen, "out" the departing one. The zoom changes scale **and** opacity: an "out, 110" rule (the departing screen grows to 110 %) would not be visible without a fade, since the departing screen stays on top. Hence:
+
+- **opening an app from the home screen**: the app grows from 75 to 100 % as it appears, centred;
+- **returning to the home screen** (Escape, End, home key): the app shrinks from 100 to 75 % as it fades out, the home screen below;
+- **switcher**: the theme also has `application-switcher-animation-on = false` (§ 4, A), which contradicts the zoom rule; Bold7 keeps the switcher without animation (the rule: a source that says "no animation" wins), the video will decide;
+- **an app opened from the switcher**: no rule between the switcher and an app: no animation.
+
+**On the Q25 (720x720).** Zoom centred on the app window, 250 ms (D: the home screen's `animation-duration-portrait`), curve `EASINGCURVE_QUADRATIC_OUT` (D: the one used for changing views), opacity linear in the curved time. Code: `Transitions` in `apps/launcher/.../quickstep/Zoom.kt`, the only place where the shape is set.
+
+**Video (§ 36, C)**: the simulator (graphics acceleration Off, its default setting) opens and closes an app **with a cut**, no zoom or fade (12 changes out of 12); the switcher appears at once and closes with a **fade of 120 to 160 ms with no change of scale**. This contradicts the reading above; the table and the video are to be reconciled in § 36.
+
+**7.1 UI Guidelines, p. 40, "Screen transitions" (B)**: fade ("Set the duration of the fade to 150 milliseconds") when the content is the same seen differently; slide between items of the same level (the next comes in from the right, the previous from the left); zoom between levels (in from a parent to its child, out from the child to the parent). For creating, sending or saving an item: "When users open the application from the Home screen, zoom in from the center of the screen. The zoom transition is the most common type of transition between screens. Set the scale of the zoom to 110 percent." **Reading kept**: the 110 % is the general advice to apps, the table's 75 % is the home screen rule, more specific; Bold7 keeps the app growing from 75 to 100 %, centred, 250 ms (D, no source gives a figure for a zoom).
+
+## 26. Phone
+
+Sources: sim-18 (incoming call), sim-109 (call in progress), gsm 019 (outgoing call, 7.0), ps 33246 (call log, 7.0, enlarged), and the 7.1 simulator captures made for this work, sim-130 to sim-144 (menus, mute, speakerphone, hold, Phone application); guide 7.1, Phone chapter (p. 60 to 74, B); theme `_b` and `_bs1` and `activecallscreen.pme`, `incomingcallscreen.pme` (A). Measurements in 9900 pixels, from the top of the content, below the one-line bar the 9900 shows during a call (35 px, sim-18).
+
+**Background and frame** (A, C). `background_calldisplay.png` (640x480, night blue lightened at the top) under the whole screen; in the centre, the frame `activecall_avatar.png` (130x130) at x 255, y 75 (sim-18: y 110 of the screen). On the square screen (D): the theme images are not enlarged, they are centred and their edge pixels extended to the edges; the caller block (frame, name, number) moves down by half the height gained, the bottom bar stays at the bottom.
+
+**Texts** (C, fonts found by rendering the TTFs at the stated sizes, within 2 px):
+
+| Element | Font, colour | Position | Source |
+|---|---|---|---|
+| "Incoming Call" | BBAlpha Sans Condensed 25, `#B3B3B3` | centred, baseline 54 | sim-18 |
+| Caller (name, otherwise number) | Condensed 36 white, reduced down to 24 to fit in 470 px (`bestfit` of the pme, A) | centred, baseline 256 | sim-18, sim-109, gsm 019 |
+| Number under a name ("123456 (Mobile)") | Condensed 25, `#B3B3B3` | centred, baseline 292 | gsm 019 |
+| State: Calling, Connected, Muted, On Hold | Condensed 25, `#B3B3B3` | x 6, baseline 60 | gsm 019, sim-109, sim-136, sim-139 |
+| Timer "0:06" | same | x 6, baseline 92 | sim-109 |
+| "My Number: 1 (519) 888-7465" (empty after the colon if the SIM does not provide it, gsm 019) | same | right-aligned, 13 px from the edge, baseline 25 | sim-109 |
+| Bar labels | Condensed 20 white, greyed `#999999` (JPEG) | centred in their cell, baseline 67 below the top of the bar | sim-109, gsm 019 |
+
+**Top right** (A, C): `volume_icon.png` (13x21) at 132 px from the right edge, y 41, and the slider `net_rim_Phone_Volume-icons110x6.png` (11 states of 110x6) at 111 px from the edge, y 49; the volume keys adjust the call and this slider, with no volume window (sim-109).
+
+**Top left** (A, C): above the state, one state of `net_rim_Phone_Receiver-icons58x33.png` (_bs1) at x 0, y 1: nothing on the earpiece, the red crossed-out microphone when the microphone is muted (sim-136), the green speaker (sim-138); the order of the eleven states (nothing, microphone, speaker, speaker and microphone, nothing, Bluetooth, Bluetooth and microphone, earphones, earphones and microphone, headset, headset and microphone) is read by eye on the strip.
+
+**Bottom bar** (A, C): `incomingcall_button_base_l.png` (640x82) at the bottom of the screen, one cell per button, between two cells a dark line `#070A0C` then a light one `#4B4F52`. Button image (50x40) centred, 6 px below the top of the bar. Incoming call: one cell, Ringer Off (`phone_silence_ringtones`), greyed once the ringer is off (sim-131). Call: Speaker / Handset (`phone_speakerphone`, `phone_handset`), Mute / Mute Off (`phone_mute`, `phone_unmute`, the cell in red `activecall_button_mute_p.png`), Hold / Resume (`phone_hold`, `phone_resume`), Add Participant (`phone_conference`); on an outgoing call, Hold and Add Participant greyed (gsm 019); on hold, Mute greyed (sim-139). On the square screen, four cells of 180 px (D); the 160 px red image is centred in its cell, edges extended (D). **The trackpad never gives focus to the bar** (sim-135): it is touched; the touched cell takes `incomingcall_button_l~focus.png` while the finger is on it (D).
+
+**Menus** (C):
+- incoming call (sim-130): Answer (focus), Ignore. During a call, the guide gives Answer - Hold Current and Answer - Drop Current (p. 62, B);
+- call in progress (sim-133 to sim-135): Switch Application | Hold, Add Participant, Transfer, Enhance Call Audio, Mute, Notes | New Call, Call Voice Mail | View ► | Activate Speakerphone | Help | Home Screen; focus on Mute when it opens. Microphone muted: Turn Mute Off (sim-137). Speakerphone: Activate Handset (sim-138, guide p. 63). On hold: Resume in focus, no more Mute (sim-140). Bluetooth: "Activate <device>" (guide p. 280);
+- trackpad click: Ringer Off on an incoming call (sim-131), nothing during a call; click and hold: nothing (sim-132, sim-135). End during a call: straight back to the home screen, with no end screen (sim-139).
+
+**Phone application** (sim-141 to sim-144, C; ps 33246 agrees): one-line bar, then a `#191B1E` band of 33 px and its `#020202` line, "My Number: …" in Condensed 21 white at x 4, baseline 23; the field "Find Contact or Dial a Number" (the Options search field) and the contacts button; the call log, rows of 66 px and line `#DFDFDF`: 42 px icon at x 9, y 12 (`net_rim_Phone-icons42x42.png`, A: received blue, cell 0; dialled green, cell 1; missed orange, cell 2, grey, cell 3, by eye), name or number in BBAlpha Sans 27 black at x 64, baseline 26, under a name a "Phone: <label>" line in 23 grey `#7C7E80`, baseline 56; on the right, 3 px from the edge, the date in 27 black over the time in 23 grey ("13/11" and "05:58" with day first and 24 h, "08/23" and "6:11p" in the United States). Typing a letter with no match: "* No Contacts *" in 27 black centred under the field (sim-144). Menu: Switch Application | Call From Contacts (focus) | Call Voice Mail | View ► | Add Pause, Add Wait | Phone Ringtones, Status | Options | Help (sim-142, sim-143). Opening the Phone clears the missed calls indicator of the home screen (sim-144); Bold7 marks them seen through Telecom (`cancelMissedCallsNotification`).
+
+**Missed calls** (sim-19 to sim-21, sim-200 to sim-204, C). The dialog "You have 2 new missed calls.", in the singular "You have 1 new missed call." (sim-202), View in focus above Close, dialog box without icon (§ 12), over the home screen. It comes one second after the end of a call that rang without answer (sim-203); when locked, nothing over the lock screen, only the indicator (sim-201), and the dialog is there on unlock (sim-202). It counts the calls missed since it was last closed, not the unseen ones (sim-203: "1" with the indicator at 2). View opens the "Missed Call" list, which looks like Messages (sim-204); Close leaves the indicator (sim-21). Bold7: `PromptActivity`, View opens Messages on its missed calls (Call Logs view, D for the title); a call missed during another call waits for that call to end (D).
+
+**"Call …?"** (sim-104, sim-105, C). A missed call opened from the notification list asks "Call 5551234?", the question mark (`dialog_question.png`) on the left, Call in focus above Cancel, over the list, which stays open after Cancel or Escape. Bold7: the same from the list, the Hub page and Messages, "Call <name>?" for a contact (D); Call places the call through Telecom, on the Bold7 call screen.
+
+**Contacts button and Phone menu**. To the right of the field (sim-141, C): a 72x53 px button 3 px from the right edge, 2 px below the top of the band, the image `address_book_shortcut.png` (40x41, theme `_b`, A) centred; the white field stops 83 px before the edge. The grey button has no matching theme image: Bold7 draws it by eye (D: outline `#585B60`, line `#D5D8DB`, gradient `#D3D3D3` to `#AAACAE`, 7 px corners). Menu (sim-142, sim-143, C): `#43454A` lines above Call From Contacts, View, Add Pause, Phone Ringtones, Options and Help; Call From Contacts and Call Voice Mail in the same group. Bold7 puts "Call …" and Add Speed Dial first when a number is ready to dial (D).
+
+**Speed dial, voice mail, waits, conferences** (guide 7.1 p. 64 to 66, 71, 77, 191, B). Holding 1 (the W key, as on the 9900 and in the Q25 kcm) calls voice mail; a letter held at the start of the number calls its speed dial number, or offers to assign it (D). Speed Dial Numbers: no capture; Bold7 shows A to Z as Options rows under a title, W as "Voice Mail" (D). During a call: Call Voice Mail after New Call (sim-133); Split Call and Drop Call on a conference, one button per participant (D); "Send 1234?" before the digits of a wait (D).
+
+**Contacts in the field, Status, Place Call** (guide 7.1 p. 61, 76, B; sim-143, C). A name typed in the field offers the contacts' numbers under the matching calls, as call log rows without icon or date (D). Status is under Phone Ringtones, with no line (sim-143): Last Call and Total Calls (B), as Options rows under a title (D), Clear Timer in the menu (B). Place Call under the lock screen: the "My Number:" band and the Phone field alone (D).
+
+**Under the one-line bar** (C). Sim-18, sim-109 and sim-141 are black from y 0 to 33, a `(31,31,31)` line at y 34 (`#1F1F1F`, the one of every title bar), the content from y 35; `apps/phone` draws its screens from the top edge (`setContentUnderBar`) and the bar window paints nothing under the Phone (`barAlpha`). Measured on the Q25 to the pixel against sim-141: same values at y 33, 34, 35, 67 and 68. Phone menu: Options under Status (sim-143), Help is not there.
+
+**Where these values live**: `apps/phone` (`CallView`, `LogRowView`, `PhoneActivity`, `PromptActivity`, `Missed`, `SpeedDialActivity`, `SpeedDial`, `StatusActivity`, `PlaceCallActivity`), images copied by `tools/import-assets.sh phone` (`ph_*`).
+
+## 27. Options screens
+
+Sources: sim-57, sim-58 (list), sim-30 (Change Sounds and Alerts), sim-31 (Phone - Normal), sim-66 to sim-68 (Trackpad Sensitivity, § 21), sim-91a, sim-91b (Typing), sim-47 ("Changes made!"), C; guide 7.1 p. 213 to 219, 226 (B); theme `_b` (A). The simulator could not be driven for this work: Display, Screen Display, Typing and Language and the bottom of the list have no capture.
+
+| Element | Value | Source |
+|---|---|---|
+| Title | the black band of § 17 (`TitleBar`), no status bar; the title of a profile screen carries the profile: "Phone - Normal" | C (sim-31, sim-57) |
+| Lists | 71 px rows of § 17 (`ListItemView`), theme icon `cat_*.png` (60x60, transparent around a drawing of about 44 px), centred on x 37 | C, A |
+| Options list | Sounds and Ringtones ("Ringtones, reminders, profiles", `cat_sound_ringtones`), Networks and Connections ("Bluetooth connections, Wi-Fi, mode", `cat_connectivity`), Display ("Date, time, themes, screen", `cat_display`), Typing and Language ("Text input, keyboard, languages", `cat_typing_input`), Device ("PIN, auto on/off, battery, storage", `cat_device`), Call Management ("Call behaviour, voice mail, speed dial", `cat_callmanagement`), Security ("Password, encryption, firewall", `cat_security`), then the rest: Accessibility (`cat_accessibility`, no subtitle) | C (sim-57, sim-58), A (icons), B (Accessibility), D (its position) |
+| Change Sounds and Alerts | Phone Ringtone ("Set ringtone for chosen profile"), Sounds for Selected Profile ("Set any alert in chosen profile"), Sounds for Contacts ("Add alerts for one or more contacts"), Profile Management ("Add, edit or delete a sound profile"), icons `cat_sound_phone_ringtone`, `_current_profile`, `_contact`, `_profile_management` | C (sim-30), A |
+| Display | Screen Display, Date and Time, Message on Lock Screen, no subtitle | B (names), D (order, name of Date and Time) |
+| Typing and Language | Language, Typing, Trackpad Sensitivity, Touchscreen Sensitivity, Keyboard, Custom Dictionary, Word Substitution, Spell Check, no subtitle | B (names), D (order) |
+| Group box | `border_groupboxfull` and its title bar (`border_groupboxtitlebar`), those of Manage Connections (§ 6): edge `#C6C6C6` 2 px below the top of the box, title line at 45, fields from 46; bold title 23 `#7C7E80` at x 12, baseline 36; the next box starts below the shadow of the previous one (sim-91a: edge at 171, next box at 174; sim-31: 255 and 259) | A, C |
+| Note | Input Language of Typing: the text in 27 black at x 9, baseline 26 below the top of its row; the note in 23 `#7C7E80`, baselines at 56 then 27 px lower; 90 px for two lines (sim-91a: 81 to 171) | C |
+| Single button | Advanced Style Options: 61 px row like All Off, 51 px button 6 below the top, 13 px from the right edge, as wide as its label plus 20 on each side; greyed: `border_button~disabled.png` (grey at 40 %, `#BFBFBF` on white), grey label | C (sim-91a), A |
+| Choice field | the one of § 21; a refused value in grey in the open list (none any more, Predictive is supported) | C, D (the grey) |
+| Typing | Input Language group (the language, the note "The availability of typing style(s) is dependent on the active input language(s)."); Physical Keyboard group: Style (Direct, Predictive), Advanced Style Options greyed under Direct; in Bold7 open under both styles (D: Typing also learns under Direct, and clearing the learned words must stay reachable) | C (sim-91a, sim-91b), B (p. 219), D |
+| Advanced Style Options | Word Learning group: "Typing:" checkbox (checked by default) and its note "This option adds new words that you type to your custom dictionary." in 23 `#7C7E80`, alone under the checkbox, baselines at 22 then 27 px lower; Word Suggestions (Spelling), Names and Email (sim-92a, sim-92b) not drawn; a "Delete Learned Words" button under the note, which asks "Delete all the words learned from your typing?" (Delete, Cancel) | C (sim-92a), D (the button, its question, the note position measured by eye) |
+| Word Substitution | the list of the user's entries (Replace as title, With below, sorted by Replace), Menu: New, Edit, Delete, Close; an entry: "Replace:" and "With:" above `border_form` fields (as in Tasks), "Using:" SmartCase or Specified Case; Menu: Insert Macro (Short Date, Long Date, Short Time, Long Time, Battery Level, Software Version, Percent Sign), Save, Delete, Close; no Language field and none of the OS 7 entries | B (p. 216 and 217: New, Replace, With, Insert Macro, Using, Edit, Delete), A (`border_form`), D (layout, macro names, list) |
+| Phone - <profile> | Sound Alerts group: Ringtone (the ringtone, "Spirit"), Volume (7 for Normal); Play sound, Visual Alerts (LED) and Tactile Alerts (Vibration) of sim-31 are not done | C (sim-31) |
+| Screen Display | "Backlight" group: Backlight Brightness, Backlight Timeout, Automatically Dim Backlight | B (fields, p. 226), D (group, values) |
+| Menu and saving | Menu: Switch Application, Save (in focus), Close; leaving a changed screen: "Changes made!" (Save, Discard, Cancel) | B ("Press the Menu key > Save"), C (sim-47), D (menu of a list) |
+
+**On the Q25 (720x720).** The screens take the full width: the boxes stretch (their 9-patches), the fields and checkboxes keep their distance to the right edge, the notes wrap to the width (D). The extra rows go to the number of visible entries. Code: `apps/launcher/.../options/` (`Pages.kt`, `Form.kt`, `FormViews.kt`, `OptionsActivity.kt`), images copied by `tools/import-assets.sh options` (`opt_*`).
+
+## 28. Clock
+
+Sources: guide 7.1 p. 201 to 205 (B); 7.1 simulator, sim-153 to sim-177 (C); `net_rim_bb_clock_faces_480`, `net_rim_bb_clock_lib` and the theme `_b` and `_bs1` (A); `net_rim_bb_resource__en.cod` (resource `Alarm`, A: "Snooze ({0})", "Dismiss").
+
+**The app** (C, sim-153). Black screen with no status bar or banner, opened on the last page left (sim-165: the stopwatch). Escape quits the app (sim-166). The guide knows **only one daily alarm** in Clock; the others are set in the Calendar (p. 202).
+
+**Face** (A, C). `face_370.png` (370x370, including the bubbles) at x 135, y 12; "PM" (also in 24 h) centred in the left bubble, at x 92 from the edge of the face, "Fri 13" in the right one, at x 278, BBAlpha Sans 27 white, baseline 197 below the top of the face. Each hand has eight images, `hour_370_0` to `_42` and `minute_370_0` to `_42`: the hand at 0, 6… 42 degrees from twelve, cropped, its round base at the bottom left; the sixty positions are derived by mirroring across the 45 degree diagonal and then by quarter turns (A for the images, D for the rule, the only one that makes 60 positions from 8 images). The hour hand moves one position every twelve minutes.
+
+**Alarm bar** (A, C, sim-153, sim-161). `border_clock_button.png` (13x24) stretched to 305x67 at x 167, y 403, 23 px below the face (its dark rows 17 to 20 stretch, D). Alarm set: `Alarm_Indicator.png` (red, 73x48) then the alarm time, "16:14", BBAlpha Sans 33 white, 20 px further, all centred. Without an alarm: the white "add" icon alone, which is not in the extraction, cut out of sim-153 (x 287, y 417, 64x39), its luminance turned into alpha (C). Alarm snoozing: `Snooze_Indicator.png` (D: no capture of a snoozing alarm).
+
+**Menu** (C, sim-154, sim-155). Switch Application | **Set Alarm** (focus), Set Time | Bedside Mode | Stopwatch, Timer | Options, Help, Close. Stopwatch (sim-166, sim-168): Switch Application | Start or Stop, Lap while running, Clock, Timer | Options, Help, Close.
+
+**Set Alarm** (C, sim-156 to sim-161). `border_popup` box of 387x258 (x 127 to 513, y 109 to 366); a band of `border_button` fields (x 164 to 476, y 185 to 233): the hour "08", ":", the minute "00", then ON, WEEKDAYS or OFF in capitals. The focused field opens as a column of three 57 px rows (`border_inplace`, the chosen value white on `border_spinboxbutton~focus`, its neighbours grey). Hours and minutes wrap (59 above 00), the ON, WEEKDAYS, OFF list does not wrap; a step down moves forward. The box opens on OFF (simulator's original alarm: 08:00 OFF). OK and Cancel side by side (x 144 to 311 and 329 to 496, y 299 to 347); Enter means OK.
+
+**The alarm ringing** (C, sim-162 to sim-164). Over the face, the OS 7 dialog box: `net_rim_alarm_reminder.png` (80x80) on the left, "Daily Alarm" and, below it, **the current time** (16:15 at 4:15 pm, sim-163), **Snooze (5 min.)** in focus above **Dismiss**. The box goes away by itself between 2 min 30 and 4 min, with no new ringing afterwards (sim-164). The simulator does not play the sound.
+
+**Clock Options** (C, sim-170 to sim-177). Title "Clock Options", groups in boxes like Trackpad Sensitivity (§ 21): Clock (Clock Face Analogue, Home Time Zone, When Charging Display Clock, Dismiss Clock Automatically checked, Set Time); **Alarm** (Alarm Tone **Evolving Dream**, Volume **8**, Snooze Time **5 Min.**, Vibration **Off**, Try it); Bedside Mode (Disable LED checked, Disable Radio unchecked, Dim Screen checked, Sound Profile Active Profile); Stopwatch (Stopwatch Face Analogue); Countdown Timer (Timer Face Analogue, Timer Tone **3 Beeps**, Volume 8, Vibration Off, Try it). Lists: Volume **Escalating**, 10 to 1, Silent (the escalating volume exists, sim-174); Snooze Time 30, 15, 10, 5, 1 Min., None; Vibration Off, On, Custom.
+
+**Stopwatch** (C, sim-165, sim-169). `face_316.png` (the face graduated in steps of 5, x 162, y 43), grey minute hand and red second hand (`minute_316_*`, `second_316_*`, same rule as the face); "00:10:20.40" centred 50 px below the centre, BBAlpha Sans 33 white, the hundredths red, on a dark 202x37 pill (by eye: `#1F1F1F`, red `#E00000`); a lap row "Lap 1" grey, lap time and total white (baseline 390); two `border_clock_button` buttons of 305x67 (x 10 and 325, y 403), the focus in blue `~focus`, `timer_start` (green) or `timer_stop` (red) on the left, `timer_lap` while running or `timer_reset` on the right.
+
+**Timer and Bedside Mode**: not captured (the simulator was shared). The timer reuses the stopwatch screen (D); Bedside Mode is the face alone, the screen kept on and dimmed (Dim Screen checked by default, p. 203, sim-172; D for the brightness).
+
+**On the square screen** (D). The face and its bar, then the stopwatch and its buttons, centred as a block in 720x720; Set Alarm centred; no enlarged image.
+
+**Dialogs, Clock Options, digital face.** Set Alarm and Set Timer are the `core/ui` box (`SpinDialog`), whose columns are as wide as their text (D, instead of the widths of sim-156). Clock Options has the five groups of sim-170 to sim-173 that Android allows to honour, and scrolls: the fields, checkboxes and the "Set Time" and "Try it" buttons are those of sim-170, sim-171 and sim-173. **Digital face** (A: `lcddigital`, four sizes of white digits, the largest that fits in the width minus 32 px, 160 px wide on the Q25): HH:MM in the square of the face, the day 40 px below, the alarm bar under them (D for the layout and for the "Digital" label). Home Time Zone: a grey line "New York 07:00" under the bar (D). Menu: "Cancel Snooze" under Set Alarm while the alarm is snoozing (D); "Send Results" of the stopwatch (guide p. 204, B, its position D); Set Time opens Date and Time in Options.
+
+
+**Clock faces, Bedside Mode, timer** (sim-323 to sim-339, C). Clock Face: Analogue, Digital, Flip Clock, LCD Digital. Digital: HH:MM bold white, 538 px out of 640, 133 px digits. Flip Clock: `#181818` cards of 290 px (20 from the edge, 20 between them), black 1 px line in the middle, 175 px digits. LCD Digital: the `lcddigital` images (size j on 640) with an unlit "8" `#111111` behind each digit. All three carry the date at the top right ("Mon 16 Nov", grey `#A0A0A0`, x 630, baseline 43). Bedside Mode: the Clock screen at 80 % (255 becomes 204, bar included), its menu is the Clock menu with "Exit Bedside Mode". Timer: Reset in the menu only once started; Set Timer opens on the seconds, from 00 to 99. Alarm ringing: "Daily Alarm", the time, Snooze (5 min.) in focus above Dismiss, on the lock screen as on the home screen (sim-336, sim-339); the snoozing alarm icon goes to the right of the battery (sim-337, sim-338).
+
+## 29. Calendar
+
+Sources: guide 7.1 p. 58 (shortcuts), 181 to 185 (B); 7.1 simulator, **sim-220 to sim-248** (C, a test appointment created then deleted); theme `_b` and `_bs1` (A: `net_rim_calendar_reminder.png`, `net_rim_Reminder_Status-icons19x19.png`, `arrow_more.png`, `arrow_more_rl.png`, `save.png`). Measurements and colours taken to the pixel on the native captures, in `apps/calendar/.../Look.kt`.
+
+**The app** (C, sim-220). Opens on the **Day** view of today, the current hour in focus, the previous hour above. App bar on one line (time on the left, network on the right). Escape quits. The week starts on **Monday** (sim-224, sim-225: simulator setting, First Day Of Week, p. 185).
+
+**Banner** (C, sim-220, sim-225). 52 px under the bar: a `#656A6F` line, then a gradient `#484E53` to `#2C2F32`; the white title 27 centred ("Friday 13 November 2026", "November 2026"); `arrow_more_rl.png` and `arrow_more.png` (4x8) at x 27 and 611.
+
+**Day** (C, sim-220, sim-237 to sim-239). Hour column of 36 px `#7C7E80`, the hour ("17") in light grey `#BDBFC2` at the top left; 78 px rows, line `#E0E0E0`. Hour in focus: its cell in focus blue (`#088EEF` to `#1666DC`), the hour white, the row in light blue (`#6BBCF6` to `#6FB0EF`). An appointment is a **block placed to the minute** (18:30 to 19:30: from the middle of row 18 to the middle of row 19), 2 px after the column, 1 px border, rounded corners, a light blue bar (`#6DBAED`, 6 px) at the top left. The block of the focused hour is blue (`#0A8FE9` to `#1C63C2`, border `#033E67`), subject and location white; otherwise light, dark border, subject black and location grey in parentheses (sim-239). A black **panel** (`#17181A`, 90 px) shows the focused appointment: bar, subject white 27, "18:30 - 19:30" and the location in 20, orange bell on the right if it has a reminder; at the bottom (sim-237), or under the banner when the focus goes down (sim-238). The current hour, when not focused, is circled in blue (sim-239).
+
+**Week** (C, sim-224, sim-242). 115 px banner: "NOV" and "2026" in bold in the hour column (66 px), each day its number (27) over its name ("MON", 23), the focused day in blue. A grey all-day row (`#CCCECF`, 55 px, a small green clock on the left), then the hours in 55 px rows; seven 82 px columns, lines `#EAEAEA`, Saturday and Sunday on `#F7F7F7`; the focused cell in light blue; an appointment as a block in its cell, the panel under the banner.
+
+**Month** (C, sim-225, sim-243). Banner "November 2026"; row of days "MON" to "SUN" white on `#6F7173` (33 px); six weeks of 92x60 cells, lines `#D9DCDE`, the number black at the top right; days of another month grey on `#C8CACC`, weekend `#F7F7F7`; the focused day in blue (`#0A89ED` to `#1968DF`), number white; a day with an appointment carries a small bar (11x4) at the bottom left, white circled with `#044C80` when focused.
+
+**Agenda** (C, sim-226, sim-244). One list header per day ("Fri 13 Nov 2026", grey list gradient, 57 px); under it the free time and the appointments in order: "00:00 - 18:30" and "- Free Time -" on the right (57 px, `#F5F5F5`), the appointment (95 px, white: bar, subject, times, location grey, bell), "19:30 - 00:00"; an empty day: "00:00 - 00:00". The focused row in list blue.
+
+**Menu** (C, sim-221 to sim-223, sim-240). Switch Application | **New Appointment** (focus), New Alarm, New Task | Go to Today, Go to Date | View ▸, Search | Calendar Reminders, Options, Help, Close. On an appointment: **Open** (focus) and Delete after New Task. View opens a submenu to the right of the menu: the three other views (Week, Month, Agenda from Day).
+
+**Keys** (B p. 58, C). C new appointment, A, D, W, M the views, T today, G a date, Space forward, Shift+Space back. In Day view, **Quick Entry** (C, sim-227): a typed letter opens on the focused hour an "18:00 / 19:00" cell where it starts the subject (the guide: Day view shortcuts require turning Quick Entry off).
+
+**The form** (C, sim-228 to sim-236, sim-241). New Appointment and Open show the same screen, with no status bar: background `#DDDDDD`, a 59 px band with the save button (`border_button`, `save.png`) on the right; white boxes with a `#C6C6C6` border, 5 px between them: **Subject:** (bold) and Location:; "Time" (bold grey title): All Day (checkbox on the left), Start: and End: "Fri 13 Nov 2026 18:00" on the right, Duration: "1 Hour 0 Mins", Time Zone: (choice field), Reminder: "15 Min."; Recurrence: "None" and "No Recurrence."; Properties (Conference Call, Mark as Private, Show Time as: Busy); Notes. On a date field, a single segment in focus, in blue (sim-233); its click opens the time box (sim-234, the Set Alarm one), minutes in steps of 5 (sim-235); the end follows the start, the duration stays. Reminder: None, 0 Min., 5 Min., 10 Min., 15 Min., 30 Min., 45 Min., 1 Hour, 2 to 5 Hours… (the top of the list is not captured). Menu: Switch Application, Copy, **Save**, Close (sim-236).
+
+**Go to Date** (C, sim-248). The same box: day of the week (in focus), day, month, year; OK, Cancel.
+
+**Delete** (C, sim-246). "Delete appointment?", question mark, Delete then Cancel, **Cancel in focus**.
+
+**The reminder** (C, sim-245). At the reminder time, over the app: `net_rim_calendar_reminder.png` (80x80, a "31" calendar) on the left, the appointment's title and location, "13 Nov 2026 18:30", "13 Nov 2026 19:30", buttons **Open**, **Dismiss** (focus), **Snooze (5 min.)**; the LED blinks (`LED: on`). The sound cannot be heard in the captures.
+
+**On the square screen, and what is Bold7's own** (D). The banners, rows and columns keep their pixels; the Day and Week views show more hours, Week splits the 720 px into seven, the Month cells grow in height, Agenda shows more rows. Bold7's own: the View submenu instead of the menu; the rule that puts the panel at the top or the bottom; overlapping appointments side by side; the all-day row in Day view too; the Month bar black outside the focus; the form dates in two segments (date, time); All Day as a `core/ui` checkbox (checkbox on the right); the question for a recurring appointment (All Occurrences, This Occurrence); Accept, Tentative, Decline in an appointment's menu; the list of attendees; "(No Subject)"; the silent reminder box (Google Calendar rings).
+
+## 30. Contacts
+
+Sources: 7.1 simulator, **sim-178 to sim-199** and sim-182b (C; a test contact created then deleted, the simulator returned to the home screen); gsm 013 and 015 (C, 7.0); guide 7.1 p. 190 to 199 (B); theme `_b` and `_bs1`, `bbfeeds_new_contact.png` from `net_rim_bb_feeds_lib` (A).
+
+**List** (sim-178, C). The Options title bar (§ 17), "Contacts", then the Options Search field, then rows of **72 px and a line** (a 73 px pitch): **New Contact** first, its image with the green "+" and its note "Create a new contact" in 23 grey (baseline 63 below the top of the row), then the contacts in address book order, their image of **67x67 at (3, 3)** with rounded corners (by eye on gsm 013), the name in 27 black at x 79, baseline 31. A contact without a photo takes `addressbook_contact.png` (78 px, its 66 px drawing 6 px from the edge, A; sim-193). On opening, **the focus is on the first contact**, not on New Contact. The firmware's New Contact image is the feeds one (`bbfeeds_new_contact.png`, 102 px, A): Bold7 reduces it to 67 px (D).
+
+**Search by typing** (sim-189, sim-190, C; guide p. 192, B). Typing writes in the field, the first letter capitalised ("T"); the list narrows to the contacts with a name word starting with what is typed (Bold7: each typed word must start a word of the name, ignoring case and accents, D), the focus on the first; the New Contact note becomes "Create a new contact named "T"". With no match: New Contact alone, **in focus**, and "* No Contacts *" centred under it. Below, an "Extend Search" header and the "Device" row (search the whole device), which Bold7 does not do.
+
+**List menus** (C). Full (sim-179, sim-180, sim-198): Switch Application | Switch Input Language/Method | **View** (focus), Edit, Delete, Send Contact Card ▸, Add to Home Screen | New Contact, New Group | Email *name*, Call *name*, Text *name* (only if there is an address, a number) | Filter | SIM Phone Book | Options, Help, Close. Short (sim-181): Delete, Edit, Switch Application, Show Home Screen, **View** (focus, its image is the contact photo), Full Menu.
+
+**Card** (sim-182, sim-194, C). The title bar carries the name; the grey page of Options boxes (`border_groupboxfull`, `border_groupboxtitlebar`, A), stacked with no gap. First box: with a photo, 82 px, the 72 px photo at x 12 and the name in bold 27 at x 92; without a photo, 61 px and the name at x 12; on the right, the **edit button** (`edit.png` in `border_button`, 86x51, 4 px below the top of the box, 12 px from the right edge). Then **Phone Numbers**, **Email Addresses**: bold title 23 `#7C7E80` at x 13, baseline 27, line `#C2C2C2` 36 px below the top of the box; 42 px rows, the label ("Mobile:", "Email:") in 27 black at x 12, the value right-aligned 10 px from the edge. **The focus is the value alone on a blue band** (5 to 37 px of its row, 2 px around the text), in white; it opens on the first number. Then "Recent Activity" ("No recent activity.").
+
+**Card menus** (C). Without a number (sim-182b): Switch Application | Select Text | **Edit** (focus), Delete, Activity Log, Send Contact Card ▸, Add to Home Screen | Help, Close. On a number (sim-195, sim-196): Switch Application | **Copy** | Edit, Delete, Activity Log, Send Contact Card ▸, Add to Home Screen | **Call *name*** (focus) | Email *name*, Text *name* | Add Speed Dial | Help, Close; the labels carry the contact's name, not the number type. Short on a number (sim-197): Copy, Edit, Text *name* (a bubble with a green "+", missing from the extraction), Switch Application, **Call *name*** (focus), Full Menu: the default action is the last cell before Full Menu, like View in the list.
+
+**Editing** (sim-184 to sim-188, sim-191 to sim-193, C). Title "Edit Contact" or "New Contact"; a 60 px grey band and, on the right, the save button (`save.png` in `border_button`, 86x51, 3 px from the top and the right edge); for a new contact, a "Contact List:" box and its "Default ▾" choice. Then the boxes: the image (85 px band, the 78 px image 5 px from the edge, 2 px below the top) and **Title, First, Last, Company**, the **Add Field** button; **Email Addresses** (Email:, a second empty row appears when the first is filled); **Phone Numbers** (a 139 px type button at x 14, `border_button` and `arrow_choice`, then the field; the open list, 154 px wide: **Work, Home, Mobile, Work 2, Home 2, Mobile 2, Pager, Work Fax**); BlackBerry PIN; Custom Ring Tones/Alerts (Phone, Messages); Address (Add Address); Dates (Birthday, Anniversary, Add buttons); Categories ("No Categories", Edit); Website; Custom Fields (Add Custom Field); Notes (a field without label). Each field is `border_form.png` (9x9, A): 43 px with its border, every 50 px, 7 px below the title line and 8 px above the edge of the box; the label in 27 black at x 9, the field 13 px after the longest label of its box up to 9 px from the right edge, its text 6 px inside; the cursor blue. Menu (sim-188): Switch Application | Switch Input Language/Method, Show Symbols | **Save** (focus) | Categories, Delete Picture | Help, Close. Escape with changes: "Changes made!", **Save** (focus), Discard, Cancel (sim-193); Save returns to the list, the contact in focus.
+
+**Deletion** (sim-199, C). "Delete *name*?", the question mark, Delete then Cancel, **Cancel in focus**.
+
+**Select Contact** (sim-183, C). Opened by Call From Contacts in the Phone: the title "Select Contact", "[Use Once]" as the first row (no image), New Contact, then the contacts, the first in focus; its menu is the list menu.
+
+**On the square screen** (D). The rows and boxes take the width, what is anchored on the right keeps its distance to the edge; the 240 extra px go to the number of rows. In Bold7: word search ("d m" finds Dexter Morgan); a new contact goes into the account holding the most contacts, on the phone if there is none (instead of the "Contact List" choice); Address as a single multi-line field (instead of Add Address and its five fields); Other in the type list for Android numbers that OS 7 does not name; the Select Contact choice of a number, when the contact has several, in an OS 7 dialog with "Mobile: 0600…" buttons. Code: `apps/contacts` (`ContactList`, `Card`, `Editor`, pure; `PersonRowView`, `CardView`, `EditActivity`), images copied by `tools/import-assets.sh contacts` (`cnt_*`).
+
+## 35. Predictive typing
+
+Measured on sim-94a, sim-95b, sim-96a and sim-97a (C), in 9900 pixels, which are those of the Q25.
+
+- **The current word**: background `#2B8FFF`, white text, the height of the line (sim-94a: y 47 to 78); an unknown word ("Thi", "Teh") has white dashes under it. OS 7 also writes into the field the end of the proposed word, underlined with dashes ("Thi" then "s"): **not in Bold7** (D), the field keeps only what is typed. The dashes are a solid line in Bold7 (D: Android passes only a solid underline from one app to another).
+- **The list** under the word: frame `#212429` with rounded corners (radius D), its top left corner at the bottom left corner of the word (sim-94a: x 96, y 79), 10 px around the cells; three cells at most (D: three on every capture), 45 px high, 10 px on each side of the text, 2 px of frame between two. Focused cell: `#0C83EA` at the top to `#1766DB` over its top 16 px, then `#1766DB`; the others: `#D7D7D7` to `#AFB1B4` likewise. BBAlpha Sans 27 ("This" bold, 61 px, as in the TTF), baseline 31 px from the top of the cell; white in focus, `#202121` elsewhere. Bold for a word starting with what is typed (sim-94a, sim-95b, sim-97a), regular for a correction ("The", "Tea", sim-96a), italic for the unknown typed word, first ("Teh", sim-96a). Above the word if there is no room below, shifted left against the right edge (D).
+- **Behaviour**: the trackpad moves the focus; Enter takes the focused word followed by a space (sim-95c); the trackpad click takes it without a space on the 9900 (sim-97b): Typing does so for `DPAD_CENTER`, but the click currently arrives as Enter on the Q25 (D); Space keeps what is typed (sim-95a) and substitutes as Direct does (sim-96b); Escape or Back close the list (D); touching a cell takes it (D).
+- **Unknown word, once typed** (sim-98a under Direct, sim-97b under Predictive): underlined with black 2 px dashes, 4 on and 2 off, under the word alone. In Bold7: a solid grey line `#555555` (the average of the dashes), 2 px (D), through a `SuggestionSpan`.
+- **Home screen search** (sim-93a, sim-93b: inline completion, no list, trackpad down): not done, the field is the launcher's.
+
+## What the home screen work measured or deduced in addition
+
+**Banner** (sim-03, C; theme strips, A). Positions taken at a luminance threshold, in 9900 pixels: battery, frame of the strip at (3, 2) (its light pixels from x 4 to 51); date, baseline 56; network, baseline 24, centred; time, baseline 77 (digits from y 36 to 78, centre measured at x 327, which Bold7 centres on 360: the offset probably comes from the AM/PM space, to be checked); "edge" ends at x 578, baseline 24; signal, frame at (587, 5); speaker, frame at (1, 95); magnifier `banner_search_button` at (592, 95); counter "2" from y 108 to 126, the icon 6 px after it, frame `net_rim_Ribbon_UnreadCount-icons33x29` at y 102 (the 25x25 strip is too small: the missed call icon is 25 px wide). Backgrounds, lines and `banner_background~focus.png` (theme `_bs1`, 640x92) have all their columns identical: they widen to 720 without loss (checked pixel by pixel). Strips: battery in 12 columns (empty, red, orange, then up to full, "?") on 3 rows (the third with the plug); signal OFF, X, 0 to 5 bars, SOS; Wi-Fi an empty cell then 5 levels; profiles in the order Normal, Vibrate, Silent (zzz), Loud, Phone Only, Off, custom, Medium (by eye, against the `net_rim_bb_profiles_app.*` images); counters: email, email, voice mail, browser, calendar, BBM, SMS, "?" bubble, task, flag, feed, groups, Wi-Fi, error, missed call, target. Notifications from other apps take the "?" bubble (D, by eye, still to be sourced against the notification captures).
+
+**Background under the drawer** (sim-02, sim-06 against `background_homescreen.png`, C). Collapsed, the tab and its row are 0.6 of the wallpaper (black at 40 %, that is `homescreen_filter_background.png`, 640x47, A); expanded, the whole drawer from y 140 to the bottom is 0.354 of the wallpaper (black at 65 %), tab included, with no darkening of its own. The tab has no background image: `tab.png` (opaque grey) is not the home screen one. Its neighbours are darkened at the edges by `homescreen_mask_p.png` (640x47, black at 80 % at the edges, transparent in the middle, A); their names are centred on the screen edges ("uent" ends at x 52, "Favou" starts at x 578).
+
+**Calendar icon** (sim-06, C). Only the day number, dark grey (≈ `#3C3C3C`), 28 px high digits, centred, baseline 65 px below the top of the icon; BBAlpha Sans 39 px reproduces them (by eye).
+
+**Open folder** (sim-16, C). The band `background_folderview.png` (480x39) starts at the left edge without widening; the small folder icon is the last cell of `net_rim_Folder-icons32x32.png` (by eye); the name in BBAlpha Sans 27 px at x 57. The theme folder icons are `folder.png` (92x92, `_b`) and `folder01` to `folder20` (`_bs1`, colours and patterns); Bold7 uses `folder.png` for all of them (D) until the icon choice of the Add Folder dialog exists.
+
+**Menus** (theme glyphs, A). The short menu actions have their 82x55 images: `sm_launch`, `sm_mark_favourite`, `sm_unmark_favourite`, `sm_move`, `sm_move_to_folder`, `sm_hide`, `sm_unhide`, `sm_delete`, `sm_add_folder`, `sm_folder_open`, `sm_rename_folder`, `sm_delete_folder`, `sm_full_menu`. The labels of the inverse actions (Unmark as Favourite, Unhide Icon, Restore Panel) are deduced from these glyphs (D).
+
+**Touch.** On the 9900 (touch screen; guide 7.1, M): tap launches, long press opens the short menu, the drawer slides up and down, the views slide sideways, the grid scrolls with the finger. **Bold7 choices, not BBOS 7**: everything that follows the finger ends on a spring that picks up its velocity; Move follows the finger with scrolling at the edge; moving that starts from a drag right after the long press; an app dropped on a folder icon goes into it; dropped on the band of an open folder, it leaves it. The simulator has not been rerun to check what the 9900 did with these gestures: that is the first thing to capture before keeping them.
+
+## On the square screen: common rules (D)
+
+- Never enlarge: a firmware image is shown at its size, a text keeps its size in pixels.
+- What is centred on x 320 is centred on x 360; what is anchored to an edge keeps its distance to the edge.
+- The 80 extra px of width go to the grid (6 columns of 120 px) and to the text columns (summaries, subtitles); the 240 extra px of height go to the number of rows and lines, never to taller rows.
+- The Torch 9810 (480x640, OS 7) remains the source to look for a layout taller than wide.
+
+## What remains unsourced
+
+- **Volume**: display duration and appearance (fade or not) not timed; icons other than the speaker, `-mute` and relative volume never seen (§14). The simulator stopped responding to captures right after sim-108.
+- **Message thread**: a received bubble in 7.1 (gsm 023 is 7.0 and JPEG), a bubble in trackpad focus, an MMS with an image, the delivered, read and failed states in a bubble, the rest of the full menu below Clear Conversation and the menus of a focused bubble: the simulator was in use elsewhere, no capture taken.
+- **Filled Messages inbox** in the simulator (measurements taken on gsm 027, 7.0); filtered views ("Messages, filtered view" gsm 029 not measured).
+- **Filled folder** opened, and the **hidden** drawer with its ▲ handle (gsm 001, 7.0, not reproduced).
+- **Touch gestures** of the 9900 on the home screen (Move with the finger, drag after the long press, drop on a folder): not checked in the simulator; **French names** of the views and menus (memory or deduction).
+- **Opening an app**: no effect recorded; the launcher keeps the one inherited from an earlier BB10-style version of the launcher; no splash screen seen, but only to within one or two seconds (§24).
+- **Shutdown**: the Full Power Off and Turn Off dialog is only known from the guide (§23), its text, icon and focus never seen, nor the screen during shutdown; **clock**, **alarm** (sound Dream) and **timer** (sound 3Beeps) not recorded.
+- **Tutorial and setup wizard** (the simulator is launched with `NoTutorial`).
+- **Status message duration** (sim-42): 2 s by eye; **submenus** of the full menu: the ► arrow is captured (Attach, sim-292), an open submenu is not.
+- **Exact colour of the veil** of the app switcher (by eye); that of the notification list is measured (§ 5).
+- **Notification list**: what a click on its header does, going back to the top from the first row, and a list longer than the screen (scrolling): not recorded; LED of a message received with the screen off, not timed.
+- **New star** on icons: image confirmed (`new_overlay.png`, § 2); on a folder holding an app with something new, and the behaviour of Text Messages on Escape (back to the home screen): not recorded.
+- **Wi-Fi position** in the banner: by eye. **Owner position** on the lock screen: by eye on a photo, no owner set in the simulator. **French labels** of the lock screen: none.
+- **Status indicators of an app's bar** (alarm, Bluetooth, GPS, NFC): no capture shows them, their position (right of the second line) comes from zone 1 of `banner.pme` without its coordinates; the profile does not appear at all. Counters of an email and a calendar, bar in 12 h: not seen in 7.1.
+- **BannerTime font** (`.cbtf`): container and metrics read (`tools/cbtf.py`, § 19), pixels not decoded; the banner time is drawn in BBAlpha Sans Condensed by eye meanwhile.
+- **`.pme` coordinates**: only the text parameters are read; a decoder of the SVGC format would give the exact positions of the banner and the lock screen.
+- **Generic RIM firmware**, to rule out what the carrier of the firmware in hand may have added.
+- **Animations**: the theme durations and curves, and its screen transition table (§ 24, read as D); no video of a real 9900 or of the simulator: duration, curve and fade of the zooms remain to be filmed.
+
+## Where these values live in the code
+
+The `core/ui` components draw the menus (§4), dialogs and status messages (§12, §13), list headers and rows, title, search field and checkboxes (§15, §17) with the theme images copied by `tools/import-assets.sh ui` (`ui_*`, as 9-patches for `border_menu`, `border_popup`, `border_button*` and `border_find`); their layouts are in `MenuLayout.kt` and `DialogLayout.kt`, tested against the capture measurements. The colours, sizes, fonts, durations and curves of this document are the `core/design` tokens: `Focus`, `HomeColors`, `NoticeColors`, `MenuColors`, `DialogColors`, `ListColors`, `Veil` in `Colors.kt`; `HomeDimens`, `NoticeDimens`, `MenuDimens`, `ListDimens`, `DialogDimens` in `Dimens.kt`; `Typography`; `Curves` and `Durations` in `Motion.kt`; what is by eye in `Eyeballed.kt`. Each token cites its source in a short comment; this document keeps the detail. The theme images the home screen reads (banner, indicator row, tab, lines, icon focus, default wallpaper) are copied by `tools/import-assets.sh accueil` as `home_*.png`. The app status bar has its positions in `Banner` (`system/sysui`, `StatusBar.kt`) and its images as `banner_*.png` (`tools/import-assets.sh bandeau`). The positions of the home screen banner, which the lock screen reuses, are `HomeBanner` (`core/design`), its texts `bannerTime` and `bannerDate`; the lock screen has its images as `lock_*.png` (`tools/import-assets.sh systeme`) and its code entry its measurements in `PasswordBox` (`system/sysui`, `Lock.kt`). The volume window has its positions in `Volume.kt` and its images as `vol_*.png` (same block); the power key dialog and the SystemUI toasts are the `core/ui` `DialogView`, read with the module's resources (`Images.context`). The dialogs, menus and toasts the framework draws for other apps are those of the RRO `system/overlays/android`: the same measurements written in pixels in its layouts and values, theme images as `bold7_*.9.png` (`tools/import-assets.sh dialogues`).
+
+## 31. Calculator
+
+**Superseded by § 34.1: screen, ten-column keypad, menu and conversions come from sim-249 to sim-253 (C). What follows describes the first version; only the calculation behavior ("Behavior") still holds, extended with CE, M-, 1/x, √ and %.**
+
+Sources: guide 7.1 p. 362 (B: "click the key or press the corresponding key on the smartphone keyboard"; "Convert a measurement": type a number, Menu key, To Metric or From Metric, then a conversion type), and the theme images (A). **No capture shows the calculator**: the 9900's comes from BlackBerry World and is not in the extraction (`MANIFEST.md`); the whole drawing is therefore "D" (by eye), made with the images the theme keeps.
+
+**Images** (A, `tools/import-assets.sh calculatrice`): the green display in three parts (`calculator_display_left`, `_middle`, `_right`, 10, 1 and 10 by 91 px), the keys `calculator_key_landscape` (operation key, slate grey), `_numeric` (digits, lighter), `~focus` (blue, under the trackpad) and `~active` (dark blue, while pressed), 62x85, as 9-patches whose middle stretches (D: bands 14 to 47 and 24 to 60).
+
+**Layout** (D). `core/ui` title bar "Calculator", the display over 91 px below it (6 px margin), the number right-aligned at 50 px, the pending operation above it at 23 px ("12 ×"), an "M" on the left while memory is not empty; six rows of four keys below the display: MC MR MS M+ ; C ± ⌫ ÷ ; 7 8 9 × ; 4 5 6 − ; 1 2 3 + ; 0 (two cells) . =. Focus starts on 7.
+
+**Behavior** (D, unless stated). Simple calculator on `BigDecimal`: operations chain left to right (2 + 3 × 4 = 20), 0.1 + 0.2 gives 0.3, twelve digits at most, a quotient rounded to twelve significant digits, "Error" on division by zero or a result too large, until C. The trackpad click presses the focused key; Enter is "="; the keyboard types digits, `+ - x * / . ,` and `=` (B: "press the corresponding key"); C clears, Del corrects, Escape clears then quits. Menu: To Metric, From Metric (B, with their second screen: the measurement type, as a menu), then Memory Recall, Store, Add, Clear (D) and Close. Conversions (D for the list): inches/centimetres, feet/metres, yards/metres, miles/kilometres, ounces/grams, pounds/kilograms, fluid ounces/millilitres, gallons/litres, Fahrenheit/Celsius; a status message repeats the calculation ("5 in = 12.7 cm").
+
+## 32. MemoPad
+
+**Superseded by § 34.2: sorting, rows, menus, form and Options come from sim-254 to sim-266 (C). One correction to § 34.2: the form background is `#DDDDDD` (measured on sim-255), the boxes are white; only the "Memo:" caption disappears.** What follows describes the first version.
+
+Sources: guide 7.1 p. 206 (B: "click New Memo. Type a title and the memo. Press the Menu key > Save"; "To change the memo, click it… Press the Menu key > Save"; "To delete the memo, highlight it. Press the Menu key > Delete"), the home screen search history that keeps "MemoPad" (sim-98a, sim-98b, C, the name only), the theme images (A). **No capture shows the memo list or its form**: the whole drawing is "D", made with the components that already show what OS 7 does in the same cases (Contacts list and search, sim-178, sim-189, sim-190; fields of its form, sim-184; "Changes made!", sim-193; Delete, sim-199).
+
+**List** (D, on C for the rows). Title bar "MemoPad", Search field, "New Memo" at the top with its note "Create a new memo" (or `Create a new memo titled "…"` while typing), then the memos, most recently modified first, the first one focused; each row is the Options row (`ListItemView`, 71 px, sim-57, C): the title, or the first line of the body when there is none, and below it the first line of the body that is not the title. Typing filters (each typed word starts a word of the title or body, ignoring case and accents), "* No Memos *" when nothing matches, Escape clears the field then quits, as in Contacts.
+
+**Menus** (D). Full menu on a memo: Open (focus), Delete, New Memo; on New Memo: New Memo alone. Short menu (trackpad held): Delete, Open (focus), theme images `sm_delete`, `sm_open`, `sm_new` (A, the pairing D). Delete asks "Delete <title>?" with Cancel focused (sim-199, C).
+
+**Form** (B for the two fields, D for the layout). "New Memo" or "Memo" as title; above, the caption "Title:" and its field, then "Memo:" and the body field, which takes the rest of the screen, both in `border_form.png` (A, at least 43 px high as in sim-184), on the grey `#DDDDDD` form background. Menu: Save (focus), Delete (an existing memo), Close. Escape with changes: "Changes made!", Save, Discard, Cancel (sim-193, C); a new memo without text is not saved.
+
+## 33. Tasks
+
+**Superseded by § 33 bis and § 34.3: list, menu, form and sorting come from sim-267 to sim-283 (C).** What follows describes the first version.
+
+Sources: guide 7.1 p. 206 and 207 (B: "click Add Task. Type the task title and fill in the details, such as the due date and recurrence", "To change the task, click it", Menu > Save, Menu > Delete; "Change the status of a task": Menu > Mark Completed, or Open then the Status field (deferred, in progress, waiting); "Hide Completed"), the theme images (A: `net_rim_Task_Status-icons27x27.png`). **No capture shows the tasks**: the whole drawing is "D", made with the components that already show what OS 7 does in the same cases.
+
+**Status image** (A). Five 27 px cells side by side: an empty box, a blue quarter, a green tick, a red clock, an orange arrow. The order Not Started, In Progress, Completed, Waiting, Deferred is D (the theme does not name the cells); it follows the order of the guide's words for the three it names.
+
+**List** (D, on C for the rows). Title bar "Tasks", "Add Task" at the top with its note "Create a new task", then the tasks, the first one focused; Options rows (`ListItemView`, 71 px, sim-57, C), the status image in the icon slot (centred on x 37), the title, and below it the due date ("Fri, Nov 20, 2026", D) then the priority if it is not Normal. Order (D): open tasks first, by due date, those without a due date next, high priority first, then the title; completed ones at the end.
+
+**Menus** (B for the entries, D for the order). Full menu on an open task: Mark Completed (focus), Open, Delete, Add Task, Hide Completed (Show Completed once hidden); on a completed task, without Mark Completed, Open first; on Add Task: Add Task and Hide Completed. Short menu: Delete, Mark Completed (if open), Open (focus), images `sm_delete`, `sm_mark_completed`, `sm_open`, `sm_new_task` (A, the pairing D). Delete asks "Delete <title>?" with Cancel focused (sim-199, C).
+
+**Form** (B for the fields, D for the layout). "New Task" or "Task" as title; Title, Due Date (text, `yyyy-mm-dd`, D: the OS 7 date picker is the Calendar's, not yet in `core/ui`), Priority (Low, Normal, High) and Status as the Options choice fields (`ChoiceView`, sim, C) with their open list, then Notes. The text fields are `border_form.png` (A) like those of Contacts (sim-184, C), on the grey `#DDDDDD` background. Menu: Save (focus), Delete (an existing task), Close. Escape with changes: "Changes made!", Save, Discard, Cancel (sim-193, C). A due date that is not a date blocks saving and says so; a new task with nothing in it is not saved.
+
+
+### 33 bis. Tasks from the captures and the firmware
+
+The paragraphs above describe the first version, written before any capture; what follows replaces them where they differ.
+
+**Sources.** Simulator captures **sim-267 to sim-283** (Tasks capture session, `assets-private/reference-bbos7/SOURCES.md`); English resource of the firmware (`net_rim_bb_resource__en.cod` of simulator 7.1.0.318, Tasks strings, A): "Add Task:", "* No Tasks *", "New Task", "Edit Task", "Due:", "By Date:", "Relative", "None", "Task Reminder", "Tasks Options", "Sort By:", Subject, Priority, Due Date, Status, "Mark Completed", "Mark in Progress", "Delete Completed", "Delete task?", "Delete all completed tasks?", "A Task name must be entered", "Task is complete. It cannot have a recurrence.", "The reminder cannot be set because its time has passed. Is this OK?", "The reminder occurs past the due date. Is this OK?", "Warning! Due date has already passed."; `net_rim_bb_task_app.cod` (A) names `SNOOZE_CHOICES` and `SORT_ORDER`; theme `_b` (A): `net_rim_Priority-icons9x27.png` (three 9 px cells: blue arrow, empty, red "!"), `net_rim_task_reminder.png` (80x80), `save.png`.
+
+**List** (C; type-to-search and `LineItemView` rows). sim-267: Search field below the title bar, row "Add Task:" (colon), "* No Tasks *" centred when there are none. sim-276 to sim-280: one 57 px line per task, the priority image (9 px) then the status image (27 px) flush left, the title; **no due date** in the row. Alphabetical order by title, the completed task in its place (sim-278, "alphabetical order", C): this is Sort By Subject. The order of the status cells is confirmed: Deferred the arrow, Completed the tick, In Progress the quarter, Waiting the red clock, Not Started the empty box (sim-277 to sim-280, C).
+
+**Full menu of the list** (C, sim-281 to sim-283, on a Not Started task): …Switch Input Language/Method │ Forward As, New, **Open** (focus), Delete, Delete Completed, Mark Completed, Mark in Progress, Hide Completed │ Filter │ Task Reminders, Options, Help, Close.
+
+**Form** (C, sim-268 to sim-275, sim-279). Title "New Task"; at the top a white box "**Title:**" (bold) and the field, the save button (green tick, `save.png`) to its right; one box: Status: (Not Started, In Progress, Completed, Waiting, Deferred, sim-270), Priority: (High, Normal, Low, sim-271), Due: (None, By Date:, sim-272), the date and time below Due ("Tue 17 Nov 2026 17:00", sim-273 and sim-279: the value offered when By Date is chosen, the day after the capture), Time Zone: ("Casablanca (GMT)"), Reminder: (None), Recurrence: (None, only with a due date), "No Categories" and Edit; then Notes:. The date and time open in the Calendar's box (sim-274: "17 : 00", the hours column open; sim-275: Tue, 17, Nov, 2026, the day column open). Form menu (sim-269): Switch Application, Switch Input Language/Method, Show Symbols, **Save** (focus), Categories, Help, Close.
+
+**Reminder** (A for the words, D for the rest). Reminder: None, Relative, By Date: (the three words of the resource; the open list is not captured). Relative counts back from the due date, with the list of the Calendar's Reminder field (0 Min. to 5 Hours, sim-231, sim-232, D here); By Date: has its own date and time. Reminder box: the Calendar's (sim-245) with `net_rim_task_reminder.png`, the title and "Due:"; sound: none, the reminder **only vibrates** (the simulator's Normal profile leaves notifications other than SMS and phone on "Silent", § 20; Bold7 follows the simulator; Shimmer is the Tasks sound when the volume is not Silent, sim-40, C).
+
+**What remains D**: the second line of the row (the due date) and the red title of an overdue task; the open Reminder list and the Relative row; the order and values of Tasks Options (not captured: Sort By, Snooze, Confirm Delete, in a box like MemoPad Options, sim-263); the position of Delete in the form menu; the short menu; Recurrence and what Mark Completed does on a recurring task (the next occurrence); the Yes and No buttons of the questions.
+## 34. Simulator survey (sim-249 to sim-317)
+Capture session (C) on the 9900 simulator (OS 7.1.0.318), files in `assets-private/reference-bbos7/simulateur/`, one line per capture in `SOURCES.md`. Data created in the simulator: three memos (Moon, Zebra, Apple, created in that order) and five tasks (Taska, Taskb, Taskc, Aard, Zulu, created in that order). This section **contradicts** the "D" passages of § 31, 32 and 33 where it says so; in case of disagreement, this section wins (a native capture against a deduction). Colours are those of the screen buffer (RGB565).
+### 34.1 Calculator (sim-249 to sim-253)
+- **Screen** (sim-249). Background `#262626`. Green display `#A1BDA6` at x 10 to 630, y 20 to 110 (rounded corners, light border), the number "0." right-aligned in bold black (the trailing point is part of the display). **No title bar and no status bar**: the application fills the 480 px. § 31 (title bar "Calculator", 91 px display below it) is contradicted.
+- **Keypad: ten columns on four rows**, keys of about 50 x 75 px at a pitch of 62 px (columns) and 85 px (rows), the first column at x 16. Row 1: `±` `1` `2` `3` `CE` `C` `M-` `−` `+` `1/x`. Row 2: `×` `4` `5` `6` `/` `MC` `MR` `MS` `M+` `DEL`. Row 3: (empty) `7` `8` `9` `√` `%` `,` `.` (empty) `=`. Row 4: `0` alone, below the 8. § 31 (six rows of four: MC MR MS M+ ; C ± ⌫ ÷ ; …) is contradicted entirely, including "focus starts on 7" (not observed) and "0 over two cells".
+- **Key colours**: digits light grey (`#585D61` at the edge, lighter at the top), operation keys slate grey (`#3F474E`), digit and operator labels white, **CE, C and DEL in orange** (about `#FFB400`), **M-, MC, MR, MS, M+ in blue** (`#1190D0`). There are therefore a separate comma and point (keys `,` and `.`), a `1/x`, a `%` and a square root, which § 31 does not provide.
+- **Menu** (sim-250, Menu key, focus on To Metric at opening): Switch Application, To Metric ▸, From Metric ▸, separator, Help, Close. **No Memory Recall, Store, Add, Clear** in the menu (memory is on the M keys).
+- **To Metric** (sim-251, sim-252), nine entries, the list scrolls (blue arrow at the bottom then at the top): `in -> cm`, `ft -> m`, `yd -> m`, `mi -> km`, `lb -> kg`, `°F -> °C`, `US gal -> L`, `UK gal -> L`, `US mpg -> L/100 km`. **From Metric** (sim-253), the inverses in the same order: `cm -> in`, `m -> ft`, `m -> yd`, `km -> mi`, `kg -> lb`, `°C -> °F`, `L -> US gal`, … (the bottom of the list is not captured; assumed `L -> UK gal`, `L/100 km -> US mpg`, D). No ounces or millilitres as § 31 assumed; the list is therefore the direction of the arrow `a -> b`, two submenus of nine lines, shown as a drop-down menu to the right of the menu (x 270 to 570), not a "second screen".
+### 34.2 MemoPad (sim-254 to sim-266)
+- **Order: alphabetical by title** (sim-259: Apple, Moon, Zebra for memos created in the order Moon, Zebra, Apple; Apple was also the last modified). § 32 ("most recently modified first") is contradicted.
+- **Title bar** of 32 px, black (`#000000`), the application name in white on the left, **the status icons (Wi-Fi, "edge", antenna) on the right in the same band** (sim-254): no separate status line.
+- **List** (sim-254, sim-259). Below the bar: the Search field (band `#20292F`, white field with rounded edges, y 38 to 92, the blue cursor in it at start), then the row "**New Memo:**" (label only, **without the note "Create a new memo"**, y 96 to 152) then the memos. **57 px rows** (not 71 px), a single line (the title, black, about 28 px, no second line and no body). Focus: blue gradient from `#088EEF` (top) to `#1666DC` (bottom) across the full width, white text. Empty: "* No Memos *" centred (y 181), "New Memo:" in blue focus. The initial focus is on the Search field.
+- **Click on a memo**: opens the "Edit Memo" form directly with the cursor in the body (sim-266), no menu and no read-only view.
+- **Form** (sim-255, sim-266). Title bar "**New Memo**" or "**Edit Memo**". Below, on a white background: the **"Title:"** field (label in bold inside the field, y 38 to 88) and, on the right, the save button (green tick on an envelope, grey button, x 552 to 636, y 38 to 88), then the body in a white frame that takes the rest (y 96 to 478). **No "Memo:" caption**, no grey `#DDDDDD` background (the background is white, grey borders `#E7E3E7`).
+- **Full menu of the form** (sim-256, sim-258, the same in the title and in the body, focus on Save at opening): Switch Application, Switch Input Language/Method, Show Symbols, Check Spelling, Find, Clear Field, **Save** (focus), Start Selection, Categories, Close. **No Delete** in the form (contradicts § 32). The menu is taller than the screen: blue up and down arrows, scrolled with the trackpad.
+- **Short menu of the form** (sim-257, trackpad click in the body): three cells, Switch Application, **Close** (green tick, focus), Full Menu.
+- **Full menu of the list** (sim-260 to sim-262, focus on Edit at opening): Switch Application, Switch Input Language/Method, Forward As, New, **Edit** (focus), Delete, separator, Filter, separator, Options, Help, Close. § 32 (Open, Delete, New Memo) is contradicted.
+- **Short menu of the list** (sim-265, long press): 3 x 2 grid, first row Delete (red cross), Forward As (envelope), Switch Application; second row Show Home Screen (house), **Edit** (pencil, focus), Full Menu. § 32 (Delete, Open) is contradicted.
+- **Options** (sim-263, sim-264): title bar "MemoPad Options", a group "**Actions**" with the checkbox **Confirm Delete:** (checked by default, focus) and **Number of Entries:** (value on the right, here 3). No sorting option. Menu: Switch Application, Save, Close.
+- A memo can be created without a body (Moon was saved with the title alone). An unknown word in the body or the title is underlined with black dots, even without predictive input (§ 34.5).
+### 34.3 Tasks (sim-267 to sim-283)
+- **Order: alphabetical by title**, regardless of status, priority or due date (sim-278: Aard (deferred, due date), Taska (completed), Taskb, Taskc; sim-280: Zulu (not started) last). Completed tasks **do not go to the end**. § 33 (open first, by due date, high priority first, completed at the end) is contradicted.
+- **List** (sim-267, sim-276 to sim-280). Same construction as MemoPad: 32 px "Tasks" title bar with the status icons, Search field, "**Add Task:**" (label only), **57 px** single-line rows: **the priority on the left** (red `!` for High, blue down arrow for Low, nothing for Normal, x 0 to 10), then **the 27 px status image** (x 14 to 41), then the title. **No due date and no second line** in the list. § 33 (image centred on x 37, due date and priority on a second line) is contradicted.
+- **Status images** (sim-280, measured on the capture), in the theme's order, which confirms the D order of § 33: Not Started = empty box, In Progress = box with a black dial and a blue quarter, Completed = green tick on a green background, Waiting = white box with a red dial and red border, Deferred = grey and orange box with a black arrow.
+- **Choice lists of the form**: Status (sim-270) Not Started, In Progress, Completed, Waiting, Deferred; **Priority** (sim-271) **High, Normal, Low** (§ 33 gives Low, Normal, High: contradicted); **Due** (sim-272) **None, By Date:**. Each list opens as a dark popup below the button, the focused entry in blue.
+- **Form** (sim-268, sim-273, sim-279). Title bar "New Task" (probably "Edit Task" when opening an existing one, not captured). Same header as MemoPad: "Title:" field and save button. Then a white group of drop-down list buttons aligned right, label on the left: **Status** ("Not Started"), **Priority** ("Normal"), **Due** ("None"), **Time Zone** ("Casablanca (GMT)": depends on the simulator), **Reminder** ("None"), then "No Categories" in grey italics and an **Edit** button, then **Notes:** (scrolling field). With **Due = By Date:**, two lines are added: the date ("Tue 17 Nov 2026 17:00", right-aligned, separate focusable fields) and, after Reminder, **Recurrence** ("None"). § 33 (Title, Due Date as `yyyy-mm-dd` text, Priority, Status, Notes) is contradicted: no free text, everything goes through lists and pickers.
+- **Date picker** (sim-275, click on the date): dark popup, a vertical blue wheel for the focused field (`16` / `17` / `18`, the central value raised), three grey fields in a row "Tue", "17", "Nov", "2026", **OK** and **Cancel** buttons side by side. **Time picker** (sim-274): same popup, two fields "17" and ": 00" (minutes). In the top right corner of the screen, the mode indicator "123" or "alt".
+- **Full menu of the list** (sim-281 to sim-283, focus on Open): Switch Application, Switch Input Language/Method, Forward As, New, **Open** (focus), Delete, Delete Completed, Mark Completed, Mark in Progress, Hide Completed, separator, Filter, separator, Task Reminders, Options, Help, Close. § 33 (Mark Completed focused, Add Task, Show Completed) is contradicted; **Mark in Progress**, **Delete Completed**, **Task Reminders**, **Filter** and **Options** are added.
+- **Not captured**: Tasks Options (an attempt opened the Home Screen Preferences instead, § 34.6) and so any "Sort By"; the short menu of a task; the full menu of a task form beyond sim-269 (Switch Application, Switch Input Language/Method, Show Symbols, **Save** (focus), Categories, Help, Close, the list scrolls).
+### 34.4 Email (sim-289 to sim-297)
+The simulator has no account and **cannot add one**: Options > **Email Account Management** opens the error dialog "**Unable to open email set-up application. Contact your wireless service provider.**" (sim-296, title bar "Email Account Management", background `#DDDDDD`, OK button). Neither Email Setup nor the account creation screen can therefore be captured here; they remain without a screen source (guide 7.1 gives the steps).
+- **Empty Messages** (sim-289, sim-290). No title bar: at the top the two-line status bar (battery, "Simulated Network", "edge", antenna, then the time on the left and Wi-Fi on the right), then "* No Messages *" in blue focus. Menu: Switch Application, **Compose Email** (focus), Compose Other ▸, separator, Search, Search by ▸, Display Style ▸, View Folder, View Saved Messages, separator, Message Notifiers, Options, Help, Close.
+- **Compose Email** (sim-291 to sim-293). **No title bar**; grey background `#DDDDDD`; top right the send button (envelope with speed lines, x 548 to 636, y 4 to 56); white group "To:" / "Cc:" (cursor on To:), group "**Subject:**" in bold, then the body. Menu (focus on Save Draft): Switch Input Language/Method, Show Symbols, Edit AutoText, **Save Draft**, Flag for Follow Up, Attach ▸, Add Bcc:, Options, Help, Close.
+- **Messages Options** (sim-294, sim-295): title bar "Messages Options", Search field, two-line list (black title, grey subtitle, icon on the left, 71 px rows): Message Display and Actions ("Hide and change messages display"), Inbox Management ("Select types of messages to show"), Email Preferences ("Change email account settings"), Email Filters ("Apply filters to incoming email"), Email Reconciliation ("Set email integration and deletion"), Email Account Management ("Set up Internet email accounts"), Recent Contact Management ("Manage recent contact records"), Spell Check ("Change spell checker options"), Text Messaging ("Set text messaging preferences"), Emergency Alert Messages ("Control incoming alert messages"). **Email Preferences** (sim-297) is empty without an account: a single "Delivery" group, no field.
+### 34.5 Typing (sim-298 to sim-305)
+- **Sym** (sim-303 to sim-305). **It is not a list but a grid**: dark popup `#212429` with rounded corners, title "**Page 1 / 2**" at the top right, four rows of ten bold glyphs, **each laid over the keyboard keys** (the keys QWERTYUIOP, ASDFGHJKL, ZXCVBNM and SYM in thin outline below the glyphs), one glyph focused (blue square). Page 1: `[ < { « ~ = ± " ^ %` / `] > } » \ ÷ ` " &` / `$ € ¥ £ • | ¤ ▸`; page 2: `# 1 2 3 ( ) _ - + @` / `* 4 5 6 / : ; ' "` / `7 8 9 ? ! , . ◂`. The solid arrow at the end of a row changes page. The earlier "(list, D)" choice for the keyboard is contradicted: it is the OS 7 grid.
+- **Unknown words** (Direct). Underlined with **black** dots when nothing is shown above them (sim-317: "Applemenu" in the body); the same dots turn **red**, with the text, while a popup enlarges the field (sim-316, popup of unestablished nature: it appeared after a keystroke followed by the Menu key). The bold title carries the same underline ("Taska", sim-270).
+- **Word Substitution** (sim-300 to sim-302, through the Options search "word"). List: title bar "Word Substitution", Search field, 57 px rows "`abotu (about)`" on the left and the mode ("**SmartCase**") on the right; the list scrolls (`abotu`, `accidant`, `acheive`, `acheived`, `acheiving`, `acn`, `adn`, … in alphabetical order). Menu: Switch Application, **New**, **Edit** (focus), Delete, Help, Close. Editing ("Word Substitution: edit"): "Replace:" and its field, "With:" and its field, "**Using:**" (list, SmartCase), "**Language:**" (English(United Kingdom)), on a white background, without groups. Clicking an entry opens the editor.
+- **Not redone**: Predictive (already covered by sim-91 to sim-98), the simulator froze at the end of the session.
+### 34.6 Home screen (sim-284 to sim-288)
+- **Home Screen Preferences** (home screen menu > Options, sim-284, sim-287). Title bar "Home Screen Preferences" (32 px). Groups: "**Launch by Typing**" (a full-width blue list button, "Universal Search"; list sim-286: Universal Search, **Application Shortcuts**), "**Wallpaper Settings**" (wallpaper thumbnail 150 x 113 on the left, Change Wallpaper and Reset Wallpaper buttons on the right), "**Downloads Folder**" (list "Home" with a folder icon), "**Home Screen Panels**" (Manage Panels button), "**Reset to Default Settings**" (red text "When you click the Reset Settings button, you can select from a list of preferences to reset to factory default settings. Any customisations you made will be lost.", then the button). Menu (sim-285): Switch Application, **Save** (focus), Close.
+- **Application Shortcuts** (sim-288): with this choice saved, **the M key on the home screen opens Messages** (no search field). With Universal Search, M opens the field.
+### 34.7 Status bar and profiles (sim-306 to sim-315)
+- **Profile list** (sim-306, click on the speaker, focus on the active profile, tick on the right): All Alerts Off, **Normal** (tick), Loud, Medium, Silent, Vibrate Only, Phone Calls Only (scrolling shows the rest), then the Change Sounds and Alerts button.
+- **Profile icon** in the indicator row (45 x 47 area at (0, 93), light grey speaker, blue tile `#0888E9` to `#0760C1` when focused): **Normal** grey with white waves (sim-315), **Loud** red waves, **Medium** orange (yellow) waves, **Silent** blue `zzz`, **Vibrate** green zigzag, **Phone Calls Only** green handset (sim-312), **All Alerts Off** **red** speaker with a red cross (sim-314). The images differ only in the waves: the speaker body stays the same.
+- **Not captured**: alarm set, Bluetooth (cannot be simulated: only Wi-Fi, mobile and NFC are in Manage Connections), headset, synchronisation. The call indicators (sim-18, sim-22) and network indicators are already surveyed. The status bar indicators therefore keep their "D" choices for these icons.
+### 34.8 Title bar of an Options page
+Measured on sim-263, sim-284, sim-299 (C): black band `#000000` of **32 px** (y 0 to 31), then two pixels of `#DDDDDD` and a `#C6C6C6` rule; the title in **white, not bold**, left-aligned at x 6, cap height 16 px (lines 6 to 21), i.e. a font of about 22 px (BBAlpha Sans, non-bold rendering); **no icon or indicator on the right** in Options pages (data applications such as MemoPad and Tasks put their status icons there). Below the band, `#DDDDDD` background and white groups 5 px from the edges, group title in bold grey (sim-263: "Actions"); focused line: full-width blue gradient, white text, checkbox on the right (sim-263, sim-299: "Enable:" with the box checked in a white square). The error dialog (sim-296): box `#212429` with rounded corners, exclamation mark in a frame on the left, white text on three lines, blue OK button as wide as the text. The Password screen (sim-299): group "General" with Enable, Change Password, Number of Password Attempts (10), Lock After (30 Min.), Prompt on Application Install, Allow Outgoing Calls While Locked, Lock Handheld Upon Holstering.
+### 34.9 What contradicts the D choices (summary)
+| Area | D choice contradicted | Finding (capture) |
+|---|---|---|
+| Calculator | title bar, 91 px display, six rows of four, focus on 7, menu with Memory Recall/Store/Add/Clear, ounces and millilitres | no bar, ten columns on four rows, memory on M keys, menu Switch Application / To Metric / From Metric / Help / Close, nine conversions `a -> b` (sim-249 to sim-253) |
+| MemoPad | sorted by modification date, two-line 71 px rows, note under "New Memo", Open/Delete/New menus, form with "Title:"/"Memo:" captions on grey, Delete in the form | alphabetical sort, single-line 57 px rows, "New Memo:" alone, menus of sim-256 to sim-265, white background, save button, Options Confirm Delete / Number of Entries (sim-254 to sim-266) |
+| Tasks | open first by due date, completed at the end, second due-date line, priority Low/Normal/High, due date as text, menu with Mark Completed first | alphabetical sort, priority and status on the left, no due date in the list, High/Normal/Low, Due = None / By Date: with pickers, menu with Open first plus Mark in Progress, Delete Completed, Task Reminders (sim-267 to sim-283) |
+| Typing | Sym as a list (since corrected) | grid on two pages, glyphs laid over the keys (sim-303 to sim-305); Word Substitution: screen and menu surveyed (sim-300 to sim-302) |
+| Search | (consistent) | Application Shortcuts: M opens Messages (sim-288); Launch by Typing is set in Home Screen Preferences (sim-284 to sim-287) |
+| Status bar indicators | (covers other icons) | profile icons surveyed (sim-306 to sim-315); alarm, Bluetooth, headset and synchronisation not captured |
+| Options title bar | collapsed title bar `#F0F0F0`, title `#323232` (since corrected: `TitleBar(options)` and the Settings RRO) | 32 px black band, white non-bold title (sim-263, sim-284, sim-299) |
+
+## 36. Transitions filmed on the simulator
+
+**Source** (C): nine videos of the 9900 simulator on 7.1 (`assets-private/reference-bbos7/videos/vid-01` to `vid-09`, `SOURCES.md`), frames and durations read frame by frame, and the captures sim-318 to sim-339. The window is filmed alone (`screencapture -v -l`), then cropped to the 640x480 screen. **Actual frame rate of the file**: one frame at each change of the screen, with 17 ms gaps within a burst (60 frames per second at most) and no frame at rest (92 frames for 3 s of an almost still screen, 115 for 42 s of the switcher take). **The simulator itself only redraws its screen about every 42 ms (24 Hz)**: the measured gaps between two changing frames are 41, 42, 42, 34 ms (switcher), 42, 41, 50 ms (banner). Any duration therefore reads to within 42 ms, and a 125 ms fade has only three or four frames.
+
+**Opacity measurement**: for each frame of the gesture, the share of the destination image in the measured frame (projection onto the segment between the frame before and the frame after, exact for a fade between two images). The window's scale is read by comparing the position of elements from one frame to the next: **none of the filmed gestures changes scale** (the switcher icons stay in the same place and at the same size throughout the fade; the Text Messages thread and the banner panel keep their 640 width). The centre of a zoom is therefore irrelevant.
+
+### What is seen, gesture by gesture (three takes each unless noted)
+
+| Gesture (video) | From, to | Intermediate frames | Duration | Opacity of the destination, frame by frame |
+|---|---|---|---|---|
+| Open an app from the home screen, click (vid-01, vid-02) | home screen, Clock | **none**, 3 takes out of 3: the frame before and the frame after follow each other | 0 ms; the icon cell changes state (frames at 0.1 to 0.3 difference) for about 225 ms before the cut, this is the app's delay | 0 then 1 |
+| Escape or End from the app (vid-01, vid-02) | Clock, home screen | **none**, 6 takes out of 6 | 0 ms | 0 then 1 |
+| Menu held: the switcher appears (vid-03, vid-04) | home screen, switcher | **none** from the home screen, 3 takes out of 3; from an app, one frame at 0.81 to 0.90 then 1 (2 takes out of 3) | 0 to 42 ms | 0 then 1; from an app 0.85 then 1 |
+| Escape in the switcher (vid-03) | switcher, home screen | **3 to 4** | 117 ms, 159 ms, 116 ms up to the frame at 0.99 (**120 to 160 ms**) | 0.29; 0.72; 0.90; 0.99; 1 (take 1), 0.29; 0.72; 0.90; 1 (takes 2 and 3): fade only, slowing at the end |
+| Choose an app in the switcher, click (vid-04) | switcher, app | 3 to 4 | about 130 ms | 0.28; 0.53; 0.81; 1 (the switcher fades out above the app already underneath) |
+| Choose Home Screen in the switcher (vid-04) | switcher, home screen | 4 to 5 | 133 ms up to 0.92, 183 ms up to 1 | 0.38; 0.71; 0.92; 1 (take 1), 0.38; 0.71; 0.90; 0.99; 1 (take 2) |
+| Click on the banner: Manage Connections appears (vid-05) | home screen, panel | **none**, 2 takes out of 2 (the third is missing) | 0 ms | 0 then 1 |
+| Escape in Manage Connections (vid-05) | panel, home screen | 3 to 4 frames where **the panel slides up** (slide upwards, the status bar stays) | take 1: 175 ms (6.058 s to 6.233 s); take 2: 200 ms (18.100 s to 18.300 s) | not a fade: the bottom edge of the panel goes from 419 px to 410, 279, 146, then it is gone (take 1, a step of 131 then 133 px per 50 ms frame), or 346, 214, 123 then gone (take 2), i.e. between 1.8 and 2.6 px per ms, **roughly constant speed** |
+| Open a thread from the Text Messages list, click (vid-06, take 1) | list, thread | 2 frames of a fade towards a grey screen (the thread is loading), then the content 250 ms later | 83 ms of fade | 0.61; 0.86; (grey screen); 1 |
+| Escape from the thread (vid-06, take 1) | thread, list | 1 to 2 | 83 ms | 0.64; 0.99; 1 |
+| Short menu from a click on the date header of the list (vid-06, 2 takes) | list, six-icon panel | **2 to 3**: the panel already appears at 65 % | 85 to 100 ms | 0.67; 0.98; 1, and 0.66; 0.99; 1 |
+| The same short menu closes (Escape) (vid-06, 2 takes) | panel, list | 3 to 4 | 158 ms and 225 ms | 0.03; 0.17; 0.50; 1, and 0.04; 0.23; 0.67; 1: fade that accelerates (slow start) |
+| Full menu, short Menu press then Escape (vid-07) | list, menu | **none**, 3 takes out of 3, on opening as on closing | 0 ms | 0 then 1 |
+| Options, click on Sounds and Ringtones, then Escape (vid-08) | list, sub-screen | opening: 0 or 2 frames at 0.84 to 0.88 then 0.98; closing: 0 or 1 frame at 0.62 to 0.71 | at most 85 ms | no readable curve: **a fade of one or two frames at most, or nothing** (the option's cell goes to its "pressed" state 140 ms before) |
+| Delete dialog, Backspace then Escape (vid-09) | list, "Delete conversation?" | **none**, 3 takes out of 3, on opening as on closing | 0 ms | 0 then 1 |
+| Confirmation message (toast) | | not obtained: no screen of this kind appeared in the gestures tried, and the volume keys the controller accepts could not be named (`VOLUME_UP` and `VOLUME_DOWN` are ignored) | | |
+
+Missing takes: the third of the banner, the second and third of opening a thread (the next click landed on the date header and opened the short menu), the Options takes where the file only covers one round trip. The simulator crashed twice during the session; another process seems to have driven it at the same time.
+
+### Against the theme's table
+
+The theme's transition table (§ 24: zoom in of 75 % when leaving the home screen, zoom out of 75 % when returning to it, zoom of 110 % for the switcher) **is not played by the simulator as it runs**: opening and returning from an app are hard cuts (12 changes out of 12, without a single frame at an intermediate opacity), and the switcher opens at once and closes with a 120 to 160 ms fade without any change of scale. Whether the real device does the same cannot be stated. **The simulator's View > Graphics Acceleration menu is set to Off** (the default setting, with Low, Medium, High and Max Quality to choose from) and the simulator has no transition setting; with High Quality the screen does redraw (SaveLcdSnapshot renders the home screen) but the window stays a grey-black gradient, which both `screencapture -l` and `ffmpeg -f avfoundation` film without the content, and each capture takes 4.5 s to come out; the change restarts the simulated device and the simulator then stayed unresponsive. **The accelerated path could therefore not be filmed**, and it is the path of a real 9900, which may very well play the table's zooms. Open question: keep the measured cuts, or keep the table's zoom (D) until there is a video of a real device (or a way to film the accelerated path).
+
+### Values to set if the measurement is followed (D, to carry into the code)
+
+`Transitions` of `apps/launcher/src/main/kotlin/dev/bold7/launcher/quickstep/Zoom.kt`:
+- `OPEN` (from the home screen to an app) and `CLOSE` (back to the home screen): **no zoom, no fade, duration 0** (cut). What the video measures is a cut; the 75 % zoom remains the table's value (A) if it is preferred over the measurement. `HOME_SCALE` is no longer used in the first case.
+- The switcher, if it has its own transition: opening as a cut; closing (Escape, choosing an app, Home Screen) as a **150 ms fade only** (measured: 116 to 190 ms), with a curve that slows at the end (opacity 0.3; 0.7; 0.9; 1 in 42 ms steps, so `QuadraticOut` fits), **without any change of scale**, centre irrelevant.
+
+`anim` files of `system/overlays/android/src/main/res/anim`:
+- `activity_open_*`, `activity_close_*`, `task_open_*`, `task_close_*`, `task_fragment_*`, `wallpaper_*`, `translucent_*` (an app that opens another, one more screen within the app, Options and its sub-screen): **no animation** for the app and for the Options dialogs (the measurement gives zero frames, or at most a 42 ms fade at 0.6 to 0.9 opacity that can be ignored).
+- `dialog_enter`, `dialog_exit`: **no animation** (9 takes out of 9 as cuts, opening and closing).
+- `options_panel_enter`, `options_panel_exit`, `submenu_enter`, `submenu_exit` (full menu): **no animation** (6 changes out of 6 as cuts).
+- `popup_enter_material` and `popup_exit_material` (the six-icon short menu, the context menu): entry as a **90 ms fade** (starts at 65 % opacity), exit as a **190 ms fade** (160 to 225 measured) that starts slowly (opacity 0.03; 0.17; 0.50; 1 of the fade-out), without any change of scale.
+- A panel that closes upwards (Manage Connections, the notification list if it relies on it): **190 ms upward slide at roughly constant speed** (175 to 200 measured), opening as a cut. This slide is the only filmed movement.
+- `toast_enter`, `toast_exit`, `tooltip_*`: no measurement; left as "no animation" (D).
+
+### What Bold7 sets
+
+Home screen zoom kept (theme table A and UI guidelines 7.1 p. 40 B: "zoom in from the center of the screen", "110 percent"; the video without graphics acceleration does not settle it). Set from the video: switcher closed with a 150 ms fade (guidelines: 150 ms fade, B; 116 to 190 measured, C), short menu with a 90 ms fade on opening (starting at 65 %) and 190 ms on closing, 83 ms fade on opening and closing an activity within an app (RRO of `android`), Manage Connections sliding up in 190 ms at constant speed; full menu and dialogs as cuts.
+
+### Other captures of the same recording
+
+Tasks (sim-318 to sim-322): the short menu of a task opens with a click held for 2 s (a single click opens the form) and gives **Delete, Mark in Progress, Switch Application, Show Home Screen, Open (focused), Full Menu**; the short menu of an app icon on the home screen (click held) gives Mark as Favourite, Move, Move to Folder, Hide Icon, Launch (focused), Full Menu; that of the Text Messages list (click on the date header) To Bottom, Search, Mark Prior Read, Switch Application, Compose (focused), Full Menu. The form of an existing task (sim-319) is titled **Edit Task** (Title in bold with the save tick, Status, Priority, Due, the date and time, Time Zone, Reminder, Recurrence). **Tasks Options** (sim-320): group Views: Sort By (blue button focused, Subject), group Actions: Snooze (None), Confirm Delete (checked), then a line "Number of Entries: 5"; Sort By opens Subject, Priority, Due Date, Status (sim-321); Snooze opens None, 1 Min., 5 Min., 10 Min., 15 Min., 30 Min. (sim-322, the list opens upwards, None at the bottom).
+
+Clock (sim-323 to sim-339): **Bedside Mode** (sim-323) keeps the same face, but whites are at 204 out of 255 (80 %, measured on the image maximum, 255 without the mode) and the menu offers "Exit Bedside Mode" (sim-324). **Timer**: black screen without banner, dial with graduations every 5, grey timer hand and red seconds hand while running, "00:05:00" in white in a pill, two buttons (start in blue, focused, and reset); menu Switch Application, Start, Set Timer, Clock, Stopwatch, Options, Help… when stopped (sim-326), Switch Application, Stop, Reset, Set Timer, Clock, Stopwatch, Options while running (sim-328); Set Timer: box with an hour, a minute and a second (blue column focused, OK, Cancel) (sim-325 to sim-329). **Clock Face**: Analogue, Digital, Flip Clock, LCD Digital (sim-330); Digital: "05:11" in bold white on black, the date "Mon 16 Nov" in grey at the top right; Flip Clock: two dark plates "05" and "13" split by a line; LCD Digital: segment digits with the unlit segments in very dark grey (sim-331 to sim-333). **Set Alarm** (sim-334): box with the time (08:00 by default) and a column ON, WEEKDAYS, OFF which holds the focus at opening; one step left gives the minutes column (one notch per vertical trackpad step), another the hours column; an alarm set to ON appears in the face's bar in red with the time (sim-335) and in the home screen status bar as a small white alarm clock icon to the right of the battery, x 62 to 84 and y 4 to 24 (sim-338). **The ringing alarm**: box "Daily Alarm" and the time, the alarm clock icon on the left, Snooze (5 min.) focused, Dismiss; on the locked screen (sim-336), the box is the same as on the home screen (sim-339). After Snooze: no more box, and **the same alarm clock icon stays in the bar** (sim-337: same image as sim-336, no distinct snoozed-alarm icon). The simulator stopped at the time of a first alarm (05:24), but the link cannot be confirmed; after a restart, the alarm rang.
+
+**What could not be done**: Phone > Status and Place Call under the lock (the simulator stayed locked and unresponsive after a restart, the captures did not succeed); **"Enter SIM PIN"**: the Simulate menu offers no PIN-locked SIM (Headset Connected, In Holster, Multitouch Mode, Camera Options, Tilt, Manipulate Device, Battery Properties, Change SD Card, Set IT Policy, Cell Broadcast Message, Network Properties (two profiles, EDGE and WLAN), Provision Supplementary Services, Save SIM Data With Session, Incoming Voice Call, GPS Location, Text to Speech, NFC Options), and no way to obtain it was found; **Bluetooth** in the status bar: the Manage Connections panel has no Bluetooth line (Mobile Network, Wi-Fi, Near Field Communication, All Off) and none could be enabled; **alarm and Bluetooth** together: only the alarm clock is seen (sim-338).
+
+## 37. Pictures
+
+Sources: simulator 7.1, **sim-344 to sim-374** (C, `assets-private/reference-bbos7/SOURCES.md`); ps 33262 and 33263 (7.0, C, reduced: short menu and full menu of the viewer on a user photo); guide 7.1 p. 153 to 155 (B: Set As Wallpaper, zoom, panning, Rotate, View Slide Show) and p. 55 (shortcuts I, O, 2, 4, 6, 8, L); theme `_b` and `_bs1` (A: `noart_picture_icon`, `noart_picture_icon_thumbnail`, `net_rim_bb_camera.Camera`, `sm_play`, `sm_set_as_wallpaper`, `sm_set_as_caller_id`, `sm_send_or_share_image`, `sm_delete`, `sm_zoom_in`, `sm_rotate`). The simulator froze or stopped three times after opening the viewer: the viewer on a user photo, the Delete question, Properties and the options have no capture.
+
+### 37.1 The categories (sim-344, sim-366)
+
+- Black background, title bar "Pictures" (the `core/ui` one, 35 px).
+- At the top **Explore Picture Apps** (App World) then **Camera** (the camera icon, 52x40 at x 16, "Camera" at x 88, vertically centred), with no rule between them; below Camera a **white rule** of 1 px then 1 px of black.
+- Then the categories: **Camera Pictures**, **Picture Library**, then the other folders (on the simulator, Wallpaper). **86 px** rows, a `#141414` rule on their last line. On the left the first image of the category as an 86x86 square cropped at the centre (Wallpaper), or the theme's no-picture image (`noart_picture_icon`, 64 px, vertically centred). The name in white 27 px at x 99 on a baseline at 38, the count "0 Items", "14 Items", "1 Item" in `#ADAAAD` 21 px on 67 (white when focused). Focus: the lists' blue band across the whole row. At start the focus is on Camera Pictures.
+- A photo taken counts in **Camera Pictures** and **not in Picture Library** (sim-366: "1 Item" and "0 Items").
+- Full menu (sim-346, sim-347): Switch Application, Switch Input Language/Method | **Open** (focus), View Slide Show | View by Date, Add Folder, Import Pictures | Search, Media Home | Options, Help, Close. Short menu (sim-348): View Slide Show, View by Date, Media Home, Search, Add Folder (focus), Full Menu.
+
+**On the Q25 (D)**: Explore Picture Apps is absent (App World does not exist; the row would lead to the Play Store); Camera opens the Q25's camera; Camera Pictures takes `DCIM/Camera` and `Pictures/BenOSCamera` (the folder where the Q25's camera saves, as observed on the device); Picture Library everything else; then one MediaStore folder per row, by name. All categories are sorted by name, like Wallpaper (sim-345: Arch.png first).
+
+### 37.2 The grid (sim-345, sim-367)
+
+- Title: the category name. Camera Pictures keeps the **Camera** row at the top, its white rule below (sim-367); the other categories do not have it.
+- **4 columns of 160 px** over 640; each thumbnail is the image cropped at the centre into a **156 px** square, **2 px inside** its cell, on black. When focused, the whole cell in `#257CFF`, a 1 px `#00009C` line 4 px from the edge, the image 5 px from the edge (150 px).
+- **Bottom bar** of 32 px, black: the file name in white 27 px at x 2, its date in `#7D7D7D` right-aligned 2 px from the edge, day/month/year without leading zeros ("1/3/2006", or the date a new photo was taken), baselines 26 px from the top of the bar.
+- A small blue arrow at the bottom right when the grid continues (sim-345): not drawn (D).
+- Full menu of a camera photo (sim-368 to sim-371): Switch Application | Add to Home Screen | Switch Input Language/Method | Cut, Copy | Move to Folder, **Open** (focus), Rename, Properties, Delete, Set As Wallpaper, Assign To Contact, Send ►, View ► | Search, Media Home | Options, Help, Close. On a protected Wallpaper image (sim-349, sim-350): Select, Open, Properties, **View Slide Show**, Set As Wallpaper, View ► (no Delete, no Assign To Contact, no Send). Send ►: Email, Tag on the simulator (sim-372), which has no texts; Text Message in the list of ps 33263 (7.0). View ►: ✓ Thumbnails, List (sim-351).
+- Short menu (sim-373): Assign To Contact, Set As Wallpaper, Add to Home Screen, Delete, **Send...** (focus), Rename, Select, Copy, Full Menu; on Wallpaper (sim-352): List, Add to Home Screen, Properties, Search, Set As Wallpaper (focus), Media Home, View Slide Show, Switch Application, Full Menu.
+
+**On the square screen (D)**: 4 columns kept, each 180 px wide (720 / 4): no thumbnail smaller than on the 9900, and more rows. The focus insets (2, 4, 5 px) stay in pixels. The trackpad arrows move the focus by one cell, left and right wrap from one row to the next, down stops on the last image, Camera is reached from the top or the left of the first image (D).
+
+### 37.3 The viewer (sim-353 to sim-364)
+
+- Full screen black, no bar (sim-353); the whole image, never enlarged beyond its size (D for an image smaller than the screen).
+- **Zoom**: each trackpad click zooms by **×1.18** around the centre of the screen (sim-358, sim-359: 1.18 matches at 0.022 RMSE, 1.17 and 1.19 do not), **six times at most** (sim-362: the maximum zoom matches 1.18⁶ = 2.70 at 0.017 RMSE; further clicks change nothing). Escape zooms out one step at a time, and from a whole image closes the viewer (sim-357 to sim-364).
+- **Panning**: when zoomed, a trackpad step moves the image by **64 px** (sim-360, sim-361: 64 matches at 0.0008); when not zoomed, left and right go to the previous or next image (sim-357).
+- **Name and position** (sim-364): back on the whole image, a 59 % black band of 80 px at the top, the category name and "2 of 14" in white 27 px centred, baselines at 34 and 66; absent from captures taken 3 s after a next image: it fades out (duration by eye, 2 s).
+- **Zoom frame** (sim-363): when zoomed, at the bottom right 16 px from the edges, a 128x96 frame that shows the whole image darkened and the part on screen lighter, with a grey rule; absent 5 s later (sim-362): it also fades out (duration by eye, 2 s; its greys by eye).
+- Full menu (sim-354, sim-355, protected image): Switch Application, Add to Home Screen | Properties, View Slide Show, Set As Wallpaper | Rotate, **Zoom** (focus) | Media Home | Options, Help, Close. ps 33263 (7.0, user photo): Assign To Contact, Send ►, Rotate, Zoom | Media Home | Options, Help.
+- Short menu (sim-356): Set As Wallpaper, Add to Home Screen, Properties, View Slide Show, **Zoom** (focus), Media Home, View Slide Show, Switch Application, Full Menu; ps 33262 (7.0, photo): Assign To Contact, Set As Wallpaper, Delete, Send..., **Zoom** (focus), Add to Home Screen, Rename, Copy, Full Menu.
+- The guide (p. 153, M) shows, for touch, a toolbar at the bottom (Send, Rotate, Play slideshow, previous, next) and a long press for the menu; the trackpad does not show it (sim-353 to sim-364): Bold7 does not draw it (D), a fast swipe goes from one image to the next, a long press opens the short menu.
+
+### 37.4 What Bold7 does and does not do yet
+
+Menus (pure, `Menus.kt`): those of the simulator, reduced to what Bold7 does, in their order; Assign To Contact (the 7.1 label, sim-370; "Set As Caller ID" is not a 9900 label) picks the contact through Select Contact of Contacts and makes it the photo of its raw contacts, cropped at the centre (D: OS 7 lets the user move a frame, guide p. 193); Send ► Text Message opens a new Messages text with the image attached; Delete asks "Delete <name>?", Cancel focused (as in MemoPad and Contacts, sim-199; the Pictures question has no capture, D), then deletes without Android's dialog. Rotate rotates the image on screen only (D, declared deviation: the guide p. 13 says a rotation is saved in the file; Bold7 does not rewrite the user's photos without consent). View Slide Show cycles through the images every 3 s (D: Slide Show Interval has no known value), Escape closes it (guide p. 154, B). Labels "Send" in the full menu and "Send..." in the short menu (C).
+
+**By eye**: the duration of the name band and of the zoom frame (2 s), the greys of the zoom frame, the tint of the band (59 % measured on three points).

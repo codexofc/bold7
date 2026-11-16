@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The chosen word, while pressed: on #0092CC, the whole word cell (sys.keyboard,
+     prediction-selected.png, flat #0092CC). Nothing at rest, as BBKB's own. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <color android:color="#FF0092CC" />
+    </item>
+</selector>

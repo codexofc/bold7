@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pictures of BBOS 7.1: an ordinary app over MediaStore's pictures,
+  out of the module, installed by tools/install.sh. It reads the pictures, deletes one when asked
+  (MANAGE_MEDIA's app-op, so that OS 7's question replaces Android's), sets the wallpaper and a
+  contact's picture; it keeps nothing but its options. Nothing exported but the launcher's activity.
+  Nothing is shown over the lock screen.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Switch Application of the menus, as every app of Bold7. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+    <!-- Set As Caller ID: Select Contact of Bold7's Contacts. -->
+    <permission
+        android:name="dev.bold7.permission.SELECT_CONTACT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SELECT_CONTACT" />
+    <!-- Send > Text Message: a new text of Bold7's Messages with the picture attached. -->
+    <permission
+        android:name="dev.bold7.permission.COMPOSE_TEXT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.COMPOSE_TEXT" />
+
+    <!-- Runtime, granted by tools/install.sh (grant_permissions). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Set As Caller ID writes the picture of the contact chosen (its raw contact's photo). -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <!-- Delete without Android's confirmation: an app-op allowed by tools/install.sh (allow_pictures). -->
+    <uses-permission android:name="android.permission.MANAGE_MEDIA" />
+    <!-- Set As Wallpaper (normal). -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <!-- Package visibility (Android 11+): the Camera row and Send's Messages. -->
+    <queries>
+        <package android:name="dev.bold7.messages" />
+        <package android:name="dev.bold7.contacts" />
+        <intent>
+            <action android:name="android.media.action.STILL_IMAGE_CAMERA" />
+        </intent>
+    </queries>
+
+    <!-- No backup: it shows pictures (it stores none). -->
+    <application
+        android:name=".PicturesApp"
+        android:allowBackup="false"
+        android:label="@string/app_name">
+
+        <!-- The home's Pictures icon. Its rows=N extra opens a folder of N made-up pictures, nothing read. -->
+        <activity
+            android:name=".PicturesActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The picture in full, opened from the grid only. -->
+        <activity
+            android:name=".ViewerActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+    </application>
+</manifest>

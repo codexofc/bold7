@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A group's title strip, OS 7's grey page between the white boxes (sim-263, BBOS7-VISUEL
+     §27 and §34.8): no 16 dp gap above, a grey face, tighter padding, the title in bold 23 px grey.
+     Same ids as MtkSettings' own (apktool); literals and framework references only (see
+     settingslib_preference.xml). The layout-night one is the dark theme's. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="center_vertical"
+    android:background="#FF43454A"
+    android:paddingLeft="?android:listPreferredItemPaddingLeft"
+    android:paddingRight="?android:listPreferredItemPaddingRight"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:paddingStart="?android:listPreferredItemPaddingStart"
+    android:paddingEnd="?android:listPreferredItemPaddingEnd">
+    <RelativeLayout android:paddingTop="8px" android:paddingBottom="8px" android:layout_width="0.0dp" android:layout_height="wrap_content" android:layout_weight="1.0">
+        <TextView android:textSize="23px" android:textStyle="bold" android:textColor="#FFAFB1B4" android:layout_gravity="start" android:id="@android:id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAlignment="viewStart" />
+        <TextView android:textAppearance="?android:textAppearanceListItemSecondary" android:textSize="23px" android:textColor="#FFAFB1B4" android:ellipsize="end" android:layout_gravity="start" android:id="@android:id/summary" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="10" android:singleLine="true" android:layout_below="@android:id/title" android:layout_alignLeft="@android:id/title" android:textAlignment="viewStart" android:layout_alignStart="@android:id/title" />
+    </RelativeLayout>
+</LinearLayout>

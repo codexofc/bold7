@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selector of the framework's drop-down lists (values/widgets.xml), which the menus use: the row
+     under the trackpad focus, or under the finger, in the full menu's focus band, a linear
+     gradient #088FF0 to #1666DC from top to bottom without sheen (sim-04, sim-44, C;
+     core/design Focus.RowTop, RowBottom). Nothing in any other state. The band is written inline,
+     no other resource of the overlay named. A resource of the overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <gradient android:angle="270" android:startColor="#ff088ff0" android:endColor="#ff1666dc" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape>
+            <gradient android:angle="270" android:startColor="#ff088ff0" android:endColor="#ff1666dc" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <shape>
+            <gradient android:angle="270" android:startColor="#ff088ff0" android:endColor="#ff1666dc" />
+        </shape>
+    </item>
+</selector>

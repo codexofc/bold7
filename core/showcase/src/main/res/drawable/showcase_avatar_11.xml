@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aisha Khan: a made-up person of the showcase, drawn for Bold7 (Apache 2.0). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96">
+    <path android:pathData="M0,0 H96 V96 H0 Z" android:fillColor="#F4E9D2" />
+    <path android:pathData="M46,14 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0 Z" android:fillColor="#FFFFFF" android:fillAlpha="0.18" />
+    <path android:pathData="M28,44 C27,20 38,15 48,15 C58,15 69,20 68,44 C69,56 64,65 58,69 L72,73 C83,77 90,85 90,96 L6,96 C6,85 13,77 24,73 L38,69 C32,65 27,56 28,44 Z" android:fillColor="#2F7F86" />
+    <path android:pathData="M34.5,43 a13.5,16.5 0 1,0 27.0,0 a13.5,16.5 0 1,0 -27.0,0 Z" android:fillColor="#8E5C3C" />
+    <path android:pathData="M33.5,39 C34,27 41,23.5 48,23.5 C55,23.5 62,27 62.5,39 C60,31.5 55,29 48,29 C41,29 36,31.5 33.5,39 Z" android:fillColor="#276B71" />
+    <path android:pathData="M38.5,38.5 Q42,36.9 45,38.5" android:strokeColor="#34251E" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M51,38.5 Q54,36.9 57.5,38.5" android:strokeColor="#34251E" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M40.2,43.5 a1.8,2 0 1,0 3.6,0 a1.8,2 0 1,0 -3.6,0 Z" android:fillColor="#2A2423" />
+    <path android:pathData="M52.2,43.5 a1.8,2 0 1,0 3.6,0 a1.8,2 0 1,0 -3.6,0 Z" android:fillColor="#2A2423" />
+    <path android:pathData="M43.5,51.5 Q48,55.0 52.5,51.5" android:strokeColor="#583925" android:strokeWidth="1.6" android:strokeLineCap="round" />
+</vector>

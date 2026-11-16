@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 101 px, the Classic's prediction bar (sys.keyboard, pkb 720x720 qwerty: height="101"). BBKB
+     sets the strip height again for sw411dp, which the Q25 is (554 dp): an overlay value wins only
+     in a configuration as good as the target's (see system/overlays/systemui, values-sw360dp). -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingDefaultResource">
+    <dimen name="config_suggestions_strip_height">101px</dimen>
+</resources>

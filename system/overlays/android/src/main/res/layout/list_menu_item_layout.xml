@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The row of the framework's list menus, what ListMenuPresenter inflates for the
+     context menu shown as a dialog (a long press without coordinates, the trackpad's or the
+     keyboard's: MenuDialogHelper, in the dialog box) and for the options panel
+     of the Menu key. The same row as layout/popup_menu_item_layout.xml (OS 7's full menu, 57 px,
+     BBAlpha Sans 27 px #E1E3E5, baseline 37 px, 6 px inside the box; BBOS7-VISUEL §4;
+     sim-04, sim-44, C), where Android's was 48 dp high with a 16 sp label. The options panel
+     keeps its own: ListMenuItemView applies the theme's itemTextAppearance over the label
+     (values/widgets.xml, MenuText.Bold7: white under the focus), which this layout's colour
+     only precedes. In the dialog the row stays #E1E3E5 under the focus (D: a layout cannot name
+     the overlay's state list), and the focus itself is the dialog list's, Android's (D: the
+     dialogs' lists are drawn by their own layouts). A copy of the Q25's own layout, every id and view
+     type kept. Only framework references. -->
+<com.android.internal.view.menu.ListMenuItemView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@*android:id/group_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="1px"
+        android:layout_marginBottom="1px"
+        android:background="#ff43454a" />
+
+    <LinearLayout
+        android:id="@android:id/content"
+        android:layout_width="match_parent"
+        android:layout_height="57px"
+        android:paddingEnd="6px"
+        android:duplicateParentState="true">
+
+        <RelativeLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="top"
+            android:layout_marginStart="6px"
+            android:duplicateParentState="true">
+
+            <TextView
+                android:id="@android:id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentStart="true"
+                android:textAlignment="viewStart"
+                android:singleLine="true"
+                android:duplicateParentState="true"
+                android:ellipsize="marquee"
+                android:fadingEdge="horizontal"
+                android:firstBaselineToTopHeight="37px"
+                android:textSize="27px"
+                android:fontFamily="sans-serif"
+                android:textColor="#ffe1e3e5" />
+
+            <TextView
+                android:id="@*android:id/shortcut"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@android:id/title"
+                android:layout_alignParentStart="true"
+                android:textAlignment="viewStart"
+                android:singleLine="true"
+                android:duplicateParentState="true"
+                android:textSize="20px"
+                android:fontFamily="sans-serif"
+                android:textColor="#ffe1e3e5" />
+        </RelativeLayout>
+
+        <ImageView
+            android:id="@*android:id/submenuarrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="8dp"
+            android:scaleType="center"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.android.internal.view.menu.ListMenuItemView>

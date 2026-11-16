@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The labels of the Calendar, OS 7's English (docs/BBOS7-VISUEL.md §29). B: the 9900's 7.1 user
+     guide (pp. 58, 181 to 185); C: sim-220 to sim-248; D: deduced. -->
+<resources>
+    <string name="app_name">Calendar</string>
+
+    <!-- Menus (C: sim-221 to sim-223, sim-236, sim-240; B p. 183 for the answers) -->
+    <string name="act_new">New Appointment</string>
+    <string name="act_new_alarm">New Alarm</string>
+    <string name="act_new_task">New Task</string>
+    <string name="act_open">Open</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_accept">Accept</string>
+    <string name="act_tentative">Tentative</string>
+    <string name="act_decline">Decline</string>
+    <string name="act_today">Go to Today</string>
+    <string name="act_go_to_date">Go to Date</string>
+    <string name="act_view">View</string>
+    <string name="act_day">Day</string>
+    <string name="act_week">Week</string>
+    <string name="act_month">Month</string>
+    <string name="act_agenda">Agenda</string>
+    <string name="act_save">Save</string>
+    <string name="act_close">Close</string>
+
+    <!-- Views (C: sim-226, sim-244) -->
+    <string name="free_time">- Free Time -</string>
+    <!-- D -->
+    <string name="no_subject">(No Subject)</string>
+
+    <!-- The form (C: sim-228 to sim-230; D: Attendees, Read Only, Other) -->
+    <string name="subject">Subject:</string>
+    <string name="location">Location:</string>
+    <string name="group_time">Time</string>
+    <string name="all_day">All Day</string>
+    <string name="start">Start:</string>
+    <string name="end">End:</string>
+    <string name="duration">Duration:</string>
+    <string name="time_zone">Time Zone:</string>
+    <string name="reminder">Reminder:</string>
+    <string name="recurrence">Recurrence:</string>
+    <string name="group_attendees">Attendees</string>
+    <string name="group_notes">Notes</string>
+    <string name="organizer">Organizer: %1$s</string>
+    <string name="attendee_accepted">Accepted</string>
+    <string name="attendee_declined">Declined</string>
+    <string name="attendee_tentative">Tentative</string>
+    <string name="attendee_invited">No Response</string>
+
+    <!-- Dialogs (C: sim-246 "Delete appointment?", Delete, Cancel; sim-47 "Changes made!"; D: the
+         recurring question, the end before the start, the answers sent, the provider's refusal) -->
+    <string name="delete_question">Delete appointment?</string>
+    <string name="delete_recurring">Delete recurring appointment?</string>
+    <string name="delete_all">All Occurrences</string>
+    <string name="delete_one">This Occurrence</string>
+    <string name="cancel">Cancel</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="discard">Discard</string>
+    <string name="end_before_start">The end must not be before the start.</string>
+    <string name="answer_sent">Response sent.</string>
+    <string name="not_available">Application not available.</string>
+    <string name="refused">The calendar refused the change.</string>
+
+    <!-- The reminder box (C: sim-245) -->
+    <string name="open">Open</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="snooze">Snooze (%1$d min.)</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

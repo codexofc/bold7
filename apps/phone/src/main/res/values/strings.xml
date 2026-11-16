@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The labels of the Phone, OS 7's English (docs/BBOS7-VISUEL.md §26). B: the 9900's 7.1 user
+     guide (pp. 61-72); C: sim-18, sim-109, gsm 019, ps 33246; S: remembered, to check against a
+     capture; D: mine. -->
+<resources>
+    <string name="app_name">Phone</string>
+
+    <!-- The call screen (C) -->
+    <string name="incoming_call">Incoming Call</string>
+    <string name="status_calling">Calling</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_muted">Muted</string>
+    <string name="status_on_hold">On Hold</string>
+    <!-- D: the 9900 goes back home at once (sim-139) -->
+    <string name="status_disconnected">Disconnected</string>
+    <string name="my_number">My Number: %1$s</string>
+    <!-- A call without number (D) -->
+    <string name="unknown_number">Unknown Number</string>
+
+    <!-- The bottom bar (C: sim-18, sim-109, sim-136, sim-138, sim-139) -->
+    <string name="button_ringer_off">Ringer Off</string>
+    <string name="button_speaker">Speaker</string>
+    <string name="button_handset">Handset</string>
+    <string name="button_mute">Mute</string>
+    <string name="button_mute_off">Mute Off</string>
+    <string name="button_hold">Hold</string>
+    <string name="button_resume">Resume</string>
+
+    <!-- Menus (C: sim-130, sim-133 to sim-140) -->
+    <string name="act_answer">Answer</string>
+    <string name="act_ignore">Ignore</string>
+    <string name="act_turn_mute_off">Turn Mute Off</string>
+    <string name="act_add">Add Participant</string>
+    <string name="act_new_call">New Call</string>
+    <string name="act_speaker">Activate Speakerphone</string>
+    <string name="act_handset">Activate Handset</string>
+    <string name="act_home">Home Screen</string>
+    <!-- B, pp. 62-63, 71, 280; Bluetooth's is "Activate <device>", named generically, D -->
+    <string name="act_answer_hold">Answer - Hold Current</string>
+    <string name="act_answer_drop">Answer - Drop Current</string>
+    <string name="act_bluetooth">Activate Bluetooth</string>
+    <string name="act_swap">Swap</string>
+    <!-- D -->
+    <string name="act_end">End Call</string>
+    <string name="act_join">Join</string>
+    <string name="act_call">Call</string>
+    <string name="act_call_number">Call %1$s</string>
+
+    <!-- The Phone screen (C: ps 33246, sim-141, sim-144) -->
+    <string name="find_or_dial">Find Contact or Dial a Number</string>
+    <string name="no_contacts">* No Contacts *</string>
+    <!-- D -->
+    <string name="call_refused">Unable to make the call.</string>
+    <string name="channel_calls">Calls</string>
+
+    <!-- The missed calls' dialog (C: sim-19, sim-20, "You have 2 new missed calls.", View focused
+         over Close; sim-202, sim-203, the singular). -->
+    <plurals name="missed_calls">
+        <item quantity="one">You have %d new missed call.</item>
+        <item quantity="other">You have %d new missed calls.</item>
+    </plurals>
+    <string name="act_view">View</string>
+    <string name="act_close">Close</string>
+
+    <!-- A missed call opened from the list of notifications (C: sim-104, "Call 5551234?", Call
+         focused over Cancel, the question mark); from Messages too (D). -->
+    <string name="call_prompt">Call %1$s?</string>
+    <string name="act_cancel">Cancel</string>
+
+    <!-- The Phone screen's menu (C: sim-142, sim-143); Speed Dial List, Edit, Move, Delete and
+         "Speed Dial Numbers" B (guide 7.1 p. 65-66); Add Speed Dial C (Contacts' menu). -->
+    <string name="act_call_from_contacts">Call From Contacts</string>
+    <string name="act_call_voice_mail">Call Voice Mail</string>
+    <string name="act_add_pause">Add Pause</string>
+    <string name="act_add_wait">Add Wait</string>
+    <string name="act_ringtones">Phone Ringtones</string>
+    <string name="act_speed_dial_list">Speed Dial List</string>
+    <string name="act_add_speed_dial">Add Speed Dial</string>
+    <string name="speed_dial_title">Speed Dial Numbers</string>
+    <string name="act_edit">Edit</string>
+    <string name="act_move">Move</string>
+    <string name="act_delete">Delete</string>
+    <!-- D: the call screen's name of a voice mail call, the list's row of its key, the messages. -->
+    <string name="voice_mail">Voice Mail</string>
+    <string name="no_voice_mail">No voice mail number is set.</string>
+    <string name="no_contacts_app">Contacts is not available.</string>
+    <string name="no_options">Options is not available.</string>
+    <string name="assign_speed_dial">Assign speed dial key %1$s?</string>
+    <string name="button_yes">Yes</string>
+    <string name="button_no">No</string>
+    <string name="speed_key">%1$s  %2$s</string>
+    <!-- B: guide 7.1 p. 71 -->
+    <string name="act_split">Split Call</string>
+    <string name="act_drop">Drop Call</string>
+    <!-- Status (C: sim-143; B: guide 7.1 p. 76, Last Call, Total Calls, Clear Timer) -->
+    <string name="act_status">Status</string>
+    <string name="act_options">Options</string>
+    <string name="status_last_call">Last Call</string>
+    <string name="status_total_calls">Total Calls</string>
+    <string name="act_clear_timer">Clear Timer</string>
+    <!-- D: Add Wait's question during the call -->
+    <string name="send_digits">Send %1$s?</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

@@ -1,0 +1,810 @@
+{
+  "device": "Zinwa Q25, BenOS (Android 14), 60 Hz screen",
+  "method": "tools/perf.sh on the phone, never an emulator: 7 runs of Bold7 on 2026-11-16, 2 of stock Launcher3 on 2026-11-11 before Bold7 was installed, each side pooled",
+  "date": "2026-11-16",
+  "series": [
+    {
+      "id": "bold7",
+      "label": "Bold7",
+      "placeholder": false,
+      "date": "2026-11-16",
+      "runs": 7
+    },
+    {
+      "id": "launcher3",
+      "label": "Stock Launcher3",
+      "placeholder": false,
+      "date": "2026-11-11",
+      "runs": 2
+    }
+  ],
+  "metrics": [
+    {
+      "id": "swipe_late",
+      "label": "Late frames while swiping the home screen",
+      "unit": "%",
+      "better": "lower",
+      "budget": 1,
+      "values": {
+        "bold7": 0.03,
+        "launcher3": 2.38
+      }
+    },
+    {
+      "id": "swipe_p95",
+      "label": "Frame time while swiping, 95th percentile",
+      "unit": "ms",
+      "better": "lower",
+      "budget": 16.6,
+      "values": {
+        "bold7": 14,
+        "launcher3": 20
+      }
+    },
+    {
+      "id": "tap_start",
+      "label": "Tap on an icon until the app starts",
+      "unit": "ms",
+      "better": "lower",
+      "budget": 120,
+      "values": {
+        "bold7": 110,
+        "launcher3": 125
+      }
+    },
+    {
+      "id": "background_cpu",
+      "label": "Home screen CPU while you use another app, per 30 s",
+      "unit": "ms",
+      "better": "lower",
+      "budget": 20,
+      "values": {
+        "bold7": 1.4,
+        "launcher3": 0
+      }
+    },
+    {
+      "id": "home_pss",
+      "label": "Home screen memory",
+      "unit": "MB",
+      "better": "lower",
+      "budget": 120,
+      "values": {
+        "bold7": 55.2,
+        "launcher3": 115.6
+      }
+    }
+  ],
+  "home": {
+    "bold7": {
+      "launcher": "dev.bold7.launcher versionName=0.1",
+      "build": "BenOS-Valarie_stablePublicRel",
+      "runs": 7,
+      "scenarios": {
+        "swipes": {
+          "runs": 7,
+          "frames": 6981,
+          "late_pct": 0.03,
+          "p50": 10,
+          "p95": 14,
+          "p99": 17,
+          "histogram": {
+            "5": 32,
+            "6": 137,
+            "7": 291,
+            "8": 956,
+            "9": 1826,
+            "10": 2127,
+            "11": 875,
+            "12": 231,
+            "13": 152,
+            "14": 99,
+            "15": 69,
+            "16": 86,
+            "17": 35,
+            "18": 38,
+            "19": 4,
+            "20": 2,
+            "21": 2,
+            "22": 4,
+            "23": 1,
+            "26": 5,
+            "27": 2,
+            "28": 1,
+            "29": 4,
+            "30": 1,
+            "31": 1
+          }
+        },
+        "tray-raise": {
+          "runs": 7,
+          "frames": 2383,
+          "late_pct": 0.5,
+          "p50": 10,
+          "p95": 18,
+          "p99": 27,
+          "histogram": {
+            "5": 13,
+            "6": 52,
+            "7": 117,
+            "8": 281,
+            "9": 558,
+            "10": 544,
+            "11": 389,
+            "12": 63,
+            "13": 69,
+            "14": 37,
+            "15": 47,
+            "16": 47,
+            "17": 40,
+            "18": 27,
+            "19": 20,
+            "20": 6,
+            "21": 8,
+            "22": 13,
+            "23": 3,
+            "24": 5,
+            "25": 9,
+            "26": 7,
+            "27": 5,
+            "28": 2,
+            "29": 9,
+            "30": 6,
+            "31": 2,
+            "32": 1,
+            "34": 2,
+            "36": 1
+          }
+        },
+        "tray-scroll": {
+          "runs": 7,
+          "frames": 2764,
+          "late_pct": 0.04,
+          "p50": 10,
+          "p95": 15,
+          "p99": 18,
+          "histogram": {
+            "5": 20,
+            "6": 55,
+            "7": 121,
+            "8": 279,
+            "9": 755,
+            "10": 649,
+            "11": 408,
+            "12": 197,
+            "13": 69,
+            "14": 32,
+            "15": 41,
+            "16": 55,
+            "17": 44,
+            "18": 19,
+            "19": 11,
+            "20": 1,
+            "21": 1,
+            "22": 2,
+            "26": 2,
+            "27": 1,
+            "29": 1,
+            "30": 1
+          }
+        }
+      },
+      "idle_frames": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "tap": {
+        "target": "dev.bold7.clock/.ClockActivity",
+        "start_ms": [
+          101,
+          108,
+          105,
+          113,
+          110,
+          117,
+          120,
+          109,
+          110,
+          96,
+          112,
+          111,
+          107,
+          117,
+          120,
+          110,
+          119,
+          112,
+          115,
+          110,
+          110,
+          110,
+          104,
+          101,
+          115,
+          113,
+          106,
+          133,
+          101,
+          110,
+          100,
+          109,
+          117,
+          111,
+          115
+        ],
+        "first_frame_ms": [
+          354,
+          364,
+          385,
+          376,
+          386,
+          420,
+          373,
+          383,
+          365,
+          343,
+          396,
+          379,
+          380,
+          378,
+          405,
+          376,
+          388,
+          377,
+          385,
+          400,
+          383,
+          368,
+          362,
+          379,
+          386,
+          390,
+          363,
+          387,
+          348,
+          380,
+          385,
+          377,
+          376,
+          387,
+          388
+        ]
+      },
+      "background": {
+        "cpu_ms": [
+          0,
+          0,
+          0,
+          0,
+          10,
+          0,
+          0
+        ],
+        "context_switches": [
+          0,
+          0,
+          2,
+          51,
+          47,
+          0,
+          0
+        ]
+      },
+      "pss_kb": [
+        58038,
+        58281,
+        58372,
+        51995,
+        54583,
+        54802,
+        55234
+      ]
+    },
+    "launcher3": {
+      "launcher": "com.android.launcher3 versionName=14",
+      "build": "BenOS-Valarie_stablePublicRel",
+      "runs": 2,
+      "scenarios": {
+        "swipes": {
+          "runs": 2,
+          "frames": 1721,
+          "late_pct": 2.38,
+          "p50": 11,
+          "p95": 20,
+          "p99": 27,
+          "histogram": {
+            "5": 63,
+            "6": 80,
+            "7": 117,
+            "8": 147,
+            "9": 158,
+            "10": 205,
+            "11": 252,
+            "12": 182,
+            "13": 135,
+            "14": 118,
+            "15": 81,
+            "16": 43,
+            "17": 20,
+            "18": 21,
+            "19": 11,
+            "20": 7,
+            "21": 24,
+            "22": 23,
+            "23": 2,
+            "24": 5,
+            "25": 5,
+            "26": 3,
+            "27": 7,
+            "28": 4,
+            "29": 2,
+            "30": 2,
+            "32": 3,
+            "65": 1
+          }
+        }
+      },
+      "idle_frames": [
+        0,
+        0
+      ],
+      "tap": {
+        "target": "com.google.android.calendar/com.android.calendar.event.LaunchInfoActivity",
+        "start_ms": [
+          118,
+          120,
+          136,
+          156,
+          125,
+          123,
+          135,
+          125,
+          136,
+          124
+        ],
+        "first_frame_ms": [
+          927,
+          945,
+          905,
+          974,
+          978,
+          902,
+          937,
+          969,
+          957,
+          974
+        ]
+      },
+      "background": {
+        "cpu_ms": [
+          0,
+          0
+        ],
+        "context_switches": [
+          0,
+          0
+        ]
+      },
+      "pss_kb": [
+        107752,
+        123528
+      ]
+    }
+  },
+  "apps": {
+    "method": "am start -W as root, TotalTime (launch to first frame), after am force-stop, ten cold starts each; PSS from dumpsys meminfo 5 s after a cold start, median of three. Bold7 apps in their showcase mode.",
+    "series": [
+      {
+        "id": "bold7",
+        "label": "Bold7"
+      },
+      {
+        "id": "google",
+        "label": "Google's app"
+      }
+    ],
+    "items": [
+      {
+        "id": "phone",
+        "label": "Phone",
+        "packages": {
+          "bold7": "dev.bold7.phone",
+          "google": "com.google.android.dialer"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 305.5,
+            "min": 295,
+            "max": 361,
+            "n": 10
+          },
+          "google": {
+            "median": 603.5,
+            "min": 597,
+            "max": 630,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 41.0,
+          "google": 108.2
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              361,
+              310,
+              295,
+              321,
+              297,
+              299,
+              311,
+              323,
+              301,
+              296
+            ],
+            "pss_kb": [
+              41030,
+              41101,
+              40685
+            ]
+          },
+          "google": {
+            "start_ms": [
+              603,
+              598,
+              630,
+              597,
+              604,
+              613,
+              601,
+              610,
+              601,
+              616
+            ],
+            "pss_kb": [
+              108271,
+              107767,
+              108208
+            ]
+          }
+        }
+      },
+      {
+        "id": "contacts",
+        "label": "Contacts",
+        "packages": {
+          "bold7": "dev.bold7.contacts",
+          "google": "com.google.android.contacts"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 313.5,
+            "min": 294,
+            "max": 337,
+            "n": 10
+          },
+          "google": {
+            "median": 394.5,
+            "min": 372,
+            "max": 422,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 37.7,
+          "google": 101.8
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              337,
+              294,
+              335,
+              311,
+              323,
+              333,
+              313,
+              297,
+              308,
+              314
+            ],
+            "pss_kb": [
+              37534,
+              37666,
+              37723
+            ]
+          },
+          "google": {
+            "start_ms": [
+              393,
+              422,
+              421,
+              399,
+              378,
+              395,
+              394,
+              386,
+              402,
+              372
+            ],
+            "pss_kb": [
+              106449,
+              101558,
+              101787
+            ]
+          }
+        }
+      },
+      {
+        "id": "calculator",
+        "label": "Calculator",
+        "packages": {
+          "bold7": "dev.bold7.calculator",
+          "google": "com.google.android.calculator"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 300,
+            "min": 253,
+            "max": 318,
+            "n": 10
+          },
+          "google": {
+            "median": 584,
+            "min": 526,
+            "max": 628,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 33.5,
+          "google": 67.1
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              299,
+              285,
+              301,
+              307,
+              293,
+              318,
+              311,
+              302,
+              253,
+              271
+            ],
+            "pss_kb": [
+              33480,
+              33448,
+              33488
+            ]
+          },
+          "google": {
+            "start_ms": [
+              628,
+              584,
+              581,
+              597,
+              526,
+              595,
+              573,
+              583,
+              584,
+              587
+            ],
+            "pss_kb": [
+              66921,
+              67076,
+              67171
+            ]
+          }
+        }
+      },
+      {
+        "id": "clock",
+        "label": "Clock",
+        "packages": {
+          "bold7": "dev.bold7.clock",
+          "google": "com.google.android.deskclock"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 270,
+            "min": 255,
+            "max": 302,
+            "n": 10
+          },
+          "google": {
+            "median": 558,
+            "min": 541,
+            "max": 596,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 41.2,
+          "google": 78.9
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              259,
+              271,
+              269,
+              280,
+              284,
+              258,
+              255,
+              302,
+              261,
+              278
+            ],
+            "pss_kb": [
+              41190,
+              41179,
+              40716
+            ]
+          },
+          "google": {
+            "start_ms": [
+              596,
+              545,
+              548,
+              555,
+              541,
+              578,
+              568,
+              551,
+              561,
+              575
+            ],
+            "pss_kb": [
+              78731,
+              78895,
+              78868
+            ]
+          }
+        }
+      },
+      {
+        "id": "calendar",
+        "label": "Calendar",
+        "packages": {
+          "bold7": "dev.bold7.calendar",
+          "google": "com.google.android.calendar"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 297,
+            "min": 253,
+            "max": 333,
+            "n": 10
+          },
+          "google": {
+            "median": 838,
+            "min": 792,
+            "max": 958,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 38.3,
+          "google": 101.8
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              308,
+              253,
+              301,
+              315,
+              333,
+              276,
+              285,
+              293,
+              329,
+              274
+            ],
+            "pss_kb": [
+              38235,
+              38374,
+              38312
+            ]
+          },
+          "google": {
+            "start_ms": [
+              942,
+              953,
+              829,
+              958,
+              811,
+              822,
+              847,
+              885,
+              792,
+              798
+            ],
+            "pss_kb": [
+              101764,
+              102066,
+              101810
+            ]
+          }
+        }
+      },
+      {
+        "id": "messages",
+        "label": "Messages",
+        "packages": {
+          "bold7": "dev.bold7.messages",
+          "google": "com.google.android.apps.messaging"
+        },
+        "cold_start_ms": {
+          "bold7": {
+            "median": 292,
+            "min": 275,
+            "max": 304,
+            "n": 10
+          },
+          "google": {
+            "median": 739,
+            "min": 426,
+            "max": 791,
+            "n": 10
+          }
+        },
+        "pss_mb": {
+          "bold7": 44.3,
+          "google": 256.1
+        },
+        "raw": {
+          "bold7": {
+            "start_ms": [
+              293,
+              275,
+              279,
+              293,
+              294,
+              304,
+              291,
+              289,
+              288,
+              293
+            ],
+            "pss_kb": [
+              44044,
+              44281,
+              44304
+            ]
+          },
+          "google": {
+            "start_ms": [
+              746,
+              791,
+              782,
+              741,
+              732,
+              731,
+              713,
+              737,
+              426,
+              776
+            ],
+            "pss_kb": [
+              277605,
+              256076,
+              254737
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

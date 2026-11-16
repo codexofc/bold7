@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No battery percentage of Android's: the 9900 has none, in its banners as on
+         its lock screen (sim-43, sim-64). Read by SystemUI's BatteryMeterView and
+         KeyguardStatusBarView, which forces Android's percentage beside the battery while
+         charging when this is true; Settings hides its "Battery percentage" switch. -->
+    <bool name="config_battery_percentage_setting_available">false</bool>
+</resources>

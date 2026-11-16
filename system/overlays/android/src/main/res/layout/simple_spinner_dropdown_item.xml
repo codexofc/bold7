@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The row of the framework's spinner lists (ArrayAdapter.setDropDownViewResource): 57 px high,
+     BBAlpha Sans 27 px, the value centred in DeviceDefault apps (OS 7's open choice list,
+     BBOS7-VISUEL §8). A copy of the Q25's own layout: every id (text1), type
+     and attribute kept, but the height (the theme's dropdownListPreferredItemHeight) and the
+     size. -->
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    style="?android:attr/spinnerDropDownItemStyle"
+    android:layout_width="match_parent"
+    android:layout_height="57px"
+    android:textSize="27px"
+    android:singleLine="true"
+    android:ellipsize="marquee" />

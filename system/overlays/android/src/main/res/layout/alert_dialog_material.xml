@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The body of every framework AlertDialog (AlertDialog.Material's layout), system_server's error
+     dialogs among them, laid out as an OS 7 dialog (docs/BBOS7-VISUEL.md §12). A copy of the Q25's
+     own layout, every id, view type and attribute it had kept: AlertController finds parentPanel,
+     topPanel, contentPanel, scrollView, message, textSpacerNoTitle, textSpacerNoButtons,
+     customPanel, custom and buttonPanel, and AlertDialogLayout measures four of them by id.
+     Positions are counted from the box's inside: the window background (values/dialogs.xml,
+     bold7_box) pads the content to the pixel after the box's border, so x 0 here is the box's
+     border pixel plus one.
+     Changed: the message in BBAlpha Sans 27 px (the system font), white, lines of 32 px with
+     their baseline 25 px down, 19 px from the box's left border and 20 px from its right one
+     (sim-19, sim-47, sim-62, C; core/ui DialogLayout); the content starts 22 px under the top
+     border: 21 px of textSpacerNoTitle, which AlertController shows when there is no title (with
+     a title, the title's layout places it, alert_dialog_title_material.xml); without buttons, 20 px
+     under the last line before the bottom border (sim-42, C), the textSpacerNoButtons that
+     AlertController shows then; no minimum height for the message (48 dp on Android), so one line
+     makes a box of one line. White is written here: every dialog theme that inflates this layout
+     has the dark OS 7 box (values/dialogs.xml). Only framework references, no resource of the
+     overlay: system_server reads this file. Every id checked against the Q25's framework-res. -->
+<com.android.internal.widget.AlertDialogLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@*android:id/parentPanel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="start|top"
+    android:orientation="vertical">
+
+    <include layout="@*android:layout/alert_dialog_title_material" />
+
+    <FrameLayout
+        android:id="@*android:id/contentPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ScrollView
+            android:id="@*android:id/scrollView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <Space
+                    android:id="@*android:id/textSpacerNoTitle"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="21px" />
+
+                <TextView
+                    android:id="@android:id/message"
+                    style="@android:style/TextAppearance.Material.Subhead"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="18px"
+                    android:paddingEnd="20px"
+                    android:firstBaselineToTopHeight="25px"
+                    android:lastBaselineToBottomHeight="7px"
+                    android:lineHeight="32px"
+                    android:textSize="27px"
+                    android:fontFamily="sans-serif"
+                    android:textColor="@android:color/white" />
+
+                <Space
+                    android:id="@*android:id/textSpacerNoButtons"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="20px" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@*android:id/customPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp">
+
+        <FrameLayout
+            android:id="@android:id/custom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </FrameLayout>
+
+    <include
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        layout="@*android:layout/alert_dialog_button_bar_material" />
+</com.android.internal.widget.AlertDialogLayout>

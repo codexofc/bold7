@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The button bar of SystemUI's own alerts (alert_dialog_systemui, the layout of
+     Theme.SystemUI.Dialog): OS 7's stacked and centred buttons, the framework's bar
+     (Bold7Android, alert_dialog_button_bar_material: same sizes, order, spacing and style, see
+     its comment), instead of right-aligned pills. A copy of MtkSystemUI's own layout, every id
+     and view type it had kept: the framework's AlertController finds buttonPanel and button1 to
+     button3, ButtonBarLayout finds spacer. No padding from SystemUI's ButtonBarStyle (18 dp at the
+     bottom), so the last button sits 41 px over the box's bottom border as in the framework's;
+     the side indent of alert_dialog_systemui stays, the buttons centred in it. Only framework
+     references: SystemUI's ids are not stable from one build to the next. Every id checked
+     against the Q25's framework-res; what lint calls an invalid id (a framework id kept, never a
+     new one) is the point here. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@*android:id/buttonPanel"
+    style="?android:attr/buttonBarStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="0px"
+    android:scrollbarAlwaysDrawVerticalTrack="true"
+    android:scrollIndicators="top|bottom"
+    android:fillViewport="true"
+    android:defaultFocusHighlightEnabled="false"
+    tools:ignore="InvalidId">
+
+    <com.android.internal.widget.ButtonBarLayout
+        style="@android:style/Widget.Material.ButtonBar.AlertDialog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="4px"
+        android:paddingBottom="37px"
+        android:layoutDirection="locale"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <Button
+            android:id="@android:id/button1"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Button
+            android:id="@android:id/button2"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Button
+            android:id="@android:id/button3"
+            style="@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog"
+            android:layout_width="wrap_content"
+            android:layout_height="57px"
+            android:layout_marginTop="17px"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal|top"
+            android:minWidth="359px"
+            android:maxWidth="614px"
+            android:firstBaselineToTopHeight="38px"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <Space
+            android:id="@*android:id/spacer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+    </com.android.internal.widget.ButtonBarLayout>
+</ScrollView>

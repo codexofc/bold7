@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The rows of system_server's crash dialog (AppErrorDialog, "… keeps stopping"), the one left
+     by decision 3, as OS 7's stacked dialog buttons (alert_dialog_button_bar_material.xml, same
+     sizes and spacing: 57 px views 17 px apart for 51 px buttons 74 px apart, 0.545 of the box or
+     the label and 20 px on each side, centred; 24 px under the title and 41 px over the box's
+     bottom border; sim-19, sim-47, C). OS 7 had no such dialog: its wording stays Android's.
+     A copy of the Q25's own layout, every id, view type and attribute kept (AppErrorDialog finds
+     the five buttons by id and hides those it does not need), without Android's icon at the
+     start of each row. Their look is aerr_list_item (values/dialogs.xml). Only framework
+     references: system_server reads this file. Every id checked against the Q25's framework-res. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingTop="4px"
+    android:paddingBottom="37px">
+
+    <Button
+        android:id="@*android:id/aerr_restart"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_restart" />
+
+    <Button
+        android:id="@*android:id/aerr_app_info"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/app_info" />
+
+    <Button
+        android:id="@*android:id/aerr_close"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_close_app" />
+
+    <Button
+        android:id="@*android:id/aerr_report"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_report" />
+
+    <Button
+        android:id="@*android:id/aerr_mute"
+        style="@*android:style/aerr_list_item"
+        android:layout_width="wrap_content"
+        android:layout_height="57px"
+        android:layout_marginTop="17px"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal|top"
+        android:minWidth="359px"
+        android:maxWidth="614px"
+        android:firstBaselineToTopHeight="38px"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="@*android:string/aerr_mute" />
+</LinearLayout>

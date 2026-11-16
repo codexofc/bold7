@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MtkSettings' own row (every SettingsPreference and SettingsSwitchPreference) in OS 7's proportions:
+     a box of its own colour, the ripple of the focus kept as a foreground, 61 px for
+     a one-line row and about 71 for two (sim-57, BBOS7-VISUEL §17 and §27; Android: 16 dp above and
+     below the text, 62 px minimum). Same ids as the original (apktool of the Q25's MtkSettings.apk),
+     framework references and literals only: an overlay layout cannot name a resource
+     of MtkSettings that it does not redefine. The icon frame and its attributes are not drawn (the
+     frame's ImageView alone, hidden until a row has an icon). This is the layout-night one for
+     the dark theme, the plain one is the light. Seen at 83 px on the Q25:
+     title line 39 px, summary 34, 5 px above and below), the text lines carrying BBAlpha's font
+     padding; without it they are about 32 and 27 px (hhea 1.164 em), hence includeFontPadding off
+     and 6 px above and below: about 71, to be read on the Q25. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="center_vertical"
+    android:background="#FF212429"
+    android:foreground="?android:selectableItemBackground"
+    android:paddingLeft="?android:listPreferredItemPaddingLeft"
+    android:paddingRight="?android:listPreferredItemPaddingRight"
+    android:clipToPadding="false"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:minHeight="61px"
+    android:paddingStart="?android:listPreferredItemPaddingStart"
+    android:paddingEnd="?android:listPreferredItemPaddingEnd">
+    <ImageView android:id="@android:id/icon" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="8dp" android:maxWidth="48dp" android:maxHeight="48dp" android:adjustViewBounds="true" android:visibility="gone" />
+    <RelativeLayout android:paddingTop="6px" android:paddingBottom="6px" android:layout_width="0.0dp" android:layout_height="wrap_content" android:layout_weight="1.0">
+        <TextView android:textAppearance="?android:textAppearanceListItem" android:ellipsize="marquee" android:layout_gravity="start" android:id="@android:id/title" android:includeFontPadding="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="2" android:textAlignment="viewStart" android:hyphenationFrequency="normalFast" android:lineBreakWordStyle="phrase" />
+        <TextView android:textAppearance="?android:textAppearanceListItemSecondary" android:textSize="23px" android:textColor="#FFAFB1B4" android:layout_gravity="start" android:id="@android:id/summary" android:includeFontPadding="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="10" android:layout_below="@android:id/title" android:layout_alignLeft="@android:id/title" android:textAlignment="viewStart" android:layout_alignStart="@android:id/title" android:hyphenationFrequency="normalFast" android:lineBreakWordStyle="phrase" />
+    </RelativeLayout>
+    <LinearLayout android:gravity="end|center" android:orientation="vertical" android:id="@android:id/widget_frame" android:paddingLeft="16.0dp" android:paddingRight="0.0dp" android:layout_width="wrap_content" android:layout_height="match_parent" android:paddingStart="16.0dp" android:paddingEnd="0.0dp" />
+</LinearLayout>

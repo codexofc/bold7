@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a row of the framework's choice lists in a dialog (AlertDialog.setItems,
+     setSingleChoiceItems, setMultiChoiceItems, the Spinner in dialog mode, ArrayAdapters that name
+     android.R.layout.select_dialog_*): at least 57 px high, BBAlpha Sans 27 px (the theme's
+     textAppearanceListItemSmall, values/dialogs.xml), the label starting where the dialog's text
+     does, the check box or radio button at the end, 12 px from the edge (docs/BBOS7-VISUEL.md
+     §17; D for the dialog). The row grows when its label wraps: no text is cut. A copy of the
+     Q25's own layout: same id (text1), same view type, only framework references; colours,
+     indicators and the focus band come from the dialog themes. -->
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="57px"
+    android:textAppearance="?android:attr/textAppearanceListItemSmall"
+    android:textColor="?android:attr/textColorAlertDialogListItem"
+    android:gravity="center_vertical"
+    android:checkMark="?android:attr/listChoiceIndicatorMultiple"
+    android:paddingStart="?android:attr/dialogPreferredPadding"
+    android:paddingEnd="12px" />

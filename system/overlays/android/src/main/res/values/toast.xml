@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7's status messages, as far as framework values go (BBOS7-VISUEL §13). SystemUI
+     draws the toasts of apps of SDK 30 and up and reads these from the framework (SystemUIToast,
+     text_toast.xml); system/sysui then draws them as core/ui's status box over the whole screen.
+     An older app draws its own as the same box (Toast, layout/transient_notification.xml, toast_frame
+     below). Names and uses checked against the Q25's framework-res
+     and MtkSystemUI. -->
+<resources>
+    <!-- Centred on the screen (sim-42, C): Gravity.CENTER, instead of BOTTOM | CENTER_HORIZONTAL. -->
+    <integer name="config_toastDefaultGravity">17</integer>
+    <!-- No offset from there (48dp above the bottom on Android). -->
+    <dimen name="toast_y_offset">0px</dimen>
+
+    <!-- A dialog's text, BBAlpha Sans 27 px (sim-42, C; core/design Typography.TEXT), the system
+         font. No color: the parent's, the theme's primary text, which SystemUI's
+         own toast needs over its light background if the hooks are off; the older apps' toast
+         sets its white in its layout. -->
+    <style name="TextAppearance.Toast" parent="@android:style/TextAppearance">
+        <item name="android:textSize">27px</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- The frame of an older app's toast (layout/transient_notification.xml) and of the custom
+         toasts that name it: the dialog box (sim-42, C; border_popup.png, A), its padding inside
+         its border (tools/import-assets.sh dialogues). -->
+    <item name="toast_frame" type="drawable">@drawable/bold7_box</item>
+</resources>

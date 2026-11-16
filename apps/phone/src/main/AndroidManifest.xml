@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Phone of BBOS 7.1: an ordinary app, which tools/dialer.sh poser
+  makes the DIALER role's holder. The role's required components, as the Q25's PermissionController
+  (GooglePermissionController 341410020, res/xml/roles.xml) asks them: an activity for DIAL, and
+  one for DIAL tel:, both found with MATCH_DEFAULT_ONLY (category DEFAULT); for a targetSdk of 33
+  and more, an InCallService protected by BIND_INCALL_SERVICE with IN_CALL_SERVICE_UI true and no
+  IN_CALL_SERVICE_CAR_MODE_UI (prohibited). No ConnectionService: the SIM's calls go through the
+  system's (TelephonyConnectionService). Exported components: those two, each behind its system
+  permission or the role's contract, and PromptActivity behind Bold7's signature permission,
+  and PlaceCallActivity behind STATUS_BAR_SERVICE, for SystemUI's lock screen; nothing else is
+  exported. Select Contact of Bold7's Contacts is asked behind its signature permission SELECT_CONTACT.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Switch Application of the menus: the launcher's switcher, behind its
+         signature permission, declared here and by the launcher and each app that asks for it, so
+         that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <!-- "Call …?" (PromptActivity): Bold7's apps only, all signed by keys/cascade.jks. -->
+    <permission
+        android:name="dev.bold7.permission.CALL_PROMPT"
+        android:protectionLevel="signature" />
+
+    <!-- Call From Contacts, the contacts button, speed dial: Select Contact of Bold7's Contacts,
+         signature, declared there, by Messages and here, so that the order of the installs does not
+         matter. -->
+    <permission
+        android:name="dev.bold7.permission.SELECT_CONTACT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SELECT_CONTACT" />
+
+    <!-- Granted by the DIALER role (permission sets phone, contacts) and once by tools/install.sh
+         (grant_permissions), so that the Phone screen works before the role too. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <!-- Call Voice Mail: whether the SIM has a voice mail number (TelephonyManager.getVoiceMailNumber),
+         permission set phone of the role. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- The incoming call's fallback notification (Bold7InCallService): permission set notifications
+         of the role, USE_FULL_SCREEN_INTENT normal (its app-op allowed by tools/install.sh). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- The proximity sensor's wake lock, the screen off at the ear. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- View of the missed calls' dialog opens Bold7's Messages on its calls. -->
+    <queries>
+        <package android:name="dev.bold7.messages" />
+        <!-- Select Contact. -->
+        <package android:name="dev.bold7.contacts" />
+        <!-- Phone Ringtones: Options' Phone Ringtone, in the launcher. -->
+        <package android:name="dev.bold7.launcher" />
+    </queries>
+
+    <application
+        android:name=".PhoneApp"
+        android:allowBackup="false"
+        android:label="@string/app_name">
+
+        <!-- The home's Phone icon and the DIALER role's activity. -->
+        <activity
+            android:name=".PhoneActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="tel" />
+            </intent-filter>
+            <!-- The Send key in an app that does not take it (PhoneFallbackEventHandler).
+                 Google's Phone has the same filter at the same priority (an app of
+                 /data cannot rise above it): Android asks once which Phone, "Always" keeps
+                 Bold7's. Adds no exported component: this activity is exported for the role. -->
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Speed Dial Numbers, in the Phone's task; never over the lock screen. -->
+        <activity
+            android:name=".SpeedDialActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- Status of the Phone's menu, in the Phone's task; never over the lock screen. -->
+        <activity
+            android:name=".StatusActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+
+        <!-- The call screen, over the lock screen and turning the screen on; its own task, out of
+             the Phone's, closed when no call is left. Started by the InCallService only. -->
+        <activity
+            android:name=".CallActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.bold7.phone.call"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- OS 7's missed calls and "Call …?" dialogs, translucent, over the home
+             or the app, never over the lock screen; its own task. Exported for "Call …?" from the
+             launcher's list of notifications and from Messages, behind CALL_PROMPT (signature):
+             it calls only on the user's Call. -->
+        <activity
+            android:name=".PromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:permission="dev.bold7.permission.CALL_PROMPT"
+            android:taskAffinity="dev.bold7.phone.prompt"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="dev.bold7.phone.CALL_PROMPT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="tel" />
+            </intent-filter>
+            <!-- A letter held on the home or in Messages: its speed dial, by the
+                 same permission, asked by the same apps. -->
+            <intent-filter>
+                <action android:name="dev.bold7.phone.SPEED_DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Place Call under the lock: over the lock screen, a number typed and
+             Send, nothing else. Exported for SystemUI's lock screen only, behind STATUS_BAR_SERVICE
+             (protection signature of the platform, read on the Q25's framework-res: no app holds
+             it). noHistory: never left behind the lock screen. -->
+        <activity
+            android:name=".PlaceCallActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:permission="android.permission.STATUS_BAR_SERVICE"
+            android:showWhenLocked="true"
+            android:taskAffinity="dev.bold7.phone.locked"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- Bound by Telecom only (BIND_INCALL_SERVICE). No IN_CALL_SERVICE_RINGING: Telecom plays
+             the ringtone of the sound profile itself. -->
+        <service
+            android:name=".Bold7InCallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

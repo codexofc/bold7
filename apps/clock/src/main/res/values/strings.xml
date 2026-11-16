@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The labels of the Clock, OS 7's English (docs/BBOS7-VISUEL.md §28). B: the 9900's 7.1 user
+     guide (pp. 201-204); C: sim-153 to sim-166; A: the firmware's resources
+     (net_rim_bb_resource__en.cod, Alarm); D: deduced. -->
+<resources>
+    <string name="app_name">Clock</string>
+
+    <!-- Menus (C: sim-154, sim-155, sim-166) -->
+    <string name="act_set_alarm">Set Alarm</string>
+    <string name="act_set_time">Set Time</string>
+    <!-- D: the guide and the captures have no such line; it is added while an alarm sleeps. -->
+    <string name="act_cancel_snooze">Cancel Snooze</string>
+    <!-- B p. 204 ("Send Results. Click a message type"); the wording of the rest is D. -->
+    <string name="act_send_results">Send Results</string>
+    <string name="send_results">Send results as:</string>
+    <string name="type_text">Text Message</string>
+    <string name="type_email">Email</string>
+    <string name="results_subject">Stopwatch Results</string>
+    <string name="act_bedside">Bedside Mode</string>
+    <string name="act_stopwatch">Stopwatch</string>
+    <string name="act_timer">Timer</string>
+    <string name="act_clock">Clock</string>
+    <string name="act_options">Options</string>
+    <string name="act_close">Close</string>
+    <string name="act_start">Start</string>
+    <string name="act_stop">Stop</string>
+    <string name="act_lap">Lap</string>
+    <string name="act_reset">Reset</string>
+    <!-- B p. 204 -->
+    <string name="act_set_timer">Set Timer</string>
+    <!-- B p. 203 ("press the key" turns it off), D for the label -->
+    <string name="act_exit_bedside">Exit Bedside Mode</string>
+
+    <!-- Set Alarm (C: sim-156 to sim-158) -->
+    <string name="repeat_on">ON</string>
+    <string name="repeat_weekdays">WEEKDAYS</string>
+    <string name="repeat_off">OFF</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- The ring (C: sim-162) -->
+    <string name="daily_alarm">Daily Alarm</string>
+    <string name="snooze">Snooze (%1$d min.)</string>
+    <string name="dismiss">Dismiss</string>
+    <!-- D -->
+    <string name="timer">Timer</string>
+    <string name="channel_alarm">Alarm</string>
+
+    <!-- Clock Options (C: sim-170, sim-171; their values are Choices.kt's) -->
+    <string name="options_title">Clock Options</string>
+    <string name="section_clock">Clock</string>
+    <string name="section_alarm">Alarm</string>
+    <string name="section_bedside">Bedside Mode</string>
+    <string name="section_stopwatch">Stopwatch</string>
+    <string name="section_timer">Countdown Timer</string>
+    <!-- C: sim-170 to sim-173. Digital is D (the firmware holds an LCD face, A; no capture of its name). -->
+    <string name="opt_face">Clock Face</string>
+    <string name="opt_home_zone">Home Time Zone</string>
+    <string name="opt_try_it">Try it</string>
+    <string name="opt_dim">Dim Screen</string>
+    <string name="opt_stopwatch_face">Stopwatch Face</string>
+    <string name="opt_timer_face">Timer Face</string>
+    <string name="opt_timer_tone">Timer Tone</string>
+    <string name="opt_alarm_tone">Alarm Tone</string>
+    <string name="opt_volume">Volume</string>
+    <string name="opt_snooze">Snooze Time</string>
+    <string name="opt_vibration">Vibration</string>
+    <!-- C: sim-47 (Trackpad Sensitivity's, the same question of every options screen) -->
+    <string name="act_save">Save</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="discard">Discard</string>
+
+    <!-- D: Bold7 says that Android's Clock holds the next alarm. -->
+    <string name="other_alarm">Next alarm (another clock): %1$s</string>
+    <string name="act_switch_application">Switch Application</string>
+</resources>

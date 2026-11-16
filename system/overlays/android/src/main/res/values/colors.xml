@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the framework colors no system_* role reaches, which an app on Theme.Material,
+     or a DeviceDefault widget reading a Material constant, still draws in Android's greys, teal
+     and orange. The system_* roles themselves are OS 7's already (the three overlays SystemUI's
+     hook fabricates): nothing here duplicates them. Every value is a token of
+     core/design (Theme.Dark, Theme.Bright, Palette), BBOS7-VISUEL §19; ColorsOverlayTest
+     (core/design) checks each against its token and the text on each of these surfaces. -->
+<resources>
+    <!-- Page and window of a Theme.Material app: OS 7's black and white (Android: #303030, #FAFAFA). -->
+    <color name="background_material_dark">#ff000000</color>
+    <color name="background_material_light">#ffffffff</color>
+    <!-- Menus, dialogs and sheets: border_menu's #212429 (Android: #424242). -->
+    <color name="background_floating_material_dark">#ff212429</color>
+    <color name="autofill_background_material_dark">#ff212429</color>
+    <color name="autofill_background_material_light">#fff4f5f6</color>
+
+    <!-- colorPrimary and colorPrimaryDark of a Theme.Material app: its action bar and status bar. -->
+    <color name="primary_material_dark">#ff212429</color>
+    <color name="primary_material_light">#fff4f5f6</color>
+    <color name="primary_dark_material_light">#ff7c7e80</color>
+    <!-- colorSecondary and the tertiary of the Settings themes. -->
+    <color name="secondary_material_settings">#ff212429</color>
+    <color name="secondary_material_settings_light">#ffe8eaeb</color>
+    <color name="tertiary_material_settings">#ff43454a</color>
+
+    <!-- colorAccent of a Theme.Material app, and the day, the hand and the AM/PM of its pickers: the
+         focus blue in place of Material's teal. -->
+    <color name="material_deep_teal_100">#ffbad1f3</color>
+    <color name="material_deep_teal_200">#ff088eef</color>
+    <color name="material_deep_teal_300">#ff088eef</color>
+    <color name="material_deep_teal_500">#ff088eef</color>
+    <color name="datepicker_default_selected_text_color_material_light">#ff088eef</color>
+    <color name="datepicker_default_selected_text_color_material_dark">#ff088eef</color>
+    <color name="datepicker_default_pressed_text_color_material_light">#ff1766db</color>
+    <color name="datepicker_default_pressed_text_color_material_dark">#ff1766db</color>
+    <color name="datepicker_default_header_selector_background_material_dark">#ff212429</color>
+    <color name="datepicker_default_view_animator_color_material_light">#fff4f5f6</color>
+    <color name="datepicker_default_view_animator_color_material_dark">#ff212429</color>
+
+    <!-- A flat button's face (colorButtonNormal) and a switch's thumb. -->
+    <color name="button_material_dark">#ff43454a</color>
+    <color name="button_material_light">#ffe8eaeb</color>
+    <color name="switch_thumb_normal_material_dark">#ffafb1b4</color>
+    <color name="switch_thumb_normal_material_light">#ffffffff</color>
+    <color name="switch_thumb_disabled_material_dark">#ff8e9094</color>
+    <color name="switch_thumb_disabled_material_light">#ffadb0b3</color>
+
+    <!-- colorError, read by DeviceDefault and Material alike: OS 7's red, not deep orange. -->
+    <color name="error_color_material_dark">#ffc25c5c</color>
+    <color name="error_color_material_light">#ffba2121</color>
+
+    <!-- The shimmer of a list that loads, and the tooltip. -->
+    <color name="loading_gradient_background_color_dark">#ff43454a</color>
+    <color name="loading_gradient_highlight_color_dark">#ff4f5256</color>
+    <color name="loading_gradient_background_color_light">#fff4f5f6</color>
+    <color name="loading_gradient_highlight_color_light">#ffe8eaeb</color>
+    <color name="tooltip_background_dark">#e6212429</color>
+</resources>

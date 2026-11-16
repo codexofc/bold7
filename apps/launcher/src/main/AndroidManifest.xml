@@ -1,0 +1,263 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Switch Application: the switcher's door for Bold7's apps, all signed by
+         keys/cascade.jks. Declared here and by each app that asks for it, so that the order of the
+         installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+
+    <!-- Granted because the module's RRO makes this package the recents provider: both are
+         signature|recents on the Q25 (measured on the Q25). MANAGE_ACTIVITY_TASKS because ATMS enforces it on
+         registerTaskStackListener. No READ_FRAME_BUFFER: the switcher reads no snapshot.
+         MONITOR_INPUT left with the gestures: nothing opens an InputMonitor any more.
+         Every permission requested here must be in the module's privapp allowlist
+         (ro.control_privapp_permissions=enforce): add nothing without adding it there. -->
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS" />
+
+    <!-- Recent tasks (SystemRecentTasks): a tap brings a task back (ATMS.startActivityFromRecents,
+         START_TASKS_FROM_RECENTS, signature|privileged|recents), an X closes it (ATMS.removeTask,
+         REMOVE_TASKS, signature|recents|role). Both granted to the recents provider. -->
+    <uses-permission android:name="android.permission.START_TASKS_FROM_RECENTS" />
+    <uses-permission android:name="android.permission.REMOVE_TASKS" />
+
+    <!-- Openings drawn by the launcher: a RemoteTransition in the ActivityOptions of
+         an icon's start and of startActivityFromRecents. CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS
+         is signature|privileged on the Q25 (dumpsys package), not recents: granted
+         by the privapp allowlist only. Refused, the app opens with Android's animation. -->
+    <uses-permission android:name="android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS" />
+
+    <!-- The search typed from the home reads Android's providers. Runtime
+         permissions, never asked on screen: tools/install.sh grants them once (pm grant), and the
+         category of one refused later in Settings stays empty. MANAGE_EXTERNAL_STORAGE
+         (signature|appop|preinstalled) is the priv-app's from the start: pictures, videos, music
+         and documents; `appops set dev.bold7.launcher MANAGE_EXTERNAL_STORAGE ignore` is its
+         only switch. No INTERNET, ever (tools/privapp_check.py). -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
+    <!-- The banner's counts and the list of notifications read the provider of apps/hub, the engine of
+         Messages' unified inbox (dev.bold7.hub.data.HubContract): Bold7's signature permission, granted because both APKs carry keys/cascade.jks. No
+         runtime permission, nothing asked. -->
+    <uses-permission android:name="dev.bold7.permission.READ_HUB" />
+    <!-- A missed call of the list of notifications asks "Call …?" through the Phone of Bold7
+: its signature permission, as READ_HUB. -->
+    <uses-permission android:name="dev.bold7.permission.CALL_PROMPT" />
+    <!-- Options' Advanced Style Options and Word Substitution reach Typing's
+         provider (TypingContract): its signature permission, as READ_HUB. -->
+    <uses-permission android:name="dev.bold7.permission.TYPING_OPTIONS" />
+    <!-- Setup of the texts (setup/): the state of Google Messages' consent, answered by Messages
+         of Bold7 (READ_TEXT_CONSENT, declared there too, so that the order of the installs does
+         not matter), and its page, opened through the bridge of dev.bold7.sysui in Google
+         Messages' process (OPEN_TEXT_CONSENT: the bridge answers only a sender holding it).
+         Signature both, asked by this app alone. -->
+    <permission
+        android:name="dev.bold7.permission.READ_TEXT_CONSENT"
+        android:protectionLevel="signature" />
+    <permission
+        android:name="dev.bold7.permission.OPEN_TEXT_CONSENT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.READ_TEXT_CONSENT" />
+    <uses-permission android:name="dev.bold7.permission.OPEN_TEXT_CONSENT" />
+    <!-- The home banner's Wi-Fi level: a network callback on the Wi-Fi, which
+         ConnectivityManager allows with ACCESS_NETWORK_STATE (normal). Reads the state, never
+         opens a connection. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Manage Connections, what Android lets a system
+         priv-app turn, read in the Q25's dex. The mobile network is the radio
+         (TelephonyManager.requestRadioPowerOffForReason, hidden): MODIFY_PHONE_STATE,
+         signature|privileged|role. NFC (NfcAdapter.enable, hidden): WRITE_SECURE_SETTINGS,
+         signature|privileged|development|installer|role. Both granted by the privapp allowlist only.
+         Wi-Fi (WifiManager.setWifiEnabled, allowed to a FLAG_SYSTEM app): CHANGE_WIFI_STATE and
+         ACCESS_WIFI_STATE, normal. Bluetooth (BluetoothAdapter.enable and disable, allowed to a
+         system app; its state broadcast): BLUETOOTH_CONNECT, a runtime permission granted once by
+         tools/install.sh, never asked on screen. Android's airplane mode wants a signature
+         permission: read, never turned.
+         Options writes with the same WRITE_SECURE_SETTINGS: bold7-trackpad's
+         bold7_trackpad_* (Settings.Global), and the backlight and timeout of Settings.System,
+         which SettingsProvider lets it write without WRITE_SETTINGS (mutateSystemSetting checks
+         hasWriteSecureSettingsPermission first, read in the Q25's MtkSettingsProvider); the
+         ringtone through RingtoneManager. No permission added. -->
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Delete on the home: ACTION_DELETE hands the uninstall to Android's
+         PackageInstaller, which asks first and refuses a caller without this permission
+         (normal). The launcher never uninstalls by itself. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- The home never scrolls its wallpaper: it asks Android for one the size of the
+         screen, 720x720, instead of the 1440x720 Launcher3 asked for; without it a wallpaper set
+         from the picker is cropped to 1440 wide and shows zoomed. SET_WALLPAPER_HINTS is normal. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS" />
+
+    <!-- The sound profiles set Android's ringer, ring volume and Do Not Disturb through
+         its public APIs, from this process. ACCESS_NOTIFICATION_POLICY is normal, but the access
+         itself is an app-op that only `cmd notification allow_dnd dev.bold7.launcher` gives
+         (tools/install.sh, withdrawn by tools/uninstall.sh): without it a profile is refused and
+         logged. What the profiles keep is in the app's own preferences: no privileged permission. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- Options > Wi-Fi Network, read in the Q25's service-wifi.jar: the scan
+         results and the saved networks pass WifiPermissionsUtil.enforceCanAccessScanResults, which
+         wants ACCESS_FINE_LOCATION (runtime, granted once by tools/install.sh, never asked on
+         screen; COARSE goes with it) and location on, NETWORK_SETTINGS and
+         RADIO_SCAN_WITHOUT_LOCATION being signature. addNetwork, enableNetwork and removeNetwork
+         are allowed to a system app; changing or forgetting a network Android's Settings saved
+         passes WifiConfigManager.canModifyNetwork: OVERRIDE_WIFI_CONFIG,
+         signature|privileged|knownSigner, granted by the privapp allowlist. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.OVERRIDE_WIFI_CONFIG" />
+    <!-- Options > Date and Time and Language, read in the Q25's services.jar: the
+         zone by AlarmManager.setTimeZone, SET_TIME_ZONE (signature|privileged|role; Android's own
+         picker goes through TimeManager, whose SUGGEST_MANUAL_TIME_AND_ZONE is signature); the
+         language by LocalePicker.updateLocales (hidden), ActivityManager's
+         updatePersistentConfiguration, CHANGE_CONFIGURATION (signature|privileged|development|role).
+         Both granted by the privapp allowlist only. -->
+    <uses-permission android:name="android.permission.SET_TIME_ZONE" />
+    <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" />
+
+    <!-- Package visibility (targetSdk 34) for the home: the apps LauncherApps lists and reports.
+         The bar's Camera is started, not resolved: it needs none. No QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Setup of the texts: Google Messages (its switch's page, its launch intent) and the
+             answer of Messages of Bold7 about that switch. -->
+        <package android:name="com.google.android.apps.messaging" />
+        <provider android:authorities="dev.bold7.messages.consent" />
+        <!-- The providers the search reads. -->
+        <provider android:authorities="com.android.contacts" />
+        <provider android:authorities="sms" />
+        <provider android:authorities="mms" />
+        <provider android:authorities="call_log" />
+        <provider android:authorities="com.android.calendar" />
+        <provider android:authorities="media" />
+        <!-- The provider of apps/hub, and its notifications' apps to open them (their
+             LAUNCHER activity, already visible above). -->
+        <provider android:authorities="dev.bold7.hub.data" />
+        <!-- Typing's options. -->
+        <provider android:authorities="dev.bold7.saisie.options" />
+        <!-- The Phone of Bold7's "Call …?". -->
+        <package android:name="dev.bold7.phone" />
+        <!-- The search's microphone: Android's speech recognizer. -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".LauncherApp"
+        android:label="Bold7">
+
+        <!-- HOME, and the component config_recentsComponentName names: this name is fixed.
+             Exported because the role controller and the system resolve HOME from
+             other processes; it reads no extra and only draws. -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:theme="@style/Theme.Bold7.Home">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- The app switcher: translucent, over the app or the home, in a task of its
+             own that the recents never list; singleTask so a second start closes it. Started by this
+             process (HomeKeys, the service below) and, as Switch Application of every Bold7 app's
+             menu, by those apps: exported behind SWITCH_APPLICATION, signature,
+             declared here and by each app that asks for it. It opens nothing but this list. -->
+        <activity
+            android:name=".switcher.SwitcherActivity"
+            android:exported="true"
+            android:permission="dev.bold7.permission.SWITCH_APPLICATION"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:stateNotNeeded="true"
+            android:theme="@style/Theme.Bold7.Switcher">
+            <intent-filter>
+                <action android:name="dev.bold7.launcher.SWITCH_APPLICATION" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Options of OS 7: the grid's Options icon (core/icons' tables name this
+             activity), Change Sounds and Alerts and Manage Connections' Options. In this process
+             for WRITE_SECURE_SETTINGS (above) and the sound profiles; a task of its own, beside the
+             home's. Exported as every launcher activity; its one extra only picks a list to open,
+             and it never shows over the lock screen. -->
+        <activity
+            android:name=".options.OptionsActivity"
+            android:exported="true"
+            android:label="Options"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.bold7.launcher.options"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Options > Typing and Language > Word Substitution: the user's own list,
+             kept by Typing. Opened by Options only, in its task. -->
+        <!-- Options > Wi-Fi Network. Opened by Options only, in its task. -->
+        <activity
+            android:name=".options.WifiActivity"
+            android:exported="false"
+            android:label="Wi-Fi Network"
+            android:taskAffinity="dev.bold7.launcher.options"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateHidden" />
+
+        <!-- Setup: the texts through Google Messages. Opened by the home once, then by Options > Device. -->
+        <activity
+            android:name=".setup.TextSetupActivity"
+            android:exported="false"
+            android:label="Setup"
+            android:taskAffinity="dev.bold7.launcher.options"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+
+        <activity
+            android:name=".options.WordSubstitutionActivity"
+            android:exported="false"
+            android:label="Word Substitution"
+            android:taskAffinity="dev.bold7.launcher.options"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateHidden" />
+
+        <!-- Bound by SystemUI only: STATUS_BAR_SERVICE is signature, SystemUI holds it.
+             directBootAware: SystemUI picks the recents provider before unlock, resolving
+             QUICKSTEP_SERVICE with MATCH_SYSTEM_ONLY, which only sees direct boot aware
+             components (measured on the Q25). Its code touches no credential-protected storage. -->
+        <service
+            android:name=".QuickstepService"
+            android:directBootAware="true"
+            android:exported="true"
+            android:permission="android.permission.STATUS_BAR_SERVICE">
+            <intent-filter>
+                <action android:name="android.intent.action.QUICKSTEP_SERVICE" />
+            </intent-filter>
+        </service>
+
+        <!-- Room's, merged in through core/hub-data: the Hub's database lives in apps/hub's
+             process only, this one never opens it. -->
+        <service
+            android:name="androidx.room.MultiInstanceInvalidationService"
+            tools:node="remove" />
+    </application>
+</manifest>

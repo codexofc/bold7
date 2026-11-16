@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A screen opened inside an app (a thread of Text Messages, a sub-screen of Options): a fade-in of
+     83 ms (C: BBOS7-VISUEL §36, 2 frames on 3 takes; the UI Guidelines 7.1 p. 40 want a
+     fade of 150 ms, B, which the measure does not bear out). No change of scale. The old screen
+     has no animation of its own (activity_open_exit), so this is a fade over it. -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromAlpha="0.0"
+    android:toAlpha="1.0"
+    android:interpolator="@android:interpolator/decelerate_quad"
+    android:duration="83" />

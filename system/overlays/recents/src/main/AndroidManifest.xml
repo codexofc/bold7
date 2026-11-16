@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Static: enabled and immutable from boot, read by the zygote and system_server.
+         config_recentsComponentName is not in an <overlayable> of framework-res, so idmap2 only
+         accepts a preinstalled overlay (partition policy), which /system_ext/overlay gives.
+         Without /system_ext/overlay/config/config.xml, OverlayConfig orders static overlays by
+         partition, system_ext last, then by priority: this one wins over any vendor or product
+         value (spike S1). -->
+    <overlay
+        android:targetPackage="android"
+        android:isStatic="true"
+        android:priority="999" />
+    <application
+        android:hasCode="false"
+        android:label="Bold7 recents" />
+</manifest>

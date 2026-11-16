@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7.1's words, in English as the 9900 (docs/BBOS7-VISUEL.md §30): C for those on a capture,
+     B for the guide's, D for deduced. -->
+<resources>
+    <string name="app_name">Contacts</string>
+    <!-- sim-178 (C). -->
+    <string name="title">Contacts</string>
+    <string name="search">Search</string>
+    <string name="new_contact">New Contact</string>
+    <string name="new_contact_note">Create a new contact</string>
+    <!-- While something is typed (sim-189, C). -->
+    <string name="new_contact_named">Create a new contact named "%1$s"</string>
+    <!-- When nothing matches (sim-190, C). -->
+    <string name="no_contacts">* No Contacts *</string>
+    <!-- The pick screen of the other apps (sim-183, C). -->
+    <string name="select_title">Select Contact</string>
+    <!-- The card's boxes: sim-194 (C) for the first two, D for the others. -->
+    <string name="section_phones">Phone Numbers</string>
+    <string name="section_emails">Email Addresses</string>
+    <string name="section_addresses">Addresses</string>
+    <string name="section_groups">Groups</string>
+    <!-- The form's boxes (sim-186, sim-187, C). -->
+    <string name="section_address">Address</string>
+    <string name="section_website">Website</string>
+    <string name="section_notes">Notes</string>
+    <!-- The menus (sim-179, sim-195, sim-198, C; Select D). -->
+    <string name="act_new">New Contact</string>
+    <string name="act_view">View</string>
+    <string name="act_edit">Edit</string>
+    <string name="act_delete">Delete</string>
+    <string name="act_call">Call %1$s</string>
+    <string name="act_text">Text %1$s</string>
+    <string name="act_email">Email %1$s</string>
+    <string name="act_copy">Copy</string>
+    <string name="act_select">Select</string>
+    <string name="act_save">Save</string>
+    <string name="act_close">Close</string>
+    <!-- Delete's confirmation (sim-199, C), Save's question (sim-193, C). -->
+    <string name="delete_question">Delete %1$s?</string>
+    <string name="cancel">Cancel</string>
+    <string name="changes_made">Changes made!</string>
+    <string name="discard">Discard</string>
+    <!-- Status messages (D). -->
+    <string name="call_refused">The call could not be made.</string>
+    <string name="not_saved">The contact could not be saved.</string>
+    <string name="not_deleted">The contact could not be deleted.</string>
+    <string name="no_messages_app">Messages is not installed.</string>
+    <string name="no_email_app">No email application.</string>
+    <string name="unnamed">(No Name)</string>
+    <!-- The form's titles (sim-184, sim-191, C). -->
+    <string name="edit_title">Edit Contact</string>
+    <string name="new_title">New Contact</string>
+    <string name="select_number">Select a number:</string>
+    <string name="select_email">Select an email address:</string>
+    <string name="act_switch_application">Switch Application</string>
+<!-- sim-179, sim-195 (C). Its submenu's words are D (the guide, p. 111, names the email and the text message). -->
+<string name="act_send_card">Send Contact Card</string>
+<string name="act_send_email">Email</string>
+<string name="act_send_text">Text Message</string>
+<string name="act_help">Help</string>
+<string name="card_not_sent">The contact card could not be sent.</string>
+<!-- The form's Dates box and its buttons (sim-186, C), Clear Field is D. -->
+<string name="section_dates">Dates</string>
+<string name="add">Add</string>
+<string name="act_clear_field">Clear Field</string>
+<!-- A new contact's box (sim-191, C). -->
+<string name="contact_list">Contact List:</string>
+<string name="contact_list_default">Default</string>
+</resources>

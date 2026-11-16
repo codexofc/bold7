@@ -1,0 +1,37 @@
+# App names of BBOS 7 outside Bold7 (Settings > Apps, share sheet, permission dialogs, recents,
+# notification headers): one static RRO per app, generated from this table by build.gradle.kts and
+# mounted in /system_ext/overlay by system/module. Tab-separated: id (RRO suffix and file name, one
+# per app, a line per string), target package, name of the string resource that holds the label in
+# the app (aapt2 dump xmltree of AndroidManifest.xml then aapt2 dump resources of the APKs of the
+# Q25), BBOS 7 name. The names are those of core/icons/src/main/res/raw/bbos7_apps.tsv,
+# so their sources are its own.
+#
+# Every language the target translates the label in (names-locales.tsv, from tools/names_locales.py
+# over the APKs of the Q25) gets the same BBOS 7 name, plus fr and fr-rFR: BBOS 7 keeps one name in
+# every language. A language the target adds later (a Play language split) is not covered.
+#
+# Not here, on purpose:
+# - Chrome (Browser) and the Play Store (BlackBerry App World): the label is string/
+#   0_resource_name_obfuscated, nothing to target.
+# - Maps, Calendar, Contacts, Clock, Phone, Calculator: Android's default value already is the
+#   BBOS 7 name, a RRO would change nothing in en-US.
+# - Gmail: keeps its own name, in the launcher too, as the 9900 named a mail
+#   account's icon after the account (gsm 020, C); Messages is Bold7's own app.
+#
+# Google Messages, hidden from the grid behind Bold7's Messages, is named Text
+# Messages outside the launcher, so that no second "Messages" shows (share sheet, recents,
+# permission dialogs, its notifications' header, as the 9900's list of notifications names texts,
+# BBOS7-VISUEL section 5); app_name and share_intent_label are the two strings that carry the label.
+# This is the one line whose name is not that of bbos7_apps.tsv: the launcher has its own Text Messages icon (Bold7's Messages on its texts) and names Google
+# Messages "Google Messages" there (Show All, the search, the app switcher); outside the launcher
+# only Google Messages does texts, no doubling (D).
+settings	com.android.settings	settings_label	Options
+settings	com.android.settings	settings_label_launcher	Options
+voicenotes	com.android.soundrecorder	app_name	Voice Notes Recorder
+wallet	com.google.android.apps.walletnfcrel	application_name	Wallet
+files	org.fossify.filemanager	app_launcher_name	Files
+camera	com.light.lightcamera	app_name	Camera
+pictures	deckers.thibault.aves.libre	app_name	Pictures
+memopad	com.google.android.keep	keep_app_name	MemoPad
+textmessages	com.google.android.apps.messaging	app_name	Text Messages
+textmessages	com.google.android.apps.messaging	share_intent_label	Text Messages

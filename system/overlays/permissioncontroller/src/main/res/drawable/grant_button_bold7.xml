@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A button of the permission request, drawn as the framework's dialog buttons (Bold7Android,
+     drawable/dialog_button_bold7.xml; docs/BBOS7-VISUEL.md §12): border_button.png, border_button~focus.png
+     under the trackpad focus and while pressed (D), the grey one disabled (D, no capture). The
+     9-patches are this overlay's own copy (tools/import-assets.sh dialogues): one overlay cannot
+     name another's resources. A resource of the overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:drawable="@drawable/bold7_button" />
+    <item android:state_pressed="true" android:drawable="@drawable/bold7_button_focus" />
+    <item android:state_focused="true" android:drawable="@drawable/bold7_button_focus" />
+    <item android:drawable="@drawable/bold7_button" />
+</selector>

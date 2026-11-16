@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The screen left by Back or Escape fades out over the one that comes back (83 ms, C: docs/BBOS7-VISUEL.md
+     0,64 then 0,99 of the page below). It is the window on top when closing: its fade is what
+     shows. -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromAlpha="1.0"
+    android:toAlpha="0.0"
+    android:interpolator="@android:interpolator/decelerate_quad"
+    android:duration="83" />

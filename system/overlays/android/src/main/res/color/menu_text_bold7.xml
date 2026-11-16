@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A row's label in the full menu of the options panel (values/widgets.xml, MenuText.Bold7):
+     #E1E3E5, white on the focus band (sim-04, sim-44, C; core/design MenuColors.Text,
+     TextFocused); the row is selected under the trackpad focus, pressed under the finger.
+     Disabled at 40 % (D). A resource of the overlay, not a layout. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:color="#66e1e3e5" />
+    <item android:state_pressed="true" android:color="#ffffffff" />
+    <item android:state_selected="true" android:color="#ffffffff" />
+    <item android:state_focused="true" android:color="#ffffffff" />
+    <item android:color="#ffe1e3e5" />
+</selector>

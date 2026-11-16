@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No automatic rotation: the rotation kept turning on, and the screen is square. The Q25's screen is square and the 9900's interface does not turn.
+         False is AOSP's value for a device without auto-rotation: DisplayRotation then never
+         follows the accelerometer, whatever Settings.System.ACCELEROMETER_ROTATION says, and
+         SystemUI offers neither the rotation tile's effect nor the rotation suggestion. An app
+         that asks for a fixed orientation still gets it (Android's own behaviour, kept). The
+         setting itself is also set to 0 by tools/silence.sh, so the change holds before the
+         module's next reboot. -->
+    <bool name="config_supportAutoRotation">false</bool>
+</resources>

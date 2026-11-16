@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A row of the framework's popup menus (overflow of the action bar, PopupMenu, context popup),
+     which apps inflate themselves, AppCompat's excepted (abc_popup_menu_item_layout), laid out as
+     a row of OS 7's full menu (docs/BBOS7-VISUEL.md §4; sim-04, sim-44, C): 57 px, the label in
+     BBAlpha Sans 27 px #E1E3E5, its baseline 37 px under the row's top, 7 px from the box's left
+     border and 7 px before its right one (the 9900's left border is off the screen: D), the row
+     as wide as its label, so the menu as wide as its longest label (Android's 196 dp minimum
+     gone); between two groups, when the app asks for group dividers, a 3 px separator with its
+     #43454A line in the middle. The box and the focus band are values/widgets.xml's. #E1E3E5 is
+     written here: every menu box is OS 7's dark one; under the focus it stays #E1E3E5 instead of
+     white (D: a layout cannot name a state list of the overlay). Shortcuts, shown with the
+     Q25's keyboard, in the same colour at 20 px (D, OS 7 shows none). A copy of the Q25's own
+     layout, every id, view type and attribute it had kept: ListMenuItemView finds content,
+     title, shortcut, submenuarrow and group_divider, and adds its icon, check box or radio
+     button itself. Only framework references. Every id checked against the Q25's
+     framework-res. -->
+<com.android.internal.view.menu.ListMenuItemView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@*android:id/group_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="1px"
+        android:layout_marginBottom="1px"
+        android:background="#ff43454a" />
+
+    <LinearLayout
+        android:id="@android:id/content"
+        android:layout_width="match_parent"
+        android:layout_height="57px"
+        android:paddingEnd="6px"
+        android:duplicateParentState="true">
+
+        <RelativeLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="top"
+            android:layout_marginStart="6px"
+            android:duplicateParentState="true">
+
+            <TextView
+                android:id="@android:id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentStart="true"
+                android:textAlignment="viewStart"
+                android:singleLine="true"
+                android:duplicateParentState="true"
+                android:ellipsize="marquee"
+                android:fadingEdge="horizontal"
+                android:firstBaselineToTopHeight="37px"
+                android:textSize="27px"
+                android:fontFamily="sans-serif"
+                android:textColor="#ffe1e3e5" />
+
+            <TextView
+                android:id="@*android:id/shortcut"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@android:id/title"
+                android:layout_alignParentStart="true"
+                android:textAlignment="viewStart"
+                android:singleLine="true"
+                android:duplicateParentState="true"
+                android:textSize="20px"
+                android:fontFamily="sans-serif"
+                android:textColor="#ffe1e3e5" />
+        </RelativeLayout>
+
+        <ImageView
+            android:id="@*android:id/submenuarrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="8dp"
+            android:scaleType="center"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.android.internal.view.menu.ListMenuItemView>

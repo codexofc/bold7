@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Calendar of BBOS 7.1 (docs/BBOS7-VISUEL.md §29): an ordinary app, out of the module,
+  installed by tools/install.sh, on Android's calendar provider (the Google account's agenda, nothing
+  copied). Google Calendar stays the engine of the reminders (sound, notification); this app only
+  shows OS 7's reminder box, on the provider's EVENT_REMINDER.
+  Exported: the launcher's activity (the home's Calendar icon, VIEW of an event from Messages) and
+  ReminderReceiver, which the provider reaches without any permission Bold7 could require (see
+  Reminder.kt: a declared exception, as the Clock's BootReceiver).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Switch Application of the menus: the launcher's switcher, behind its
+         signature permission, declared here and by the launcher and each app that asks for it, so
+         that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <!-- Runtime, granted by tools/install.sh. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- Its app-op, allowed by tools/install.sh, lets the reminder box open from the receiver. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application
+        android:name=".CalendarApp"
+        android:allowBackup="false"
+        android:label="@string/app_name">
+
+        <activity
+            android:name=".CalendarActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- An event of the provider (Messages opens the Hub's invitations so). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/event" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".EventActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
+
+        <!-- The reminder box: not showWhenLocked (nothing interactive while locked, CONTRIBUTING.md). -->
+        <activity
+            android:name=".ReminderActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.bold7.calendar.reminder"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.EVENT_REMINDER" />
+                <data android:scheme="content" android:host="com.android.calendar" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

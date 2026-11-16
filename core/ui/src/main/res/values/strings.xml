@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The labels core/ui writes itself, OS 7's (docs/BBOS7-VISUEL.md §4): the short menu's last cell (sim-17, sim-52), the date and time boxes' buttons (sim-234, sim-274); a text field's selection entries (sim-256, C; guide 7.1 p. 213, B). -->
+<resources>
+    <string name="ui_full_menu">Full Menu</string>
+    <string name="ui_ok">OK</string>
+    <string name="ui_cancel">Cancel</string>
+    <string name="ui_start_selection">Start Selection</string>
+    <string name="ui_cut">Cut</string>
+    <string name="ui_copy">Copy</string>
+    <string name="ui_paste">Paste</string>
+</resources>

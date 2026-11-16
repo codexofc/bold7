@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status bar, as far as resources go: the 9900's banner over an app (docs/BBOS7-VISUEL.md
+     §18). The keyguard bar keeps Android's sizes: system/sysui clips it away and draws the 9900's
+     lock screen banner in its place. Names and uses checked against the Q25's
+     MtkSystemUI (apktool and jadx, outside the repository). -->
+<resources>
+    <!-- Background of the bar in MODE_TRANSPARENT, the usual mode on Android 14
+         (BarTransitions.BarBackgroundDrawable): the 9900's banner is black over an app (sim-43);
+         over the keyguard, system/sysui fades this background out. The other modes already draw
+         system_bar_background_opaque, black; the semi-transparent ones, rare, keep a framework
+         color. -->
+    <color name="system_bar_background_transparent">#FF000000</color>
+
+    <!-- Tint of the status icons and the clock when an app asks for a light status bar
+         (DarkIconDispatcher): the bar stays black, so they stay light. The keyguard bar uses it
+         over a light wallpaper, which it lets through: its icons stay white. Android's radio
+         icons are blocked by system/sysui, not here, so that SystemUI keeps them when hooks are
+         off. -->
+    <color name="dark_mode_icon_color_single_tone">#FFFFFFFF</color>
+</resources>

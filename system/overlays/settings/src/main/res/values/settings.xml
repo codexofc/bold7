@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MtkSettings' title bar dressed by values, as OS 7's (BBOS7-VISUEL §17, sim-57, C: the
+     title bar of Options, white on black). Names, uses and code paths checked against the Q25's
+     MtkSettings.apk (aapt2, outside the repository): every resource here is read only by
+     the places listed. The bar does not fold, as OS 7's, and has its height: a black band of
+     32 px (sim-263, sim-284, sim-299, C; BBOS7-VISUEL §34.8). -->
+<resources>
+    <!-- The folded bar's colour, drawn as SettingsLib's CollapsingToolbarLayout content scrim
+         (collapsing_toolbar_content_layout): the black of OS 7's title bar (sim-57, C; its 1 px
+         #1F1F1F rule is not drawn, D). Android's was system_neutral1_100. -->
+    <color name="settingslib_colorSurfaceHeader">#FF000000</color>
+
+    <!-- The title in the bar: BBAlpha Sans 22 px white, not bold (sim-263, sim-284, sim-299, C:
+         capitals 16 px high; BBOS7-VISUEL §34.8). It is only ever drawn over the black scrim below
+         (settingslib_colorSurfaceHeader), which the trigger keeps up. Android: 20 dp. -->
+    <style name="CollapsingToolbarTitle.Collapsed"
+        parent="@android:style/TextAppearance.DeviceDefault.Widget.ActionBar.Title">
+        <item name="android:textSize">22px</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+    <!-- The unfolded title: the colour of a row's title, on the page's own surface (light, dark in
+         -night: values/colors.xml and values-night/colors.xml), 22 px as the folded one. The fixed
+         bar never draws it; HomepageTitleText (the "Options" of the home page, a TextView on the
+         page's surface, no bar behind it) inherits this style, so it is NOT white. Dark on light is
+         Android's own pairing. -->
+    <style name="CollapsingToolbarTitle.Expanded" parent="CollapsingToolbarTitle.Collapsed">
+        <item name="android:textColor">@color/settingslib_text_color_primary_device_default</item>
+    </style>
+
+    <!-- OS 7's title bar does not fold (sim-57, C): a black band of the toolbar's height under the
+         banner, the title white in it, whatever the list does. Android's bar folds with the list's
+         nested scroll only, which the trackpad's focus moves never give: it stayed unfolded under
+         a scrolled list, its dark title on the first row. The bar is therefore one pixel taller
+         than its toolbar: CollapsingToolbarLayout's fold range is then 1 px (height, less the
+         toolbar, less the inset), never 0 (it divides by it). The scrim's trigger is far above
+         that height: the scrim is always up, and in fade mode the title's fade threshold
+         (setFadeModeStartFraction, (height - trigger) / range) goes far below 0, so the collapsed
+         title is drawn at every offset, at an alpha of 0.998, never the expanded one (MtkSettings
+         of the Q25, Material's CollapsingToolbarLayout and CollapsingTextHelper read with jadx).
+         SettingsColorsTest checks both. Android: 179 dp and 137 dp. -->
+    <dimen name="settingslib_toolbar_layout_height">33px</dimen>
+    <dimen name="settingslib_scrim_visible_height_trigger">1000px</dimen>
+    <!-- The title starts at x 6 as OS 7's (sim-263, C); Android: 24 dp. -->
+    <dimen name="expanded_title_margin_start">6px</dimen>
+
+    <!-- The toolbar's height: 32 px, OS 7's black band (§34.8), in place of 56 dp (64 on wide screens).
+         The bar's toolbar reads ?actionBarSize of Theme.CollapsingToolbar.Settings, a Material theme,
+         which is mtrl_toolbar_default_height (aapt2, the Q25's apk): a capture of the Q25 has the
+         toolbar at y 67 to 140, 73 px = 56 dp at 208 dpi. An earlier version had named
+         abc_action_bar_default_height_material, which only appcompat themes read; it stays for the
+         bars that do. The folded bar is this under the status bar. -->
+    <dimen name="mtrl_toolbar_default_height">32px</dimen>
+    <dimen name="abc_action_bar_default_height_material">32px</dimen>
+
+    <!-- Square corners, as everything OS 7 draws: the home page's search bar (SearchBarStyle) and
+         the main switch bar of the pages that have one: the four switch_bar_bg drawables. -->
+    <dimen name="search_bar_corner_radius">0dp</dimen>
+    <dimen name="settingslib_switch_bar_radius">0dp</dimen>
+    <!-- Rows and groups of the preference pages, in OS 7's Options sizes (BBOS7-VISUEL §27): the
+         title in 27 px (Android 20 sp, 26 px here) and the summary in 23 px (Android 14 sp), black and
+         #7C7E80 (settingslib_text_color_*, values/colors.xml), a group's title in bold 23 px grey
+         (sim-263, C) in place of Android's 14 sp accent blue: PreferenceCategoryTitleTextStyle read
+         the accent itself, so the colour is set here. Parents as MtkSettings' own. -->
+    <style name="TextAppearance.PreferenceTitle.SettingsLib"
+        parent="@android:style/TextAppearance.Material.Subhead">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/settingslib_text_color_primary</item>
+    </style>
+    <style name="TextAppearance.PreferenceSummary.SettingsLib"
+        parent="@android:style/TextAppearance.DeviceDefault.Small">
+        <item name="android:textSize">23px</item>
+        <item name="android:textColor">@color/settingslib_text_color_secondary</item>
+    </style>
+    <style name="TextAppearance.CategoryTitle.SettingsLib"
+        parent="@android:style/TextAppearance.DeviceDefault.Medium">
+        <item name="android:textSize">23px</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/settingslib_text_color_preference_category_title</item>
+    </style>
+    <style name="PreferenceCategoryTitleTextStyle">
+        <item name="android:textAppearance">@style/TextAppearance.CategoryTitle.SettingsLib</item>
+        <item name="android:textColor">@color/settingslib_text_color_preference_category_title</item>
+    </style>
+</resources>

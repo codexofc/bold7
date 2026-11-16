@@ -1,0 +1,1 @@
+Bold7 module mounted by its own overlay (post-fs-data.sh). Gone once the module is removed.

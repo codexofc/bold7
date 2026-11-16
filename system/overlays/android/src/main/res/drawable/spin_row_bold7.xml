@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selector of OS 7's open choice list (values/widgets.xml): the row under the
+     trackpad focus or the finger in border_spinboxbutton~focus.png (A, BBOS7-VISUEL.md §8), the
+     image of the chosen value of core/ui's choice list; nothing otherwise. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true" android:drawable="@drawable/bold7_chosen" />
+    <item android:state_focused="true" android:drawable="@drawable/bold7_chosen" />
+    <item android:state_selected="true" android:drawable="@drawable/bold7_chosen" />
+</selector>
