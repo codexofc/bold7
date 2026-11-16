@@ -121,11 +121,16 @@ const val LAUNCHER_PACKAGE = "dev.bold7.launcher"
  * [controllingPackage] (CommandQueue.onSystemBarAttributesChanged): on the home, where it would
  * show over the banner for a swipe from the top (Android's transient bars), a heads-up card or a
  * system event, and over an app that has no such bar on the 9900 ([BarKind.NONE]), where it would
- * show over the app's own title for a swipe or a dialog. Anywhere else, or with the switch on,
- * Android's.
+ * show over the app's own title for a swipe or a dialog; and under the lock screen ([keyguard], the
+ * window being SystemUI's), which draws its own bar: kept shown there, the apps' bar was drawn over
+ * the home's banner for the frames the lock screen took to go once unlocked, before the launcher's
+ * window set the bar's look. Anywhere else, or with the switch on, Android's.
  */
-fun barHidden(controllingPackage: String?, androidShade: Boolean): Boolean =
-    !androidShade && (controllingPackage == LAUNCHER_PACKAGE || barKind(controllingPackage) == BarKind.NONE)
+fun barHidden(controllingPackage: String?, androidShade: Boolean, keyguard: Boolean): Boolean =
+    !androidShade && (
+        controllingPackage == LAUNCHER_PACKAGE || barKind(controllingPackage) == BarKind.NONE ||
+            keyguard && controllingPackage == "com.android.systemui"
+        )
 
 /**
  * Whether the bar stays exactly as it was when the window that sets its look is SystemUI's own

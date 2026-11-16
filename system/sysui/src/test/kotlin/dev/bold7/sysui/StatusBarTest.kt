@@ -11,8 +11,8 @@ import kotlin.test.assertTrue
 class StatusBarTest {
     // The 9900's counters (sim-43: "2" and the missed call; gsm 022: "1" mail, "1" text message),
     // the Hub's unread by kind: one per kind, in the home banner's order (launcher,
-    // Banner.indicators): mail, text messages, missed calls, invitations, then every other app
-    // together under the "?" bubble. A kind with nothing unread, or unknown, shows nothing.
+    // Banner.indicators): mail, text messages, missed calls, invitations. A kind with nothing
+    // unread, or unknown, shows nothing: another app's notifications have no counter on OS 7.
     @Test fun countersAreTheHubsInTheHomesOrder() {
         assertEquals(
             listOf(
@@ -20,7 +20,6 @@ class StatusBarTest {
                 Counter("banner_count_sms", 1),
                 Counter("banner_count_missed_call", 2),
                 Counter("banner_count_calendar", 1),
-                Counter("banner_count_other", 2),
             ),
             kindCounters(mapOf("NOTIFICATION" to 2, "INVITATION" to 1, "MISSED_CALL" to 2, "SMS" to 1, "EMAIL" to 3)),
         )
@@ -105,7 +104,7 @@ class StatusBarTest {
     // Every image the counters can name, so that none is missing at run time.
     @Test fun everyCounterImageIsThere() {
         val names = KIND_IMAGES.values.toSet()
-        assertEquals(5, names.size)
+        assertEquals(4, names.size)
         for (name in names) assertTrue(File("../../assets-gen/sysui/res/drawable-nodpi/$name.png").exists(), name)
     }
 }

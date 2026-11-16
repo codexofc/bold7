@@ -63,8 +63,8 @@ class HubBadgesTest {
             item(notifications, "3", ItemKind.NOTIFICATION, addedAt = 200, folder = "com.whatsapp"),
         )
         val badges = hubBadges(accounts, items, smsApp = "sms.app", dialer = "dialer.app")
-        // Texts and MMS are one count, as on the 9900's banner.
-        assertEquals(mapOf(ItemKind.SMS to 2, ItemKind.MISSED_CALL to 2, ItemKind.NOTIFICATION to 1), badges.counts)
+        // Texts and MMS are one count, as on the 9900's banner; another app's notifications none.
+        assertEquals(mapOf(ItemKind.SMS to 2, ItemKind.MISSED_CALL to 2), badges.counts)
         // Nothing unread: no count, even with nothing new.
         assertEquals(emptyMap(), hubBadges(accounts, items.map { it.copy(read = true) }, "sms.app", "dialer.app").counts)
         // A notification that repeats an SMS is counted once.
@@ -131,6 +131,6 @@ class HubBadgesTest {
         )
         val counts = hubBadges(accounts, items, "sms.app", "dialer.app").counts
         assertEquals(unreadByKind(accounts, items, "sms.app", "dialer.app"), counts)
-        assertEquals(mapOf(ItemKind.SMS to 1, ItemKind.MISSED_CALL to 1, ItemKind.NOTIFICATION to 1), counts)
+        assertEquals(mapOf(ItemKind.SMS to 1, ItemKind.MISSED_CALL to 1), counts)
     }
 }

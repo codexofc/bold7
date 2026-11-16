@@ -2,6 +2,7 @@ package dev.bold7.sysui
 
 import android.app.ActivityManager
 import android.app.ActivityTaskManager
+import android.app.KeyguardManager
 import android.app.TaskStackListener
 import android.graphics.Typeface
 import android.provider.Settings
@@ -251,10 +252,10 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
     /**
      * After CommandQueue.onSystemBarAttributesChanged, on a binder thread: which app sets the bar's
      * look, and so which bar shows (barKind) and its title (bannerTitle: the label of the task in
-     * front, read here, once per change of the window in front). On the home and over an app with
-     * no bar (barHidden), the bar's whole window is drawn transparent: whatever shows it there (a
-     * swipe from the top, a heads-up card, a dialog, a system event), nothing of Android shows. The
-     * switch (bold7_android_shade) is read here, at each change. Under the power key's dialog
+     * front, read here, once per change of the window in front). On the home, over an app with no
+     * bar and under the lock screen (barHidden), the bar's whole window is drawn transparent:
+     * whatever shows it there (a swipe from the top, a heads-up card, a dialog, a system event, the
+     * lock screen going), nothing of Android shows. The switch (bold7_android_shade) is read here, at each change. Under the power key's dialog
      * nothing changes (barKept).
      */
     fun onBarAttributes(displayId: Int, controllingPackage: String?) {
@@ -265,7 +266,7 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         val look = barBackground(controllingPackage)
         val android = androidShadeAsked(Settings.Global.getInt(bar.context.contentResolver, ANDROID_SHADE_SETTING, 0))
         val demo = callDemo(Settings.Global.getInt(bar.context.contentResolver, CALL_DEMO_SETTING, 0))
-        val hidden = barHidden(controllingPackage, android)
+        val hidden = barHidden(controllingPackage, android, keyguardLocked(bar))
         hiddenNow = hidden
         val kind = barKind(controllingPackage)
         val label = if (kind == BarKind.TWO_LINES && controllingPackage?.startsWith("dev.bold7.") == true) (taskLabel(bar, controllingPackage) ?: labels[controllingPackage]) else null
@@ -275,6 +276,9 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
             guardedLayout { showLines(kind, demo, controllingPackage, label) }
         }
     }
+
+    /** Whether the lock screen shows (KeyguardManager, a binder call on the bar's binder thread). */
+    private fun keyguardLocked(bar: View): Boolean = bar.context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     /**
      * The label the task in front set for its screen (Activity.setTaskDescription; null when it set

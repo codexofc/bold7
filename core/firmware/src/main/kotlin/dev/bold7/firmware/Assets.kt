@@ -317,7 +317,7 @@ internal class Assets(private val tree: File, private val out: File, private val
         for ((col, name) in listOf(1 to "vibrate", 2 to "silent", 4 to "phone_only"))
             frame(profile, 43, 43, col, 0, "profile_$name", intArrayOf(43, 33, 0, 5))
         val count = File(theme, "net_rim_Ribbon_UnreadCount-icons33x29.png")
-        for ((col, name) in listOf(0 to "email", 4 to "calendar", 6 to "sms", 14 to "missed_call", 7 to "other"))
+        for ((col, name) in listOf(0 to "email", 4 to "calendar", 6 to "sms", 14 to "missed_call"))
             frame(count, 33, 29, col, 0, "count_$name")
     }
 

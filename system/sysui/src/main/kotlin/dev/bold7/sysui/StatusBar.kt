@@ -284,15 +284,13 @@ fun barBackground(controllingPackage: String?): BarBackground = when {
 /**
  * The 9900's counters by the Hub's item kind (ItemKind's names, HubContract.KINDS_URI), frames of
  * net_rim_Ribbon_UnreadCount, in the home banner's order (launcher, Banner.indicators, D): mail,
- * texts, missed calls, invitations, then every other app's notifications under the strip's bubble
- * with a "?" (frame 7).
+ * texts, missed calls, invitations. Another app's notifications count nowhere (unreadByKind).
  */
 val KIND_IMAGES = linkedMapOf(
     "EMAIL" to "banner_count_email",
     "SMS" to "banner_count_sms",
     "MISSED_CALL" to "banner_count_missed_call",
     "INVITATION" to "banner_count_calendar",
-    "NOTIFICATION" to "banner_count_other",
 )
 
 /** The Hub's unread count by kind, or the showcase's while [showcase], the video's [event] played: the Hub is not asked then. */

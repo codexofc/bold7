@@ -116,7 +116,7 @@ Bold7 is not a theme. It is a launcher, a set of apps, an input method, a System
 
 **You need** a Zinwa Q25 running BenOS (Android 14) with the KernelSU manager that BenOS ships, and the official BlackBerry Bold 9900 OS 7.1 file. Bold7 contains no BlackBerry asset: it reads this file on your phone and extracts what it needs there. The download page lists the accepted files and their SHA-256. Bold7 does not link to copies of them.
 
-**Need help finding the official 9900 file?** Contact the maintainer for advice by email at arthur@sw3rm.com or on Discord (<!-- DISCORD: handle or invite link -->to be announced).
+**Need help finding the official 9900 file?** Contact the maintainer for advice by email at arthur@sw3rm.com or on Discord (username `_codexofc`).
 
 1. **Download two files** into `Download/`: `bold7-<version>.zip` from the download page, and the official 9900 file.
 2. **Install the zip** from the KernelSU manager: Modules, Install, choose the zip. The manager shows each step: device and BenOS recognised, 9900 file found and extracted, apps installed. If the 9900 file is missing, the installer stops before changing anything and says which file to place where.

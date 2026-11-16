@@ -46,14 +46,17 @@ private val SYSTEM_PACKAGES = setOf(
 fun HubItem.isSystemNotice() = kind == ItemKind.NOTIFICATION && (isSystemNotification() || folder in SYSTEM_PACKAGES)
 
 /**
- * Every unread item by kind, seen in the Hub or not, MMS counted with SMS: the numbers of the home
- * banner's indicator row, of an app's status bar and of the lock screen (BBOS7-VISUEL §1, sim-03,
- * sim-43, sim-64: the same counters everywhere, C). Android's own notices are left out, and so is
- * a notification that only repeats an SMS or a missed call ([withoutEchoes]): one call, one count.
+ * Every unread item by kind, seen in the Hub or not: the numbers of the home banner's indicator
+ * row, of an app's status bar and of the lock screen (BBOS7-VISUEL §1, sim-03, sim-43, sim-64: the
+ * same counters everywhere, C). A text counts as SMS, an MMS or a chat of the SMS app [smsApp]
+ * alike ([isText]). Any other notification counts nowhere: OS 7 has a counter for mail, texts,
+ * missed calls and invitations, none for an app of Android. A notification that only repeats an
+ * SMS or a missed call is left out too ([withoutEchoes]): one call, one count.
  */
 fun unreadByKind(accounts: List<Account>, items: List<HubItem>, smsApp: String?, dialer: String?): Map<ItemKind, Int> {
     val ids = accounts.mapTo(HashSet()) { it.id }
     return items.filterNot { it.isSystemNotice() }.withoutEchoes(smsApp, dialer)
         .filter { it.accountId in ids && it.isUnread() }
-        .groupingBy { if (it.kind == ItemKind.MMS) ItemKind.SMS else it.kind }.eachCount()
+        .mapNotNull { if (it.isText(smsApp)) ItemKind.SMS else it.kind.takeIf { k -> k != ItemKind.NOTIFICATION } }
+        .groupingBy { it }.eachCount()
 }

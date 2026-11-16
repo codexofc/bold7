@@ -51,17 +51,16 @@ const val UNREAD_EMAIL = 0
 const val UNREAD_CALENDAR = 4
 const val UNREAD_SMS = 6
 
-/** The strip's speech bubble with a "?": other apps' notifications (D, by eye). */
+/** The strip's speech bubble with a "?": the header of another app in the list of notifications (D, by eye). */
 const val UNREAD_OTHER = 7
 const val UNREAD_MISSED_CALL = 14
 
-/** The row's counts, in this order (D): email, texts, missed calls, invitations, other apps. */
+/** The row's counts, in this order (D): email, texts, missed calls, invitations (unreadByKind counts nothing else). */
 fun indicators(counts: Map<ItemKind, Int>): List<Indicator> = listOf(
     ItemKind.EMAIL to UNREAD_EMAIL,
     ItemKind.SMS to UNREAD_SMS,
     ItemKind.MISSED_CALL to UNREAD_MISSED_CALL,
     ItemKind.INVITATION to UNREAD_CALENDAR,
-    ItemKind.NOTIFICATION to UNREAD_OTHER,
 ).mapNotNull { (kind, frame) -> counts[kind]?.takeIf { it > 0 }?.let { Indicator(frame, it) } }
 
 /** Everything the banner and its indicator row show, worked out off the drawing (BannerSource). */

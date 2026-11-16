@@ -109,9 +109,20 @@ class HomeView(
      * the results, the bar at the bottom closing them), back when it closes.
      */
     fun setTrayHidden(hidden: Boolean) {
-        // alpha, not visibility: the folder band's own visibility follows its folder.
-        val a = if (hidden) 0f else 1f
-        for (v in arrayOf(veil, gridArea, tab, folderHeader)) v.alpha = a
+        searchShown = hidden
+        showTray()
+    }
+
+    private var searchShown = false
+
+    /**
+     * The tray hidden under the search or the list of notifications by its transition alpha, not
+     * its alpha, which keeps the veil's darkening (place), nor its visibility, which follows an
+     * open folder for its band.
+     */
+    private fun showTray() {
+        val a = if (trayHidden || searchShown) 0f else 1f
+        for (v in arrayOf(veil, gridArea, tab, folderHeader)) v.transitionAlpha = a
     }
 
     /** The banner's taps go to [onBannerTap], a pull down on it to [onBannerPull]. */
@@ -645,8 +656,7 @@ class HomeView(
      */
     fun trayShown(shown: Boolean) {
         trayHidden = !shown
-        val a = if (shown) 1f else 0f
-        for (v in arrayOf(veil, gridArea, tab, folderHeader)) v.transitionAlpha = a
+        showTray()
     }
 
     /** Shows the trackpad's focus (HomeKeys): on the banner, the tab or an icon, its name in the tab. */

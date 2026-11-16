@@ -69,8 +69,9 @@ class CountsTest {
         assertEquals(Count(0, 0), counts(listOf(sms), listOf(deleted)).total)
     }
 
-    // The home banner's, app bar's and lock screen's numbers: unread by kind, MMS with SMS, the
-    // dialer's echo of a missed call and Android's own notices left out, an unknown account ignored.
+    // The home banner's, app bar's and lock screen's numbers: unread by kind, MMS and the SMS app's
+    // own chats with SMS, the dialer's echo of a missed call, Android's own notices and every other
+    // app's notifications left out (no counter of OS 7 for them), an unknown account ignored.
     @Test fun unreadByKindIsTheBannersCount() {
         val notes = Account(HubAccounts.NOTIFICATIONS.id, AccountKind.NOTIFICATIONS, "Notifications", position = 3)
         fun note(key: String, folder: String, sender: String = "x", preview: String = "") =
@@ -85,10 +86,11 @@ class CountsTest {
             note("s", "android"),
             note("g", "com.google.android.gsf"),
             note("w", "com.whatsapp"),
+            note("r", "sms.app", sender = "Someone", preview = "an RCS chat"),
             item("gone", "1", arrived = 1),
         )
         assertEquals(
-            mapOf(ItemKind.SMS to 2, ItemKind.MISSED_CALL to 1, ItemKind.NOTIFICATION to 1),
+            mapOf(ItemKind.SMS to 3, ItemKind.MISSED_CALL to 1),
             unreadByKind(listOf(sms, calls, notes), items, smsApp = "sms.app", dialer = "dialer.app"),
         )
         assertEquals(emptyMap(), unreadByKind(listOf(sms), emptyList(), null, null))

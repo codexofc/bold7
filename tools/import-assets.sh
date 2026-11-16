@@ -333,7 +333,6 @@ bandeau() {
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 4 0 count_calendar
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 6 0 count_sms
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 14 0 count_missed_call
-  frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 7 0 count_other # the "?" bubble: every other app
   echo "bandeau: $(ls "$dir"/banner_*.png | wc -l | tr -d ' ') banner images in $dir"
 }
 

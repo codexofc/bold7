@@ -50,7 +50,7 @@ class BannerTest {
     @Test fun indicatorsCountEachKindInTheBannersOrderWithTheThemesIcons() {
         val counts = mapOf(ItemKind.MISSED_CALL to 2, ItemKind.EMAIL to 3, ItemKind.NOTIFICATION to 1, ItemKind.SMS to 4)
         assertEquals(
-            listOf(Indicator(UNREAD_EMAIL, 3), Indicator(UNREAD_SMS, 4), Indicator(UNREAD_MISSED_CALL, 2), Indicator(UNREAD_OTHER, 1)),
+            listOf(Indicator(UNREAD_EMAIL, 3), Indicator(UNREAD_SMS, 4), Indicator(UNREAD_MISSED_CALL, 2)),
             indicators(counts),
         )
         assertEquals(emptyList(), indicators(mapOf(ItemKind.SMS to 0)))

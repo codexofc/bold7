@@ -151,19 +151,31 @@ class ShadeTest {
     // own title: Android's bar never shows there, not even for a swipe from the top (transient
     // bars), a dialog or a heads-up card; any other window keeps it.
     @Test fun theHomeAndTheAppsWithoutABarHideIt() {
-        assertTrue(barHidden("dev.bold7.launcher", androidShade = false))
-        assertTrue(barHidden("dev.bold7.contacts", androidShade = false))
-        assertTrue(barHidden("dev.bold7.calculator", androidShade = false))
-        assertFalse(barHidden("dev.bold7.phone", androidShade = false))
-        assertFalse(barHidden("com.android.settings", androidShade = false))
-        assertFalse(barHidden("com.android.systemui", androidShade = false))
-        assertFalse(barHidden(null, androidShade = false))
+        assertTrue(barHidden("dev.bold7.launcher", androidShade = false, keyguard = false))
+        assertTrue(barHidden("dev.bold7.contacts", androidShade = false, keyguard = false))
+        assertTrue(barHidden("dev.bold7.calculator", androidShade = false, keyguard = false))
+        assertFalse(barHidden("dev.bold7.phone", androidShade = false, keyguard = false))
+        assertFalse(barHidden("com.android.settings", androidShade = false, keyguard = false))
+        assertFalse(barHidden("com.android.systemui", androidShade = false, keyguard = false))
+        assertFalse(barHidden(null, androidShade = false, keyguard = false))
+    }
+
+    // Over the lock screen, the lock screen draws its own bar: the apps' bar stays hidden under
+    // it, and so is not drawn over the home's banner for the frames the lock screen takes to go
+    // once unlocked, before the launcher's window sets the bar's look. A dialog of SystemUI over
+    // an app keeps the app's bar.
+    @Test fun theLockScreenHidesIt() {
+        assertTrue(barHidden("com.android.systemui", androidShade = false, keyguard = true))
+        assertTrue(barHidden("dev.bold7.launcher", androidShade = false, keyguard = true))
+        // An app shown over the lock screen (the alarm, a call) has its bar.
+        assertFalse(barHidden("dev.bold7.phone", androidShade = false, keyguard = true))
+        assertFalse(barHidden("com.android.systemui", androidShade = true, keyguard = true))
     }
 
     // The emergency switch gives Android's bar back, and the shade behind it.
     @Test fun theSwitchShowsTheBar() {
-        assertFalse(barHidden("dev.bold7.launcher", androidShade = true))
-        assertFalse(barHidden("dev.bold7.tasks", androidShade = true))
+        assertFalse(barHidden("dev.bold7.launcher", androidShade = true, keyguard = false))
+        assertFalse(barHidden("dev.bold7.tasks", androidShade = true, keyguard = false))
     }
 
     // Only a swipe that shows the status bar is hidden again; the navigation bar's (none on the Q25) is Android's.
