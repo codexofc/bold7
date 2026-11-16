@@ -6,8 +6,7 @@ import {ScreenMedia} from './ScreenMedia';
 import {SHOTS, WAKE, type Shot} from './storyboard';
 import {C, clamp, Exit, FadeUp, FONT, Kicker, MaskWords, useRise} from './Text';
 
-// Simplification: provisional address, replace once the public site exists.
-export const SITE = 'bold7.example.org';
+export const SITE = 'bold7-site.vercel.app';
 const LEGAL =
 	'BlackBerry and its visual elements are the property of their respective owners. Bold7 is independent, not affiliated with BlackBerry Limited, and distributes no BlackBerry asset.';
 const MUSIC_CREDIT = 'Music: “Floating Cities” by Kevin MacLeod (incompetech.com), CC BY 4.0';

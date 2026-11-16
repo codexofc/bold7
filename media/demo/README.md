@@ -86,6 +86,5 @@ The rest of the tree is MIT, ISC, BSD or Apache, save a few build tools. Remotio
 
 ## Known limits
 
-- The site address (`SITE` in `src/Scenes.tsx`) is provisional.
 - No key-press effect while typing: without a video of hands, nothing would keep it in sync with the screen, so it would not be believable.
 - The `switcher` take opens Switch Application through the menu: a long press on Menu sent by `adb` does not open it, while the title says "Hold Menu".

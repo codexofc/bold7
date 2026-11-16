@@ -15,9 +15,8 @@
   <img alt="Root: KernelSU" src="https://img.shields.io/badge/root-KernelSU-3a3f44">
 </p>
 
-<!-- SITE: replace https://bold7.app with the final download page. -->
 <p align="center">
-  <a href="https://bold7.app"><img alt="Download Bold7" src="https://img.shields.io/badge/Download-Bold7-1f2328?style=for-the-badge"></a>
+  <a href="https://bold7-site.vercel.app"><img alt="Bold7 website" src="https://img.shields.io/badge/Website-bold7--site.vercel.app-1f2328?style=for-the-badge"></a>
 </p>
 
 <p align="center">
@@ -28,13 +27,16 @@
   <a href="#legal">Legal</a>
 </p>
 
+> [!IMPORTANT]
+> **Preview.** Bold7 runs daily on its maintainer's Q25, but there is no public release yet: the one-file installer, which extracts every BlackBerry resource from your own 9900 file on the phone, is being finished. Watch the repository or the [roadmap](ROADMAP.md) for the first release.
+
 ---
 
 <!-- MEDIA: demo video. GitHub does not play a video stored in the repository inline:
      either upload the video in the GitHub editor and paste the user-attachments URL on its own line,
      or keep this poster image linking to the hosted video. -->
 <p align="center">
-  <a href="https://bold7.app"><img src="media/demo-poster.png" alt="Bold7 demo video" width="720"></a>
+  <a href="https://bold7-site.vercel.app"><img src="media/demo-poster.png" alt="Bold7 demo video" width="720"></a>
 </p>
 
 ## Screenshots
