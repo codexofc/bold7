@@ -152,10 +152,33 @@ class HomeReducerTest {
         assertEquals(null, reduce(s, HomeEvent.OpenFolder(0)).folder)
     }
 
-    @Test fun renamingKeepsANameOfOneLineAndRefusesAnEmptyOne() {
+    @Test fun editFolderKeepsANameOfOneLineTakesTheIconAndRefusesAnEmptyName() {
+        val s = loaded(folders)
+        assertEquals(Folder("My games", listOf(zoom, music), icon = 7), reduce(s, HomeEvent.EditFolder(1, " My\n\tgames ", 7)).all[1])
+        assertSame(s, reduce(s, HomeEvent.EditFolder(1, "  ", 7)))
+        // An app is not a folder.
+        assertSame(s, reduce(s, HomeEvent.EditFolder(0, "Agenda", 7)))
+    }
+
+    @Test fun addFolderTakesTheIconChosen() {
+        assertEquals(Folder("Fun", emptyList(), icon = 13), reduce(loaded(), HomeEvent.AddFolder("Fun", 13)).all.last())
+    }
+
+    @Test fun addFolderGoesAtTheFocusedIconsPlace() {
+        // sim-479: added with Manage Connections focused, the folder takes its place.
+        assertEquals(listOf(agenda, Folder("Fun", emptyList()), maps, music, zoom), reduce(loaded(), HomeEvent.AddFolder("Fun", 0, at = 1)).all)
+        // In an open folder, at the end of All.
         val open = reduce(loaded(folders), HomeEvent.OpenFolder(1))
-        assertEquals("My games", reduce(open, HomeEvent.RenameFolder(" My\n\tgames ")).folder?.name)
-        assertEquals("Fun", reduce(open, HomeEvent.RenameFolder("  ")).folder?.name)
+        assertEquals(Folder("New", emptyList()), reduce(open, HomeEvent.AddFolder("New", 0, at = 0)).all.last())
+    }
+
+    @Test fun aFoldersIconIsSavedAfterItsNameAndReadBack() {
+        val home = SavedHome(listOf(Folder("Fun", listOf(zoom.key()), icon = 13), Folder("Plain", emptyList())))
+        val text = encodeHome(home)
+        assertEquals("folder\tFun\ticon=13\tzoom/zoom.Main\nfolder\tPlain\n", text)
+        assertEquals(home, decodeHome(text))
+        // An icon the chooser does not have is the plain folder's.
+        assertEquals(SavedHome(listOf(Folder("Odd", emptyList()))), decodeHome("folder\tOdd\ticon=21\n"))
     }
 
     @Test fun moveToFolderPutsTheAppLastInItAndOutOfAFolderRightAfterIt() {
@@ -234,5 +257,54 @@ class HomeReducerTest {
         assertEquals(listOf<Tile>(zoom, agenda, maps, music), all.all)
         assertEquals(false, reduce(all, HomeEvent.Back).showAll)
         assertEquals(false, reduce(all, HomeEvent.HomeKey).showAll)
+    }
+
+    // Home Screen Preferences (sim-284, sim-287, C; guide 7.1 p. 23, B): Downloads Folder and Manage Panels.
+
+    @Test fun anAppInstalledGoesToTheDownloadsFolderAtItsEndHomeKeepsItLastInAll() {
+        val game = App("game", "game.Main", "Game", removable = true)
+        val saved = SavedHome(listOf(agenda.key(), Folder("Apps", listOf(zoom.key())), maps.key(), music.key()), downloads = "Apps")
+        val s = loaded(saved)
+        assertEquals("Apps", s.downloadsFolder)
+        val installed = reduce(s, HomeEvent.PackageChanged("game", listOf(game)))
+        assertEquals(listOf(agenda, Folder("Apps", listOf(zoom, game)), maps, music), installed.all)
+        val home = reduce(reduce(s, HomeEvent.Preferences(null, emptySet())), HomeEvent.PackageChanged("game", listOf(game)))
+        assertEquals(game, home.all.last())
+    }
+
+    @Test fun aSystemAppOrAnUpdateNeverGoesToTheDownloadsFolder() {
+        val tool = App("tool", "tool.Main", "Tool")
+        val s = loaded(SavedHome(listOf(agenda.key(), Folder("Apps", emptyList()), maps.key(), music.key(), zoom.key()), downloads = "Apps"))
+        assertEquals(tool, reduce(s, HomeEvent.PackageChanged("tool", listOf(tool))).all.last())
+        assertEquals(s.all, reduce(s, HomeEvent.PackageChanged("zoom", listOf(zoom))).all)
+    }
+
+    @Test fun theDownloadsFolderFollowsItsRenameAndGoesBackToHomeOnceDeleted() {
+        val s = loaded(SavedHome(listOf(Folder("Apps", emptyList()), agenda.key(), maps.key(), music.key(), zoom.key()), downloads = "Apps"))
+        val renamed = reduce(s, HomeEvent.EditFolder(0, "Games", 0))
+        assertEquals("Games", renamed.downloadsFolder)
+        assertEquals(null, reduce(renamed, HomeEvent.DeleteFolder(0)).downloadsFolder)
+        // A folder that is not there is Home.
+        assertEquals(null, reduce(s, HomeEvent.Preferences("Nowhere", emptySet())).downloadsFolder)
+    }
+
+    @Test fun aHiddenPanelLeavesTheLoopAllNeverHides() {
+        val s = reduce(reduce(loaded(), HomeEvent.ShowPanel(Panel.MEDIA)), HomeEvent.Preferences(null, setOf(Panel.MEDIA, Panel.ALL, Panel.FREQUENT)))
+        assertEquals(setOf(Panel.MEDIA, Panel.FREQUENT), s.hiddenPanels)
+        assertEquals(Panel.ALL, s.panel) // the view shown went: All
+        assertEquals(Panel.DOWNLOADS, Panel.FAVOURITES.next(1, s.hiddenPanels))
+        assertEquals(Panel.ALL, Panel.DOWNLOADS.next(1, s.hiddenPanels))
+        assertEquals(Panel.DOWNLOADS, Panel.ALL.next(-1, s.hiddenPanels))
+        assertEquals(Panel.FAVOURITES, Panel.ALL.next(-2, s.hiddenPanels))
+        assertSame(s, reduce(s, HomeEvent.ShowPanel(Panel.MEDIA)))
+        assertEquals(Panel.ALL, Panel.ALL.next(1, Panel.entries.toSet()))
+    }
+
+    @Test fun theDownloadsFolderAndTheHiddenPanelsAreSavedAndReadBack() {
+        val home = SavedHome(listOf(Folder("Apps", listOf(zoom.key()))), downloads = "Apps", hiddenPanels = setOf(Panel.MEDIA, Panel.FREQUENT))
+        assertEquals(home, decodeHome(encodeHome(home)))
+        val s = loaded(home)
+        assertEquals(setOf(Panel.MEDIA, Panel.FREQUENT), s.hiddenPanels)
+        assertEquals(HomeChoices(listOf("Apps"), "Apps", setOf(Panel.MEDIA, Panel.FREQUENT)), s.choices)
     }
 }

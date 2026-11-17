@@ -8,8 +8,9 @@ package dev.bold7.hub.data
  *   item, the notifications that repeat an SMS or a missed call included (the launcher's list
  *   leaves those out, withoutEchoes); [SEEN] is the account's last visit, epoch ms.
  * - [KINDS_URI]: the unread items by kind ([unreadByKind]), one row per kind that has any
- *   ([KIND] an ItemKind's name, [UNREAD]): the counters of the home banner, of an app's status bar
- *   and of the lock screen, one count for the three. SystemUI reads it with STATUS_BAR, like
+ *   ([KIND] an ItemKind's name, [UNREAD], null [APP]), then one row per other app ([unreadByApp]:
+ *   [KIND] NOTIFICATION, [APP] its package), the newest first: the counters of the home banner, of
+ *   an app's status bar and of the lock screen, one count for the three. SystemUI reads it with STATUS_BAR, like
  *   [COUNTS_URI], and observes [COUNTS_URI], which every write notifies.
  * - [ITEMS_URI]: every item, in no order, as [ITEM_COLUMNS] ([itemRow], read back by [itemFromRow]).
  * - [METHOD_OPEN]: ContentResolver.call with a notification's key as its arg: its live
@@ -52,6 +53,7 @@ object HubContract {
     const val ACCOUNT = "account"
     const val KIND = "kind"
     const val UNREAD = "unread"
+    const val APP = "app"
     const val NEW = "new"
     const val SEEN = "seen"
 

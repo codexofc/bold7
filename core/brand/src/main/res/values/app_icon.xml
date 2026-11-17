@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An app's icon outside Bold7 when the build has no OS 7 icon for it (a public build, an app
+     without one): Android's own. The development build's apps override it with their OS 7 icon. -->
+<resources>
+    <item name="app_icon" type="mipmap">@android:drawable/sym_def_app_icon</item>
+</resources>

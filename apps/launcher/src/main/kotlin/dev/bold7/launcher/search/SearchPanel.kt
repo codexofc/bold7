@@ -6,9 +6,7 @@ import android.content.ComponentName
 import android.content.ContentUris
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.NinePatch
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
@@ -27,7 +25,6 @@ import android.text.TextPaint
 import android.text.TextWatcher
 import android.text.format.DateUtils
 import android.util.Log
-import dev.bold7.showcase.showcaseOn
 import android.util.LruCache
 import android.util.TypedValue
 import android.view.Gravity
@@ -42,10 +39,12 @@ import android.widget.ScrollView
 import dev.bold7.design.HomeDimens
 import dev.bold7.design.Typography
 import dev.bold7.launcher.R
-import dev.bold7.launcher.options.OptionsActivity
+import dev.bold7.launcher.home.FocusPatch
 import dev.bold7.launcher.home.App
+import dev.bold7.launcher.options.OptionsActivity
 import dev.bold7.launcher.quickstep.WindowZoom
 import dev.bold7.platform.RemoteLaunches
+import dev.bold7.showcase.showcaseOn
 import dev.bold7.ui.Dir
 import dev.bold7.ui.EmoticonPen
 import dev.bold7.ui.EmoticonStrip
@@ -55,6 +54,8 @@ import dev.bold7.ui.emoticonChunks
 import dev.bold7.ui.emoticonWidth
 import dev.bold7.ui.fit
 import dev.bold7.ui.slate
+import dev.bold7.ui.themeBitmap
+import dev.bold7.ui.themeImage
 import dev.bold7.ui.useCaret
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -96,24 +97,24 @@ private object Os7 {
 
 /** The search's images, decoded off the main thread. */
 private class Images(private val activity: Activity) {
-    private fun decode(id: Int): Bitmap = BitmapFactory.decodeResource(activity.resources, id)
+    private fun decode(name: String): Bitmap = themeBitmap(activity, name)
 
     /** home_focus.9.png: the focus of the icons, stretched to the tile (A). */
-    val focus = decode(R.drawable.home_focus).let { NinePatch(it, it.ninePatchChunk).apply { paint = Paint(Paint.FILTER_BITMAP_FLAG) } }
-    val mic = decode(R.drawable.home_banner_voice_button)
-    val row = decode(R.drawable.home_indicator_bar_background)
+    val focus = FocusPatch(themeImage(activity, "home_focus"))
+    val mic = decode("home_banner_voice_button")
+    val row = decode("home_indicator_bar_background")
 
     /** The icon of the app that stands for a category: the tile and the rows of its list. */
     val categories = mapOf(
-        Category.CONTACTS to decode(R.drawable.bbos7_contacts),
-        Category.CALLS to decode(R.drawable.bbos7_phone),
-        Category.DOCUMENTS to decode(R.drawable.bbos7_files),
-        Category.SETTINGS to decode(R.drawable.bbos7_options),
-        Category.MUSIC to decode(R.drawable.bbos7_music),
-        Category.VIDEOS to decode(R.drawable.bbos7_camera), // no Videos icon in the theme: D
-        Category.PICTURES to decode(R.drawable.bbos7_pictures),
-        Category.CALENDAR to decode(R.drawable.bbos7_calendar),
-        Category.TEXT_MESSAGES to decode(R.drawable.bbos7_text_messages),
+        Category.CONTACTS to decode("bbos7_contacts"),
+        Category.CALLS to decode("bbos7_phone"),
+        Category.DOCUMENTS to decode("bbos7_files"),
+        Category.SETTINGS to decode("bbos7_options"),
+        Category.MUSIC to decode("bbos7_music"),
+        Category.VIDEOS to decode("bbos7_camera"), // no Videos icon in the theme: D
+        Category.PICTURES to decode("bbos7_pictures"),
+        Category.CALENDAR to decode("bbos7_calendar"),
+        Category.TEXT_MESSAGES to decode("bbos7_text_messages"),
     )
 }
 
@@ -269,16 +270,15 @@ internal class SearchPanel(
         val top = HomeDimens.BANNER + HomeDimens.INDICATOR_ROW
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply { topMargin = top; bottomMargin = Os7.BAR })
         addView(web, LayoutParams(LayoutParams.MATCH_PARENT, Os7.BAR, Gravity.BOTTOM))
-        addView(field, LayoutParams(0, Os7.FIELD).apply { // sized by onSizeChanged
+        // The width of the row less the microphone, by margins: sized in onSizeChanged, the field
+        // stayed 0 px wide on the Q25 under Lineage (a layout asked for during the layout that
+        // makes the panel visible is lost), and a tap meant for it fell on the microphone.
+        addView(field, LayoutParams(LayoutParams.MATCH_PARENT, Os7.FIELD).apply {
             topMargin = HomeDimens.BANNER + Os7.FIELD_TOP
             leftMargin = Os7.FIELD_LEFT
+            rightMargin = Os7.MIC + Os7.MIC_RIGHT + 4
         })
         addView(MicView(), LayoutParams(Os7.MIC, Os7.MIC).apply { gravity = Gravity.END; topMargin = HomeDimens.BANNER + 2; rightMargin = Os7.MIC_RIGHT })
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        field.layoutParams = (field.layoutParams as LayoutParams).apply { width = w - Os7.FIELD_LEFT - Os7.MIC - Os7.MIC_RIGHT - 4 }
     }
 
     // Under the banner (which stays, sim-54): the row of the indicators, the wallpaper darkened.

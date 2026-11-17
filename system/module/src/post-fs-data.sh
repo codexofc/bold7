@@ -21,9 +21,10 @@ echo $((count + 1)) >"$MODDIR/boot_count"
 # Mounts (docs/DEVICE.md, "ReZygisk" and "overlayfs"). layer.img, the ext4 image customize.sh built
 # at install (overlayfs refuses a lower layer on /data), is loop-mounted read-only on img/. Each
 # of its folders <partition>/<dir> is then laid read-only over /<partition>/<dir> by an overlayfs
-# named "bold7". In app processes, ReZygisk v1.0.0 detaches only the mounts whose source is KSU,
-# whose mount point is under /data/adb/modules or whose root is under /adb/modules/
-# (zygiskd/src/utils.c, umount_root). Our overlays have "/" as their root and stay. img/ is under
+# named "bold7". In the processes of the apps it hides root from, NeoZygisk 2.4 detaches only the
+# mounts whose source is KSU (or the loop device of /data/adb/modules), whose mount point is under
+# /data/adb/modules or whose root is under /adb/modules (zygiskd/src/mount.rs,
+# clean_mount_namespace), as ReZygisk did. Our overlays have "/" as their root and stay. img/ is under
 # /data/adb/modules and is detached in apps, on purpose: one trace less, and each overlay keeps
 # its own private clone of its layers from mount time (clone_private_mount), so it reads on.
 # All or nothing: on any failure the mounts already made are undone, and Android starts stock.
@@ -39,7 +40,7 @@ fail() {
     exit 0
 }
 
-# A metamodule mounts whole partitions with the source KSU: ReZygisk would detach them in apps,
+# A metamodule mounts whole partitions with the source KSU: NeoZygisk would detach them in apps,
 # and ours with them: the system font would be gone from SystemUI again.
 [ -e /data/adb/metamodule ] && fail "a metamodule is installed (/data/adb/metamodule)"
 

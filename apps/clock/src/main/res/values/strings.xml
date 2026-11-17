@@ -55,6 +55,8 @@
     <!-- C: sim-170 to sim-173. Digital is D (the firmware holds an LCD face, A; no capture of its name). -->
     <string name="opt_face">Clock Face</string>
     <string name="opt_home_zone">Home Time Zone</string>
+    <string name="opt_when_charging">When Charging</string>
+    <string name="opt_dismiss">Dismiss Clock Automatically</string>
     <string name="opt_try_it">Try it</string>
     <string name="opt_dim">Dim Screen</string>
     <string name="opt_stopwatch_face">Stopwatch Face</string>
@@ -72,4 +74,5 @@
     <!-- D: Bold7 says that Android's Clock holds the next alarm. -->
     <string name="other_alarm">Next alarm (another clock): %1$s</string>
     <string name="act_switch_application">Switch Application</string>
+    <string name="act_help">Help</string>
 </resources>

@@ -1,29 +1,21 @@
 package dev.bold7.launcher.options
 
-import android.app.Dialog
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.text.InputType
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
-import android.view.WindowManager
-import android.view.inputmethod.EditorInfo
 import dev.bold7.design.ListColors
 import dev.bold7.design.ListDimens
 import dev.bold7.design.Typography
 import dev.bold7.launcher.R
-import dev.bold7.ui.TextDialogView
 import dev.bold7.ui.fillPaint
 import dev.bold7.ui.fit
 import dev.bold7.ui.focusPaint
 import dev.bold7.ui.textPaint
-import dev.bold7.ui.useCaret
+import dev.bold7.ui.themeBitmap
 
 /**
  * A row of Wi-Fi Network or Bluetooth: a list row of Options (ListItemView's
@@ -102,9 +94,9 @@ internal class IconRowView(context: Context) : View(context) {
 
         /** The theme's strips, decoded once (io thread). */
         fun strips(context: Context) = Strips(
-            BitmapFactory.decodeResource(context.resources, R.drawable.opt_wifi_signal),
-            BitmapFactory.decodeResource(context.resources, R.drawable.opt_wifi_lock),
-            BitmapFactory.decodeResource(context.resources, R.drawable.opt_bt_devices),
+            themeBitmap(context, "opt_wifi_signal"),
+            themeBitmap(context, "opt_wifi_lock"),
+            themeBitmap(context, "opt_bt_devices"),
         )
     }
 
@@ -113,64 +105,5 @@ internal class IconRowView(context: Context) : View(context) {
         fun bars(n: Int) = Frame(signal, n.coerceIn(1, 3) + 1, SIGNAL_WIDTH)
         val locked get() = Frame(lock, 0, lock.width)
         fun device(i: Int) = Frame(devices, i, devices.height)
-    }
-}
-
-/**
- * The text box of OS 7 for a password (TextDialog's box, sim-61, C), whose field is a password
- * field: masked, and Typing learns nothing in it. Enter hands the typed characters to
- * [onDone] as a CharArray, then empties the field: the view keeps nothing; [onDone]'s caller
- * zeroes the array once used. Escape, Back or a touch outside cancel.
- *
- * core/ui's TextDialog has no password field; this box stays here until another app needs one.
- */
-internal class PasswordDialog(context: Context, label: String, secure: Boolean, private val onDone: (CharArray) -> Unit) : Dialog(context, android.R.style.Theme_Translucent_NoTitleBar) {
-    private val view = TextDialogView(context, label, "") { cancel() }
-
-    init {
-        view.field.apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            imeOptions = EditorInfo.IME_ACTION_DONE or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
-            filters = emptyArray()
-            useCaret()
-            setOnEditorActionListener { _, _, _ ->
-                submit()
-                true
-            }
-        }
-        setContentView(view)
-        window?.apply {
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            // No screenshot nor recent-apps image of the box ([secure]; off for the demonstration's capture only).
-            if (secure) addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            setWindowAnimations(0)
-            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-            setTitle(label)
-        }
-        setOnDismissListener { view.field.text.clear() }
-    }
-
-    private fun submit() {
-        val text = view.field.text
-        val chars = CharArray(text.length).also { text.getChars(0, text.length, it, 0) }
-        text.clear()
-        dismiss()
-        onDone(chars)
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        if (!hasFocus) return
-        // Options has no status bar (§18): nor has its box.
-        window?.insetsController?.hide(WindowInsets.Type.statusBars())
-        view.field.requestFocus()
-    }
-
-    override fun dispatchKeyEvent(e: KeyEvent): Boolean {
-        if (e.action == KeyEvent.ACTION_DOWN && e.keyCode == KeyEvent.KEYCODE_ESCAPE) {
-            cancel()
-            return true
-        }
-        return super.dispatchKeyEvent(e)
     }
 }

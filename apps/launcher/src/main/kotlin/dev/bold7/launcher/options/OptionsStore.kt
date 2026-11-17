@@ -1,5 +1,7 @@
 package dev.bold7.launcher.options
 
+import dev.bold7.launcher.home.HomeChoices
+import dev.bold7.launcher.home.Panel
 import dev.bold7.launcher.keys.LaunchByTyping
 import dev.bold7.launcher.keys.LaunchByTypingSetting
 import dev.bold7.launcher.profiles.Profile
@@ -77,8 +79,89 @@ const val SAISIE_STYLE = "bold7_saisie_style"
  */
 val BRIGHTNESSES = (10..100 step 10).toList()
 
+/**
+ * Screen Display's LED Coverage Indicator (Backlight group, under Automatically Dim Backlight, clear
+ * by default: simulator 7.1.0.318, C; guide p. 229, B): the LED flashes green while in
+ * coverage (led/Led.kt), "1" or absent in Settings.Global.
+ */
+const val LED_COVERAGE = "bold7_led_coverage"
+
 /** Backlight Timeout, in ms (D). */
 val TIMEOUTS = listOf(10_000, 15_000, 30_000, 60_000, 120_000)
+
+/**
+ * Password's Lock After (sim-60, sim-299, C: "30 Min."): Android's delay between the screen going
+ * off and the lock (Settings.Secure, ms), which KeyguardViewMediator reads at each screen off. The
+ * 9900 counted from the last key press, Android counts from the screen off: the difference is the
+ * Backlight Timeout (D).
+ */
+const val LOCK_AFTER = "lock_screen_lock_after_timeout"
+
+/** Lock After's values, in ms, in the order of its open list: 1 Hour at the top down to 1 Min. (simulator 7.1.0.318, C). */
+val LOCK_AFTERS = listOf(60, 30, 20, 15, 10, 5, 2, 1).map { it * 60_000 }
+
+/** "30 Min.", "1 Hour" (sim-60, C, for "30 Min."). */
+fun lockAfterLabel(ms: Int): String = when {
+    ms % 3_600_000 == 0 -> (ms / 3_600_000).let { if (it == 1) "1 Hour" else "$it Hours" }
+    else -> timeoutLabel(ms)
+}
+
+/** Password's button when a password is set, else "Set Password" (sim-60, sim-299, C). */
+const val CHANGE_PASSWORD = "Change Password"
+
+/** Password after a key: Lock After grey while Enable is clear, as the 9900 greys it (sim-60, sim-460, C). */
+fun followEnable(f: Form): Form = f.withEnabled(2, (f.fields[0] as Check).checked)
+
+/** Whether Password was read with a password set: its button says Change Password. */
+fun passwordWasSet(f: Form): Boolean = (f.fields[1] as Button).label == CHANGE_PASSWORD
+
+/**
+ * What Save asks of SystemUI's boxes on Password, by Enable against what Android holds: clear with a
+ * password, "Enter Password:" then the password goes (sim-459, C); ticked without one, "New
+ * Password:" then "Verify New Password:" (sim-461, sim-462, C); else nothing.
+ */
+fun passwordSaveTask(f: Form): PasswordSave? {
+    val enable = (f.fields[0] as Check).checked
+    val set = passwordWasSet(f)
+    return when {
+        enable && !set -> PasswordSave.SET
+        !enable && set -> PasswordSave.REMOVE
+        else -> null
+    }
+}
+
+enum class PasswordSave { SET, REMOVE }
+
+/**
+ * What Home Screen Preferences sets beyond Launch by Typing: the home's Downloads Folder and
+ * views (HomeModel, in this process) and Android's wallpaper. Blocking: io only.
+ */
+interface HomePreferences {
+    /** The home's folders and choices; null while the home is not loaded yet. */
+    fun read(): HomeChoices?
+
+    /** False if the home could not take them (not loaded). */
+    fun write(choices: HomeChoices): Boolean
+
+    /** The home's and the lock screen's wallpaper (§22, A, C: the 9900 shows the same on both); false if refused. */
+    fun setWallpaper(change: WallpaperChange): Boolean
+}
+
+/** Manage Panels' boxes, All first then the views' loop (D: no capture of the screen). */
+val PANEL_ORDER = listOf(Panel.ALL, Panel.FAVOURITES, Panel.MEDIA, Panel.DOWNLOADS, Panel.FREQUENT)
+
+/** A view's name, as its tab shows it (sim-02, sim-11 to sim-14, C). */
+fun panelName(p: Panel): String = when (p) {
+    Panel.ALL -> "All"
+    Panel.FAVOURITES -> "Favourites"
+    Panel.MEDIA -> "Media"
+    Panel.DOWNLOADS -> "Downloads"
+    Panel.FREQUENT -> "Frequent"
+}
+
+/** Message on Lock Screen's two fields (simulator 7.1.0.318, C). */
+const val OWNER_NAME = "Display Owner Name:"
+const val OWNER_INFO = "Display Information:"
 
 /** A ringing profile's Volume: 7 for Normal on sim-31 (C), 1 to 10 as the profiles count it (D). */
 val VOLUMES = (1..10).map { it.toString() }
@@ -113,11 +196,16 @@ internal class OptionsStore(
     private val facts: DeviceFactsSource,
     private val zoneAndLanguage: ZoneAndLanguage,
     private val now: () -> Instant = Instant::now,
+    /** Password and Message on Lock Screen, which SystemUI reads and writes for Options. */
+    private val lock: LockSettings? = null,
+    /** Home Screen Preferences' wallpaper, Downloads Folder and Manage Panels; without it they are grey. */
+    private val home: HomePreferences? = null,
     private val language: () -> String,
 ) {
     private val tones = HashMap<ToneKind, List<Tone>>()
     private var profile: Profile = Profile.NORMAL
     private var timeouts: List<Int> = TIMEOUTS
+    private var lockAfters: List<Int> = LOCK_AFTERS
     // Date and Time's zones and Language's tags as read, for the save.
     private var zones: List<String> = emptyList()
     private var languages: List<String> = emptyList()
@@ -176,6 +264,39 @@ internal class OptionsStore(
         Screen.ABOUT -> rows(screen, aboutRows(facts.facts()))
         Screen.STORAGE -> rows(screen, storageRows(facts.facts()))
         Screen.BATTERY -> rows(screen, batteryRows(facts.facts()))
+        // sim-60, sim-299 (C): the group General. The button opens SystemUI's boxes at once
+        // (PasswordScreen), Enable acts at Save (passwordSaveTask), as the 9900 does. Number of Password
+        // Attempts (Android never wipes after failed attempts but through a device policy), Prompt on
+        // Application Install, Allow Outgoing Calls While Locked (Android only lets emergency calls
+        // through) and Lock Handheld Upon Holstering (no holster sensor on the Q25) have nothing
+        // in Android to act on: not drawn.
+        Screen.PASSWORD -> {
+            val set = lock?.passwordSet() ?: false
+            // Absent: Android's 5 s (KeyguardViewMediator's KEYGUARD_LOCK_AFTER_DELAY_DEFAULT), shown as it is.
+            val after = settings.secure(LOCK_AFTER)?.toIntOrNull()?.takeIf { it >= 0 } ?: 5_000
+            lockAfters = if (after in LOCK_AFTERS) LOCK_AFTERS else (LOCK_AFTERS + after).sortedDescending()
+            Form(
+                title(screen),
+                listOf(Group("General", listOf(
+                    Check("Enable:", set),
+                    Button(if (set) CHANGE_PASSWORD else "Set Password", enabled = true),
+                    Choice("Lock After:", lockAfters.map(::lockAfterLabel), lockAfters.indexOf(after), enabled = set),
+                ))),
+            )
+        }
+        // Simulator 7.1.0.318 (C): the group "Text on Home Screen", Display Owner Name and Display
+        // Information, edited here in OS 7's text box (D: the 9900 types in the field itself);
+        // grey when SystemUI does not answer.
+        Screen.LOCK_MESSAGE -> {
+            val message = lock?.lockMessage()
+            Form(
+                title(screen),
+                listOf(Group("Text on Home Screen", listOf(
+                    Note(OWNER_NAME, message?.first.orEmpty(), enabled = message != null),
+                    Note(OWNER_INFO, message?.second.orEmpty(), enabled = message != null),
+                ))),
+            )
+        }
         Screen.ENCRYPTION -> rows(screen, listOf("Device Encryption" to encryptionLabel(facts.facts())))
         Screen.TOUCHSCREEN -> {
             val ms = settings.secure(LONG_PRESS_TIMEOUT)?.toIntOrNull() ?: 400
@@ -202,15 +323,28 @@ internal class OptionsStore(
                 Check("Audible Roll:", settings.global(TRACKPAD_AUDIBLE) == "1"),
             ))),
         )
-        // Home Screen Preferences (sim-284, sim-287, C): Launch by Typing, one full-width button, then Reset to Default
-        // Settings (its note in red, then its button). Wallpaper Settings, Downloads Folder and Home Screen Panels have
-        // nothing to act on in Bold7 (no panels, no downloads folder on the home, the wallpaper is Android's): not drawn.
+        // Home Screen Preferences (sim-284, sim-287, C): Launch by Typing, one full-width button; Wallpaper
+        // Settings, the thumbnail then Change Wallpaper and Reset Wallpaper; Downloads Folder, Home or a
+        // folder of All (guide 7.1 p. 23, B); Home Screen Panels, Manage Panels; then Reset to Default
+        // Settings (its note in red, then its button).
         Screen.HOME -> {
             typing.load()
+            val c = home?.read()
+            val folders = c?.folders.orEmpty()
             Form(title(screen), listOf(
                 Group("Launch by Typing", listOf(Choice("", LAUNCH_BY_TYPING, typing.mode.ordinal))),
+                Group("Wallpaper Settings", listOf(Wallpaper(), Button(CHANGE_WALLPAPER, enabled = home != null), Button(RESET_WALLPAPER, enabled = home != null))),
+                Group("Downloads Folder", listOf(Choice("", listOf(HOME_FOLDER) + folders, folders.indexOf(c?.downloads) + 1, enabled = c != null, folder = true))),
+                Group("Home Screen Panels", listOf(Button(MANAGE_PANELS, enabled = c != null))),
                 Group("Reset to Default Settings", listOf(Note("", RESET_HOME_NOTE, enabled = false, red = true), Button("Reset Settings", enabled = true))),
             ))
+        }
+        // Manage Panels (guide 7.1 p. 23, B: "Select or clear the checkbox for each panel"): All stays (D).
+        Screen.PANELS -> {
+            val c = home?.read()
+            Form(title(screen), listOf(Group("Home Screen Panels", PANEL_ORDER.map { p ->
+                Check(panelName(p), c == null || p !in c.hiddenPanels, enabled = c != null && p != Panel.ALL)
+            })))
         }
         Screen.TYPING -> Form(
             title(screen),
@@ -248,6 +382,7 @@ internal class OptionsStore(
                     Choice("Backlight Brightness:", BRIGHTNESSES.map { it.toString() }, BRIGHTNESSES.indexOf(percent.coerceIn(10, 100))),
                     Choice("Backlight Timeout:", timeouts.map(::timeoutLabel), timeouts.indexOf(timeout ?: 30_000).coerceAtLeast(0)),
                     Check("Automatically Dim Backlight:", settings.system(SCREEN_BRIGHTNESS_MODE) == "1"),
+                    Check("LED Coverage Indicator:", settings.global(LED_COVERAGE) == "1"),
                 ))),
             )
         }
@@ -265,10 +400,17 @@ internal class OptionsStore(
         else -> error("$screen is a list")
     }
 
-    /** Writes what [form] shows; false if Android refused a part of it (the rest is written). */
-    /** Reset to Default Settings of Home Screen Preferences: Launch by Typing back to Universal Search. */
-    fun resetHome() = typing.save(LaunchByTyping.UNIVERSAL_SEARCH)
+    /**
+     * Reset to Default Settings of Home Screen Preferences: Launch by Typing back to Universal Search,
+     * Downloads Folder to Home, every view shown, the 9900's wallpaper; false if a part was refused.
+     */
+    fun resetHome(): Boolean {
+        typing.save(LaunchByTyping.UNIVERSAL_SEARCH)
+        val choices = home?.read()?.let { home.write(it.copy(downloads = null, hiddenPanels = emptySet())) } ?: true
+        return choices && home?.setWallpaper(WallpaperChange.Default) != false
+    }
 
+    /** Writes what [form] shows; false if Android refused a part of it (the rest is written). */
     fun save(screen: Screen, form: Form): Boolean {
         val f = form.fields
         fun chosen(i: Int) = (f[i] as Choice).chosen
@@ -279,6 +421,8 @@ internal class OptionsStore(
                 settings.putGlobal(TRACKPAD_VERTICAL, SENSITIVITIES[chosen(1)]),
                 settings.putGlobal(TRACKPAD_AUDIBLE, if (checked(2)) "1" else "0"),
             ).all { it }
+            Screen.LOCK_MESSAGE -> !f[0].enabled || lock?.setLockMessage((f[0] as Note).note, (f[1] as Note).note) == true
+            Screen.PASSWORD -> !f[2].enabled || settings.putSecure(LOCK_AFTER, lockAfters[chosen(2)].toString())
             Screen.TOUCHSCREEN -> settings.putSecure(LONG_PRESS_TIMEOUT, HOVER_MS[chosen(0)].toString())
             Screen.KEYBOARD -> listOf(
                 settings.putGlobal(SAISIE_KEY_TONE, if (checked(0)) "1" else "0"),
@@ -291,13 +435,25 @@ internal class OptionsStore(
                     settings.putSecure(DALTONIZER_ENABLED, if (c == 1) "1" else "0"),
                 ).all { it } && (c != 1 || settings.putSecure(DALTONIZER, "0"))
             }
-            Screen.HOME -> { typing.save(LaunchByTyping.entries[chosen(0)]); true }
+            Screen.HOME -> {
+                typing.save(LaunchByTyping.entries[chosen(0)])
+                val wallpaper = (f[1] as Wallpaper).pending?.let { home?.setWallpaper(it) } ?: true
+                val folder = f[4] as Choice
+                val downloads = if (!folder.enabled) true else home?.read()?.let { c ->
+                    home.write(c.copy(downloads = folder.values.getOrNull(folder.chosen).takeIf { folder.chosen > 0 }))
+                } ?: false
+                wallpaper && downloads
+            }
+            Screen.PANELS -> !f[1].enabled || home?.read()?.let { c ->
+                home.write(c.copy(hiddenPanels = PANEL_ORDER.filterIndexed { i, _ -> !checked(i) }.toSet()))
+            } ?: false
             Screen.TYPING -> settings.putGlobal(SAISIE_STYLE, if (chosen(1) == 1) "predictive" else "direct")
             Screen.ADVANCED_STYLE -> f[0].enabled && typingOptions.setLearning(checked(0))
             Screen.SCREEN_DISPLAY -> listOf(
                 settings.putSystem(SCREEN_BRIGHTNESS, (BRIGHTNESSES[chosen(0)] * 255 / 100).toString()),
                 settings.putSystem(SCREEN_OFF_TIMEOUT, timeouts[chosen(1)].toString()),
                 settings.putSystem(SCREEN_BRIGHTNESS_MODE, if (checked(2)) "1" else "0"),
+                settings.putGlobal(LED_COVERAGE, if (checked(3)) "1" else "0"),
             ).all { it }
             Screen.PHONE_TONES -> listOfNotNull(
                 saveTone(ToneKind.RINGTONE, chosen(0)),

@@ -6,7 +6,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.os.Bundle
@@ -17,19 +16,20 @@ import android.view.View
 import dev.bold7.design.Focus
 import dev.bold7.design.Typography
 import dev.bold7.design.Veil
-import dev.bold7.launcher.R
 import dev.bold7.launcher.graph
 import dev.bold7.launcher.home.CalendarDay
 import dev.bold7.launcher.quickstep.Transitions
 import dev.bold7.launcher.quickstep.WindowZoom
-import dev.bold7.ui.play
 import dev.bold7.platform.RemoteLaunches
 import dev.bold7.platform.hideStatusBar
 import dev.bold7.ui.Dir
 import dev.bold7.ui.Travel
 import dev.bold7.ui.fit
 import dev.bold7.ui.focusPaint
+import dev.bold7.ui.play
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
+import java.time.LocalDate
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -37,7 +37,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 
 private const val TAG = "Bold7/Switcher"
 private const val FROM_HOME = "from_home"
@@ -155,19 +154,29 @@ class SwitcherActivity : Activity() {
         when (val entry = entries.getOrNull(index)) {
             null -> Unit
             // Over the home, closing is enough. Over an app, the return to the home is the
-            // launcher's own transition (WindowZoom.close, registered by QuickstepService).
-            // The switcher leaves at once there: the zoom of the return takes the screen (D).
+            // launcher's own transition (WindowZoom.close, registered by QuickstepService): the
+            // app goes at once and the switcher fades out over the home (vid-04, C); the switcher
+            // then stops and finishes (onStop), nothing before, which would cut the fade short.
             Entry.Home -> if (!fromHome) {
                 try {
                     startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), RemoteLaunches.plain())
+                    fading = true
+                    return
                 } catch (e: ActivityNotFoundException) {
                     Log.w(TAG, "no home to start", e)
                 }
                 return finish()
             }
-            // Shown at once, no animation (WindowZoom.cut). Closed once the system has answered:
-            // closing first would show the screen before for an instant.
-            is Entry.Task -> return graph.frames.open(entry.taskId, WindowZoom.cut) { runOnUiThread { closeFading() } }
+            // The app at once under the switcher, which the transition fades out above it
+            // (WindowZoom.fromSwitcher); the switcher then stops and finishes (onStop). Refused (the
+            // task gone), it fades out itself. Nothing here while the transition plays: a second
+            // start would be merged into it and cut its fade short.
+            is Entry.Task -> {
+                fading = true
+                return graph.frames.open(entry.taskId, WindowZoom.fromSwitcher) { opened ->
+                    if (!opened) runOnUiThread { fading = false; closeFading() }
+                }
+            }
         }
         closeFading()
     }
@@ -250,7 +259,7 @@ internal class SwitcherView(
     var focused: Int? = null
         private set
 
-    private val home: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.home_net_rim_bb_ribbon_app)
+    private val home: Bitmap = themeBitmap(context, "home_net_rim_bb_ribbon_app")
     private val veil = Paint().apply { color = Veil.Switcher }
     private val focusFill = focusPaint(FOCUS_HEIGHT, Focus.IconTop, Focus.IconBottom)
     private val label = textPaint(Typography.TEXT, Typography.REGULAR, 0xFFFFFFFF.toInt(), align = Paint.Align.CENTER)

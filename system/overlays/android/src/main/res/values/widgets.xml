@@ -42,7 +42,7 @@
          border_menu.png (A; sim-04, sim-44, C), #212429 with its border, in the place of Android's
          rounded panel, whatever the app's theme (the rows' text is written light in
          layout/popup_menu_item_layout.xml). Its padding puts the first row 17 px under the top
-         border and 5 px over the bottom one (tools/import-assets.sh dialogues). No elevation (the
+         border and 5 px over the bottom one (its 9-patch, on menu_frame: values/dialogs.xml). No elevation (the
          image has its shadow). Where Android puts it stays Android's: under the overflow button,
          not against the screen's left and bottom edges (D).
          Only styles no app derives from: AppCompat's popup menus derive from
@@ -51,33 +51,33 @@
          the Q25), the overflow (its two items kept; Light.PopupMenu.Overflow derives from it) and
          the context popup (its item kept). -->
     <style name="Widget.DeviceDefault.PopupMenu" parent="@android:style/Widget.Material.PopupMenu">
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.PopupMenu" parent="@android:style/Widget.Material.Light.PopupMenu">
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <!-- ListPopupWindow of the DeviceDefault apps (an app's own popup list, not a
          menu: the menus above derive from Material's, whose popupMenuStyle names them): the same
          box and no elevation, so a popup list wears OS 7's menu whatever the rows' layout. -->
     <style name="Widget.DeviceDefault.ListPopupWindow" parent="@android:style/Widget.Material.ListPopupWindow">
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.ListPopupWindow" parent="@android:style/Widget.Material.Light.ListPopupWindow">
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.Material.PopupMenu.Overflow" parent="@android:style/Widget.Material.PopupMenu">
         <item name="android:dropDownHorizontalOffset">-4dp</item>
         <item name="android:overlapAnchor">true</item>
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.Material.ContextPopupMenu" parent="@android:style/Widget.Material.ListPopupWindow">
         <item name="android:overlapAnchor">true</item>
-        <item name="android:popupBackground">@drawable/bold7_menu</item>
+        <item name="android:popupBackground">@android:drawable/menu_frame</item>
         <item name="android:popupElevation">0px</item>
     </style>
 
@@ -106,12 +106,12 @@
          use them are the common case). Spinner and AutoCompleteTextView of the Material styles
          (Theme.Material apps, not DeviceDefault) stay Android's. -->
     <style name="Widget.DeviceDefault.Spinner" parent="@android:style/Widget.Material.Spinner">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.Spinner" parent="@android:style/Widget.Material.Light.Spinner">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
@@ -121,32 +121,32 @@
          styles above: the panel stayed Android's light one under the rows' light text
          (#CCCCCC on #F4F5F6, contrast 1.4). Same three items; the action bar's drop-down too. -->
     <style name="Widget.DeviceDefault.Spinner.DropDown" parent="@*android:style/Widget.Material.Spinner.DropDown">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.Spinner.DropDown" parent="@*android:style/Widget.Material.Light.Spinner.DropDown">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Spinner.DropDown.ActionBar" parent="@*android:style/Widget.Material.Spinner.DropDown.ActionBar">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.Spinner.DropDown.ActionBar" parent="@*android:style/Widget.Material.Light.Spinner.DropDown.ActionBar">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.AutoCompleteTextView" parent="@android:style/Widget.Material.AutoCompleteTextView">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
     <style name="Widget.DeviceDefault.Light.AutoCompleteTextView" parent="@android:style/Widget.Material.Light.AutoCompleteTextView">
-        <item name="android:popupBackground">@drawable/bold7_inplace</item>
+        <item name="android:popupBackground">@android:drawable/editbox_dropdown_dark_frame</item>
         <item name="android:dropDownSelector">@drawable/spin_row_bold7</item>
         <item name="android:popupElevation">0px</item>
     </style>
@@ -204,7 +204,7 @@
         <item name="android:listPreferredItemPaddingEnd">6px</item>
     </style>
     <style name="MenuList.Bold7" parent="@android:style/Widget.Material.ListView">
-        <item name="android:background">@drawable/bold7_menu</item>
+        <item name="android:background">@android:drawable/menu_frame</item>
         <item name="android:divider">@null</item>
         <item name="android:dividerHeight">0px</item>
         <item name="android:listSelector">@drawable/menu_row_bold7</item>
@@ -227,4 +227,63 @@
          Android's (white, the app's text). -->
     <dimen name="floating_toolbar_height">57px</dimen>
     <dimen name="floating_toolbar_menu_button_minimum_width">57px</dimen>
+
+    <!-- Common widgets. The wait indicator (ProgressBar, indeterminate, every size): OS 7's green ring
+         (drawable/wait_bold7.xml; sim-111, C; net_rim_progress.png of _bs1, A) at its own 27 px,
+         the view 27 px square whatever its size on Android (16, 48 and 76 dp): OS 7 has one ring
+         (D). The four styles every Material, DeviceDefault and AppCompat ProgressBar derives from
+         (Base.Widget.AppCompat.ProgressBar's parent is Widget.Material.ProgressBar); their items
+         copied from the Q25's, the drawable and the four sizes changed. The horizontal bar stays
+         Android's: theme.xml gives its fill (gauge-fill, blue_gradient, A) but no capture shows
+         an OS 7 gauge, so its track, height and ends have no source. -->
+    <style name="Widget.Material.ProgressBar" parent="@android:style/Widget.ProgressBar">
+        <item name="android:indeterminateDrawable">@drawable/wait_bold7</item>
+        <item name="android:minWidth">27px</item>
+        <item name="android:maxWidth">27px</item>
+        <item name="android:minHeight">27px</item>
+        <item name="android:maxHeight">27px</item>
+    </style>
+    <style name="Widget.Material.ProgressBar.Small" parent="@android:style/Widget.ProgressBar.Small">
+        <item name="android:indeterminateDrawable">@drawable/wait_bold7</item>
+        <item name="android:minWidth">27px</item>
+        <item name="android:maxWidth">27px</item>
+        <item name="android:minHeight">27px</item>
+        <item name="android:maxHeight">27px</item>
+    </style>
+    <style name="Widget.Material.ProgressBar.Large" parent="@android:style/Widget.ProgressBar.Large">
+        <item name="android:indeterminateDrawable">@drawable/wait_bold7</item>
+        <item name="android:minWidth">27px</item>
+        <item name="android:maxWidth">27px</item>
+        <item name="android:minHeight">27px</item>
+        <item name="android:maxHeight">27px</item>
+    </style>
+
+    <!-- Check boxes and radio buttons of an app's own screens: OS 7's 27 px images, grey, blue when
+         the box has the trackpad focus (sim-112, sim-60, C; net_rim_system_Check-icons27x27.png,
+         A), the same as the dialogs' lists (drawable/check_bold7.xml, radio_bold7.xml). Each
+         style's item kept, the button added (Android takes it from listChoiceIndicator*, its
+         animated images). AppCompat's and Material Components' boxes are drawn from their own
+         APK and stay theirs. -->
+    <style name="Widget.Material.CompoundButton.CheckBox" parent="@android:style/Widget.CompoundButton.CheckBox">
+        <item name="android:background">@*android:drawable/control_background_40dp_material</item>
+        <item name="android:button">@drawable/check_bold7</item>
+    </style>
+    <style name="Widget.Material.CompoundButton.RadioButton" parent="@android:style/Widget.CompoundButton.RadioButton">
+        <item name="android:background">@*android:drawable/control_background_40dp_material</item>
+        <item name="android:button">@drawable/radio_bold7</item>
+    </style>
+    <!-- The switch: OS 7 has none; the settings Android turns on and off with one are check boxes
+         there (Mobile Network, Wi-Fi, Bluetooth in Manage Connections, sim-23, sim-112, C). So the
+         check box: as the track, at its own 27 px (switchMinWidth), and no thumb (a transparent
+         colour has no width). The Q25's items kept, thumb and track changed. -->
+    <style name="Widget.Material.CompoundButton.Switch" parent="@*android:style/Widget.Material.CompoundButton">
+        <item name="android:background">@*android:drawable/control_background_40dp_material</item>
+        <item name="android:textOn">@*android:string/capital_on</item>
+        <item name="android:textOff">@*android:string/capital_off</item>
+        <item name="android:thumb">@android:color/transparent</item>
+        <item name="android:switchTextAppearance">@*android:style/TextAppearance.Material.Widget.Switch</item>
+        <item name="android:track">@drawable/check_bold7</item>
+        <item name="android:showText">false</item>
+        <item name="android:switchMinWidth">27px</item>
+    </style>
 </resources>

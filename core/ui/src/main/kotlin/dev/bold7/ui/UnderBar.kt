@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
+import android.view.WindowManager
 import android.widget.FrameLayout
 import dev.bold7.design.ListColors
 
@@ -23,7 +24,8 @@ const val BAR_LINE = BAR_BLACK + 1
  */
 fun Activity.setContentUnderBar(content: View) {
     window.setDecorFitsSystemWindows(false)
-    window.statusBarColor = Color.TRANSPARENT
+    // Lays itself out: left alone by fitBars (Bars.kt). statusBarColor has no effect from target 35.
+    window.attributes = window.attributes.apply { layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS }
     setContentView(FrameLayout(this).apply {
         setBackgroundColor(Color.BLACK)
         setPadding(0, BAR_LINE, 0, 0)

@@ -4,9 +4,16 @@
      uses checked against the Q25's framework-res; every private reference below (@*android:,
      *android:) has the same id in the SDK's android.jar and on the Q25, which is what an overlay
      compiles and what the device reads (a private id that drifted cannot be referenced from
-     here). The overlay's own drawables and colors named below (res/drawable, res/color, and the
-     9-patches tools/import-assets.sh dialogues makes) are reached through these values only, never
-     from a layout: system_server reads the layouts. -->
+     here). The overlay's own drawables and colors named below (res/drawable, res/color) are reached
+     through these values only, never from a layout: system_server reads the layouts.
+     The overlay carries no image. OS 7's images (border_popup.png and the others, A) are put by the
+     fabricated overlay dev.bold7.launcher:images (apps/launcher ImageOverlays, registered by the
+     module's overlays.sh from the images extracted on the phone) on public framework drawables
+     that nothing of the framework uses, named here in their place: alert_dark_frame is the box,
+     menu_frame the menu, editbox_dropdown_dark_frame the choice list, menuitem_background its
+     chosen row, btn_dialog and title_bar_tall the button and its focus, checkbox_*_background,
+     radiobutton_*_background, button_onoff_indicator_* and status_bar_item_*_background the
+     check boxes and radio buttons. Without that overlay they stay Android's legacy images. -->
 <resources>
     <!-- Corners of what the framework rounds by ?android:attr/dialogCornerRadius (the text
          selection bar, SystemUI's panels): the box's, about 11 px on border_popup.png (A, its
@@ -24,7 +31,7 @@
          that sets a light background without its text colours(seven
          themes; only MtkTeleService's call waiting dialog sets a background, with its text
          colours).
-         - windowBackground: border_popup.png (A), as a 9-patch whose padding is the inside of its
+         - windowBackground: border_popup.png (A; alert_dark_frame), as a 9-patch whose padding is the inside of its
            border, so the layouts count from there; its shadow (1 px at the sides, 2 below)
            stays inside the window, which centres the box 2 px above the middle, as on sim-19
            (C). No elevation: Android's shadow would add to the image's.
@@ -36,7 +43,7 @@
            27 px), the menu's focus band under the trackpad or the finger, OS 7's check boxes
            and radio buttons (layout/select_dialog_*). -->
     <style name="Theme.Material.Dialog" parent="@*android:style/Theme.Material.BaseDialog">
-        <item name="android:windowBackground">@drawable/bold7_box</item>
+        <item name="android:windowBackground">@android:drawable/alert_dark_frame</item>
         <item name="android:windowElevation">0px</item>
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:dialogPreferredPadding">18px</item>
@@ -47,7 +54,7 @@
         <item name="android:listChoiceIndicatorMultiple">@drawable/check_bold7</item>
     </style>
     <style name="Theme.Material.Light.Dialog" parent="@*android:style/Theme.Material.BaseDialog">
-        <item name="android:windowBackground">@drawable/bold7_box</item>
+        <item name="android:windowBackground">@android:drawable/alert_dark_frame</item>
         <item name="android:windowElevation">0px</item>
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:dialogPreferredPadding">18px</item>

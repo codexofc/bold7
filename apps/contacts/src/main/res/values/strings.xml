@@ -18,7 +18,13 @@
     <string name="section_phones">Phone Numbers</string>
     <string name="section_emails">Email Addresses</string>
     <string name="section_addresses">Addresses</string>
-    <string name="section_groups">Groups</string>
+    <string name="section_activity">Recent Activity</string>
+    <string name="activity_none">No recent activity.</string>
+    <string name="activity_call_in">Received call:</string>
+    <string name="activity_call_out">Placed call:</string>
+    <string name="activity_call_missed">Missed call:</string>
+    <string name="activity_text_in">Received text:</string>
+    <string name="activity_text_out">Sent text:</string>
     <!-- The form's boxes (sim-186, sim-187, C). -->
     <string name="section_address">Address</string>
     <string name="section_website">Website</string>

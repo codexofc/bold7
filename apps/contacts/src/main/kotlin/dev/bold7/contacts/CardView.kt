@@ -62,12 +62,16 @@ class CardView(context: Context, private val onTouched: (Detail) -> Unit, privat
         const val EDGE_TOP = 3
         const val EDGE_BOTTOM = 3
         const val CORNER = 11f
+        /** "No recent activity." sits in a body of 72 px under the title, its text at x 15 (sim-194, C). */
+        const val EMPTY_BODY = 72
+        const val EMPTY_X = 15
+        const val EMPTY_BASELINE = 46
     }
 
-    private val box = themeImage(context, R.drawable.cnt_box)
+    private val box = themeImage(context, "cnt_box")
     private val button = themeImage(context, "ui_button")
-    private val editGlyph = themeImage(context, R.drawable.cnt_edit)
-    private val titleBar = themeImage(context, R.drawable.cnt_title)
+    private val editGlyph = themeImage(context, "cnt_edit")
+    private val titleBar = themeImage(context, "cnt_title")
     private val name = textPaint(Typography.TEXT, Typography.BOLD, ListColors.Title)
     private val company = textPaint(Typography.SUBTITLE, Typography.REGULAR, ListColors.Subtitle)
     private val title = textPaint(Typography.SUBTITLE, Typography.BOLD, ListColors.GroupTitle)
@@ -88,7 +92,10 @@ class CardView(context: Context, private val onTouched: (Detail) -> Unit, privat
 
     private var screen: CardScreen? = null
     private var titles: Map<Section, String> = emptyMap()
-    private var groupsTitle = ""
+    private var activityTitle = ""
+    private var emptyText = ""
+    /** The Recent Activity rows (label, time), null to hide the box. */
+    private var activity: List<Pair<String, String>>? = null
     private var picture: Bitmap? = null
     /** Each detail's row top, in [Card.ordered]'s order, and its height. */
     private var tops = IntArray(0)
@@ -96,11 +103,13 @@ class CardView(context: Context, private val onTouched: (Detail) -> Unit, privat
     private var boxes = emptyList<Pair<Int, Int>>()
     private var total = 0
 
-    fun bind(screen: CardScreen, titles: Map<Section, String>, groupsTitle: String, picture: Bitmap?) {
-        val relayout = screen.card != this.screen?.card || (picture == null) != (this.picture == null)
+    fun bind(screen: CardScreen, titles: Map<Section, String>, activityTitle: String, emptyText: String, activity: List<Pair<String, String>>?, picture: Bitmap?) {
+        val relayout = screen.card != this.screen?.card || (picture == null) != (this.picture == null) || activity?.size != this.activity?.size
         this.screen = screen
         this.titles = titles
-        this.groupsTitle = groupsTitle
+        this.activityTitle = activityTitle
+        this.emptyText = emptyText
+        this.activity = activity
         if (picture !== this.picture) {
             this.picture = picture
             picturePaint.shader = picture?.let {
@@ -148,9 +157,9 @@ class CardView(context: Context, private val onTouched: (Detail) -> Unit, privat
             bottom = row + EDGE_BOTTOM
             out += y to bottom
         }
-        if (card.groups.isNotEmpty()) {
+        activity?.let {
             y = bottom
-            bottom = y + EDGE_TOP + TITLE + 1 + ROW * card.groups.size + EDGE_BOTTOM
+            bottom = y + EDGE_TOP + TITLE + 1 + (if (it.isEmpty()) EMPTY_BODY else ROW * it.size) + EDGE_BOTTOM
             out += y to bottom
         }
         boxes = out
@@ -213,11 +222,15 @@ class CardView(context: Context, private val onTouched: (Detail) -> Unit, privat
                 i++
             }
         }
-        if (card.groups.isNotEmpty()) {
+        activity?.let { rows ->
             val top = boxes[k].first
-            titleFor(canvas, top, w, groupsTitle)
-            card.groups.forEachIndexed { n, g ->
-                canvas.drawText(cut(label, g, ContactRoom.cardGroup(w)), LABEL_X.toFloat(), (top + EDGE_TOP + TITLE + 1 + n * ROW + ROW_BASELINE).toFloat(), label)
+            val body = top + EDGE_TOP + TITLE + 1
+            titleFor(canvas, top, w, activityTitle)
+            if (rows.isEmpty()) canvas.drawText(emptyText, EMPTY_X.toFloat(), (body + EMPTY_BASELINE).toFloat(), label)
+            rows.forEachIndexed { n, (what, time) ->
+                val y = (body + n * ROW + ROW_BASELINE).toFloat()
+                canvas.drawText(what, LABEL_X.toFloat(), y, label)
+                canvas.drawText(time, (w - VALUE_RIGHT).toFloat(), y, value)
             }
         }
     }

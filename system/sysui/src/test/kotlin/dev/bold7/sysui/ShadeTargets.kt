@@ -4,7 +4,8 @@ import android.animation.ValueAnimator
 import com.android.internal.statusbar.IStatusBarService
 import com.android.systemui.shade.NotificationPanelView
 import com.android.systemui.shade.NotificationPanelViewController
-import com.android.systemui.shade.QuickSettingsController
+import com.android.systemui.shade.QuickSettingsControllerImpl
+import com.android.systemui.statusbar.notification.headsup.HeadsUpManagerImpl
 import com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout
 import com.android.systemui.statusbar.phone.CentralSurfacesCommandQueueCallbacks
 import com.android.systemui.statusbar.policy.KeyguardStateControllerImpl
@@ -14,28 +15,29 @@ import android.view.MotionEvent
 import com.android.systemui.statusbar.LockscreenShadeTransitionController
 import com.android.systemui.statusbar.phone.`PhoneStatusBarViewController$PhoneStatusBarViewTouchHandler`
 
-// What ShadeHooks reaches by name, compiled against the Q25's SystemUI (stubs/systemui.jar) and
-// framework (stubs/framework.jar), like HookTargets.kt. Never run, the stubs have no code.
+// What ShadeHooks reaches by name, compiled against LineageOS 24's SystemUI (stubs/systemui.jar) and
+// framework (stubs/framework.jar), like HookTargets.kt. Never run, the stubs have no code. The
+// methods R8 suffixes (NotificationStackScrollLayout.updateVisibility$*,
+// LockscreenShadeTransitionController.isDragDownEnabledForView$*) are the table's, never named here.
 @Suppress("unused", "UNUSED_VARIABLE")
 private fun shadeTargets(panel: NotificationPanelViewController, stack: NotificationStackScrollLayout, bar: IStatusBarService) {
     panel.updateExpansionAndVisibility()
     val fraction: Float = panel.mExpandedFraction
-    val tracking: Boolean = panel.mTracking
+    val tracking: Boolean = panel.isTracking()
     val instant: Boolean = panel.mInstantExpanding
     val animator: ValueAnimator? = panel.mHeightAnimator
-    val cardPinned: Boolean = panel.mHeadsUpManager.mHasPinnedNotification
+    val cardPinned: Boolean = (panel.mHeadsUpManager as HeadsUpManagerImpl).mHasPinnedNotification
     val view: NotificationPanelView = panel.mView
-    val qs: QuickSettingsController = panel.mQsController
+    val qs: QuickSettingsControllerImpl = panel.mQsController
     val panelStack: NotificationStackScrollLayout = panel.mNotificationStackScrollLayoutController.mView
     val panelState: Int = panel.mBarState
     panel.animateCollapseQs(false)
     panel.collapse(1f, true, false)
     qs.setExpandImmediate(true)
-    val intercepts: Boolean = qs.shouldQuickSettingsIntercept(0f, 0f, 0f)
+    val intercepts: Boolean = qs.shouldQuickSettingsIntercept(0f, 0f, 0f, null)
     val qsState: Int = qs.mBarState
-    val expanded: Boolean = qs.mExpanded
+    val expanded: Boolean = qs.getExpanded()
     val locked: Boolean = (qs.mKeyguardStateController as KeyguardStateControllerImpl).mShowing
-    stack.updateVisibility()
     val stackState: Int = stack.mStatusBarState
     // Implemented by IStatusBarService$Stub$Proxy, SystemUI's mBarService.
     bar.clearNotificationEffects()
@@ -56,12 +58,11 @@ private fun shutTargets(
     touch: `PhoneStatusBarViewController$PhoneStatusBarViewTouchHandler`,
     transition: LockscreenShadeTransitionController,
     callbacks: CentralSurfacesCommandQueueCallbacks,
-    qs: QuickSettingsController,
+    qs: QuickSettingsControllerImpl,
     event: MotionEvent,
 ) {
     val eaten: Boolean = touch.onTouchEvent(event)
     val barContext: Context = touch.`this$0`.mView.context
-    val dragDown: Boolean = transition.`isDragDownEnabledForView$vendor__mediatek__proprietary__packages__apps__SystemUI__android_common__MtkSystemUI_core`(null)
     val transitionContext: Context = transition.context
     callbacks.animateExpandNotificationsPanel()
     callbacks.animateExpandSettingsPanel(null)

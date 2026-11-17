@@ -20,10 +20,14 @@ class SettingsColorsTest {
     private val day = read("values")
     private val night = read("values-night")
 
-    private val homepage = listOf(
-        "about", "accessibility", "accounts", "app_and_notification", "battery", "connected_device", "display",
-        "generic_icon", "location", "network", "security", "sound", "storage", "support", "system",
-    ).map { "homepage_${it}_background" }
+    // The categories of Lineage's Settings (aapt2 dump resources), each with its disc and glyph.
+    private val categories = listOf(
+        "about", "accessibility", "accounts", "apps", "battery", "connected_device", "device", "display",
+        "generic_icon", "hub_mode", "location", "modes", "network", "notification", "safety", "security", "sound",
+        "storage", "supervision", "support", "system", "wallpaper",
+    )
+    private val homepage = categories.map { "homepage_${it}_background" }
+    private val glyphs = (categories - "generic_icon").map { "homepage_${it}_foreground" }
 
     // SettingsLib's Google palette by index, folded onto OS 7's blue, red and greys (D).
     private val blue = mapOf("50" to Palette.BluePastel, "100" to Palette.PrimaryPastel, "300" to Palette.AccentLight, "400" to Palette.PrimaryHighlight, "600" to Palette.PrimaryBase)
@@ -54,6 +58,7 @@ class SettingsColorsTest {
         put("settingslib_text_color_preference_category_title", ListColors.GroupTitle)
         put("settingslib_dialog_colorError", Palette.RedBase)
         homepage.forEach { put(it, d.surface) }
+        glyphs.forEach { put(it, b.background) }
         put("preference_fallback_accent_color", Palette.PrimaryHighlight)
         put("switch_thumb_normal_material_dark", d.textSecondary)
         put("switch_thumb_normal_material_light", b.background)
@@ -69,8 +74,6 @@ class SettingsColorsTest {
         put("settingslib_text_color_secondary_device_default", d.textSecondary)
         put("settingslib_text_color_preference_category_title", d.textSecondary)
         put("settingslib_dialog_colorError", Palette.RedHighlight)
-        put("homepage_accessibility_background", d.surface)
-        put("homepage_support_background", d.surface)
     }
 
     @Test fun everyColorIsItsToken() {
@@ -90,8 +93,6 @@ class SettingsColorsTest {
         assertEquals(1, (homepage.map { day.getValue(it) } + night.filterKeys { it.startsWith("homepage_") }.values).toSet().size)
     }
 
-    private val white = 0xFFFFFFFF.toInt()
-
     // [text, surface, minimum]: 4.5 for text; ListColors.Subtitle on white is OS 7's own and measures 4.07 (C).
     @Test fun textStaysReadable() {
         val pairs = listOf(
@@ -104,7 +105,7 @@ class SettingsColorsTest {
             Triple("group title on a black page", night.getValue("settingslib_text_color_preference_category_title") to d.background, 4.5),
             Triple("dialog error on white", day.getValue("settingslib_dialog_colorError") to b.background, 4.5),
             Triple("dark dialog error on its surface", night.getValue("settingslib_dialog_colorError") to night.getValue("settingslib_surface_dark"), 3.0),
-            Triple("white glyph on a homepage disc", white to day.getValue("homepage_system_background"), 4.5),
+            Triple("glyph on a homepage disc", day.getValue("homepage_system_foreground") to day.getValue("homepage_system_background"), 4.5),
             Triple("blue 600 on white", day.getValue("settingslib_color_blue600") to b.background, 4.5),
             Triple("red 600 on white", day.getValue("settingslib_color_red600") to b.background, 4.5),
             Triple("grey 900 on grey 50", day.getValue("settingslib_color_grey900") to day.getValue("settingslib_color_grey50"), 4.5),

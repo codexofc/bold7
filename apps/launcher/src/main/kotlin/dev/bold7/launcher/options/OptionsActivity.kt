@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.os.Bundle
 import android.text.Editable
@@ -19,10 +18,12 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import dev.bold7.design.ListColors
+import dev.bold7.design.ListDimens
+import dev.bold7.design.Typography
 import dev.bold7.launcher.LauncherActivity
 import dev.bold7.launcher.graph
-import dev.bold7.launcher.setup.TextSetupActivity
 import dev.bold7.launcher.profiles.Profile
+import dev.bold7.launcher.setup.TextSetupActivity
 import dev.bold7.launcher.switcher.startSwitcher
 import dev.bold7.platform.SystemDeviceFacts
 import dev.bold7.platform.SystemDeviceSettings
@@ -41,10 +42,12 @@ import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
 import dev.bold7.ui.ScreenStack
 import dev.bold7.ui.SearchField
+import dev.bold7.ui.TextDialog
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.status
 import dev.bold7.ui.textPaint
-import dev.bold7.design.Typography
+import dev.bold7.ui.themeBitmap
+import dev.bold7.ui.themeImage
 import java.util.Locale
 
 /**
@@ -69,17 +72,32 @@ class OptionsActivity : Activity() {
 
     private data class FormPage(override val screen: Screen, val form: Form) : Page
 
-    private enum class Act { SWITCH, SAVE, CLOSE }
+    private enum class Act { SWITCH, PASSWORD, SAVE, CLOSE }
 
     private val graphIo get() = graph.io
     private val typingOptions by lazy { SaisieTypingOptions(applicationContext) }
-    private val store by lazy { OptionsStore(SystemDeviceSettings(applicationContext), graph.profiles, graph.typingMode, typingOptions, SystemDeviceFacts(applicationContext), SystemZoneAndLanguage(applicationContext)) { inputLanguage() } }
+    private val zoneAndLanguage by lazy { SystemZoneAndLanguage(applicationContext) }
+    private val homePreferences by lazy { SystemHomePreferences(applicationContext, graph.home) }
+    private val store by lazy {
+        OptionsStore(SystemDeviceSettings(applicationContext), graph.profiles, graph.typingMode, typingOptions, SystemDeviceFacts(applicationContext), zoneAndLanguage, home = homePreferences) {
+            inputLanguage(Locale.forLanguageTag(zoneAndLanguage.language()))
+        }
+    }
+
+    // Wallpaper Settings' thumbnail, decoded on io for [thumbFor] (null: the wallpaper in use).
+    private var thumb: Bitmap? = null
+    private var thumbFor: Any? = UNREAD
+    // Downloads Folder's icons: Home's, a folder's (sim-284, C).
+    private val homeFolder by lazy { themeImage(this, "opt_home_folder") }
+    private val folderIcon by lazy { themeImage(this, "opt_folder") }
 
     private var stack: ScreenStack<Page>? = null
     private var built: Any? = null
     private var busy = false
+    // Password's Save went to SystemUI's boxes: the screen closes once Android holds what Enable asks.
+    private var passwordSaving = false
     private var menu: Menu<Act>? = null
-    private val icons = HashMap<Int, Bitmap>()
+    private val icons = HashMap<String, Bitmap>()
     // The open list's text, to size it to its values (Time Zone, Display Language).
     private val listText = textPaint(Typography.TEXT, Typography.REGULAR, ListColors.ChoiceListText)
 
@@ -141,7 +159,10 @@ class OptionsActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) window.insetsController?.hide(WindowInsets.Type.statusBars())
+        if (!hasFocus) return
+        window.insetsController?.hide(WindowInsets.Type.statusBars())
+        // Back from SystemUI's password boxes: Password shows Android's state as it now is.
+        formPage()?.takeIf { it.screen == Screen.PASSWORD }?.let(::reread)
     }
 
     /** The screen [EXTRA_SCREEN] names at the root (Change Sounds and Alerts; a test's capture), else Options' list. */
@@ -177,7 +198,7 @@ class OptionsActivity : Activity() {
     }
 
     // Decoded on io, kept for the activity; read on the main thread once there.
-    private fun icon(id: Int): Bitmap? = synchronized(icons) { icons[id] } ?: BitmapFactory.decodeResource(resources, id)?.also { synchronized(icons) { icons[id] = it } }
+    private fun icon(name: String): Bitmap = synchronized(icons) { icons[name] } ?: themeBitmap(this, name).also { synchronized(icons) { icons[name] = it } }
 
     private fun replace(page: Page) {
         val s = stack ?: return
@@ -209,7 +230,16 @@ class OptionsActivity : Activity() {
                 f.fields.forEachIndexed { i, field ->
                     val lit = i == f.focus && f.open == null
                     when (field) {
-                        is Choice -> (views[i] as ChoiceView).bind(field.label, field.values.getOrElse(field.chosen) { "" }, lit)
+                        is Choice -> (views[i] as ChoiceView).bind(
+                            field.label,
+                            field.values.getOrElse(field.chosen) { "" },
+                            lit,
+                            if (!field.folder) null else if (field.chosen == 0) homeFolder else folderIcon,
+                        )
+                        is Wallpaper -> {
+                            if (field.pending != thumbFor) loadThumb(field.pending)
+                            (views[i] as WallpaperThumbView).bind(thumb)
+                        }
                         is Check -> (views[i] as CheckBoxView).bind(field.label, field.checked, lit, field.enabled)
                         is Note -> (views[i] as NoteView).bind(field.label, field.note, lit, field.red)
                         is Button -> (views[i] as ButtonRowView).bind(field.label, lit, field.enabled)
@@ -244,24 +274,43 @@ class OptionsActivity : Activity() {
                 rows.setBackgroundColor(ListColors.GroupBackground)
                 scroll.setBackgroundColor(ListColors.GroupBackground)
                 val all = ArrayList<View>()
+                // A screen built again reads the wallpaper again.
+                thumb = null
+                thumbFor = UNREAD
                 for (g in page.form.groups) {
                     val box = GroupBox(this, g.title)
+                    // Wallpaper Settings (sim-284, C): the thumbnail at the left, the buttons stacked over the rest.
+                    val withThumb = g.fields.any { it is Wallpaper }
+                    val column = if (withThumb) LinearLayout(this).apply { orientation = LinearLayout.VERTICAL } else box
                     for (field in g.fields) {
                         val i = all.size
                         val v: View = when (field) {
-                            is Choice -> ChoiceView(this)
+                            is Choice -> ChoiceView(this).apply { fullWidth = !field.folder }
                             is Check -> CheckBoxView(this)
                             is Note -> NoteView(this)
-                            is Button -> ButtonRowView(this)
+                            is Button -> ButtonRowView(this).apply { stacked = withThumb }
+                            is Wallpaper -> WallpaperThumbView(this)
                         }
                         v.setOnClickListener { formResult(formPage()?.form?.tap(i)) }
+                        all += v
+                        if (field is Wallpaper) continue
                         val h = when (field) {
                             is Choice -> ChoiceView.HEIGHT
                             is Check -> CheckBoxView.HEIGHT
                             else -> wrap
                         }
-                        box.addView(v, LinearLayout.LayoutParams(match, h))
-                        all += v
+                        column.addView(v, LinearLayout.LayoutParams(match, h))
+                    }
+                    if (withThumb) {
+                        box.addView(FrameLayout(this).apply {
+                            all.firstOrNull { it is WallpaperThumbView }?.let { t ->
+                                addView(t, FrameLayout.LayoutParams(WallpaperThumbView.SIDE, WallpaperThumbView.SIDE).apply {
+                                    leftMargin = ListDimens.TEXT_X
+                                    topMargin = ListDimens.CHOICE_FIELD_TOP
+                                })
+                            }
+                            addView(column, FrameLayout.LayoutParams(match, wrap))
+                        }, LinearLayout.LayoutParams(match, wrap))
                     }
                     rows.addView(box, LinearLayout.LayoutParams(match, wrap))
                 }
@@ -314,14 +363,25 @@ class OptionsActivity : Activity() {
         val page = formPage() ?: return
         when (r) {
             null -> Unit
-            is FormResult.Show -> replace(page.copy(form = r.form))
+            is FormResult.Show -> {
+                // A key after a Save that SystemUI's boxes did not complete: that Save is over.
+                passwordSaving = false
+                replace(page.copy(form = if (page.screen == Screen.PASSWORD) followEnable(r.form) else r.form))
+            }
             is FormResult.Act -> when {
                 // Input Language: Options' Language, which sets the phone's.
                 page.screen == Screen.TYPING && page.form.fields[r.field] is Note -> open(Screen.LANGUAGE)
                 page.screen == Screen.PROFILES -> selectProfile(page, r.field)
                 page.screen == Screen.TYPING -> open(Screen.ADVANCED_STYLE)
                 page.screen == Screen.ADVANCED_STYLE -> forgetLearned()
-                page.screen == Screen.HOME -> resetHome()
+                page.screen == Screen.HOME -> when ((page.form.fields[r.field] as? Button)?.label) {
+                    CHANGE_WALLPAPER -> changeWallpaper()
+                    RESET_WALLPAPER -> replace(page.copy(form = page.form.withWallpaper(WallpaperChange.Default)))
+                    MANAGE_PANELS -> open(Screen.PANELS)
+                    else -> resetHome()
+                }
+                page.screen == Screen.PASSWORD -> SystemLockSettings.password(this, if (passwordWasSet(page.form)) SystemLockSettings.CHANGE else SystemLockSettings.SET)
+                page.screen == Screen.LOCK_MESSAGE -> editLockMessage(page, r.field)
             }
             FormResult.Leave -> pop()
             // "Changes made!" (sim-47, C): Save, Discard, Cancel.
@@ -334,11 +394,79 @@ class OptionsActivity : Activity() {
         }
     }
 
+    /** Message on Lock Screen: the field at [field] in OS 7's text box, its text as typed (no trim); saved with the form. */
+    private fun editLockMessage(page: FormPage, field: Int) {
+        val note = page.form.fields[field] as Note
+        TextDialog(this, note.label, note.note, clean = { it }, onDone = { text ->
+            val now = formPage()?.takeIf { it.screen == Screen.LOCK_MESSAGE } ?: return@TextDialog
+            replace(now.copy(form = now.form.withNote(field, text)))
+        }).show()
+    }
+
+    /** Password read again, its focus kept; Lock After as chosen if unsaved and still offered. */
+    private fun reread(page: FormPage) {
+        if (busy) return
+        busy = true
+        graphIo.post {
+            val form = try {
+                store.form(Screen.PASSWORD)
+            } catch (e: RuntimeException) {
+                Log.e(TAG, "password not read", e)
+                null
+            }
+            runOnUiThread {
+                busy = false
+                val now = formPage()?.takeIf { it.screen == Screen.PASSWORD } ?: return@runOnUiThread
+                if (isDestroyed || form == null) return@runOnUiThread
+                // Saved through SystemUI's boxes and Android now holds what Enable asked: the screen closes, as on sim-459.
+                if (passwordSaving && passwordWasSet(form) == (now.form.fields[0] as Check).checked) {
+                    passwordSaving = false
+                    return@runOnUiThread pop()
+                }
+                if (form.groups == now.form.initial) return@runOnUiThread
+                replace(now.copy(form = form.copy(focus = page.form.focus.coerceAtMost(form.fields.lastIndex))))
+            }
+        }
+    }
+
     /** Profile Management: the profile at [field] becomes the one in use, shown at once (Android's state follows on io). */
     private fun selectProfile(page: FormPage, field: Int) {
         val profile = Profile.entries.getOrNull(field) ?: return
         graph.profiles.select(profile)
         replace(page.copy(form = store.profilesForm(profile).copy(focus = field)))
+    }
+
+    /**
+     * Change Wallpaper: Pictures' Select Picture (sim-387, C: Setup's Wallpaper opens it), whose
+     * picture the thumbnail shows; Save sets it (D).
+     */
+    private fun changeWallpaper() {
+        try {
+            startActivityForResult(Intent().setClassName(PICTURES, "$PICTURES.SelectPictureActivity"), REQUEST_PICTURE)
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "no Select Picture", e)
+            status(this, "Not available")
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != REQUEST_PICTURE) return super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data?.takeIf { resultCode == RESULT_OK } ?: return
+        val page = formPage()?.takeIf { it.screen == Screen.HOME } ?: return
+        replace(page.copy(form = page.form.withWallpaper(WallpaperChange.Picture(uri.toString()))))
+    }
+
+    /** The thumbnail of [pending] (null: the wallpaper in use), decoded on io; shown if still the one asked for. */
+    private fun loadThumb(pending: WallpaperChange?) {
+        thumbFor = pending
+        graphIo.post {
+            val b = homePreferences.thumbnail(pending, WallpaperThumbView.SIDE)
+            runOnUiThread {
+                if (isDestroyed || thumbFor != pending) return@runOnUiThread
+                thumb = b
+                render()
+            }
+        }
     }
 
     /** Reset to Default Settings (sim-284, C): what Home Screen Preferences holds goes back to its default, once asked (D). */
@@ -348,7 +476,7 @@ class OptionsActivity : Activity() {
             busy = true
             graphIo.post {
                 val form = try {
-                    store.resetHome()
+                    if (!store.resetHome()) Log.w(TAG, "home partly reset")
                     store.form(Screen.HOME)
                 } catch (e: RuntimeException) {
                     Log.e(TAG, "home not reset", e)
@@ -357,7 +485,12 @@ class OptionsActivity : Activity() {
                 runOnUiThread {
                     busy = false
                     if (isDestroyed) return@runOnUiThread
-                    if (form == null) status(this, "Not available") else (formPage()?.takeIf { it.screen == Screen.HOME })?.let { replace(it.copy(form = form)) }
+                    if (form == null) return@runOnUiThread status(this, "Not available")
+                    (formPage()?.takeIf { it.screen == Screen.HOME })?.let {
+                        // The wallpaper is the 9900's now: read again.
+                        thumbFor = UNREAD
+                        replace(it.copy(form = form))
+                    }
                 }
             }
         }).show()
@@ -381,6 +514,13 @@ class OptionsActivity : Activity() {
     private fun save() {
         val page = formPage() ?: return
         if (busy) return
+        // Enable against Android's state: SystemUI's boxes first; Lock After is saved with them.
+        val task = if (page.screen == Screen.PASSWORD) passwordSaveTask(page.form) else null
+        if (task != null) {
+            passwordSaving = true
+            if (page.form.fields[2].enabled) graphIo.post { store.save(page.screen, page.form) }
+            return SystemLockSettings.password(this, if (task == PasswordSave.SET) SystemLockSettings.SET else SystemLockSettings.REMOVE)
+        }
         busy = true
         graphIo.post {
             val ok = try {
@@ -399,6 +539,7 @@ class OptionsActivity : Activity() {
 
     private fun label(act: Act) = when (act) {
         Act.SWITCH -> "Switch Application"
+        Act.PASSWORD -> formPage()?.form?.let { if (passwordWasSet(it)) CHANGE_PASSWORD else "Set Password" }.orEmpty()
         Act.SAVE -> "Save"
         Act.CLOSE -> "Close"
     }
@@ -413,6 +554,7 @@ class OptionsActivity : Activity() {
         showMenu(null)
         when (act) {
             Act.SWITCH -> startSwitcher(this, fromHome = false)
+            Act.PASSWORD -> formPage()?.let { SystemLockSettings.password(this, if (passwordWasSet(it.form)) SystemLockSettings.CHANGE else SystemLockSettings.SET) }
             Act.SAVE -> save()
             Act.CLOSE -> if (formPage() != null) formResult(formPage()?.form?.key(FormKey.BACK)) else pop()
         }
@@ -420,7 +562,10 @@ class OptionsActivity : Activity() {
 
     // The full menu of an options screen (guide 7.1, "Press the Menu key > Save", B): Switch
     // Application, Save, Close, Save under the focus; a list's has no Save (D).
-    private fun fullMenu(): Menu<Act> = if (formPage() != null) {
+    // Password's adds its button's action after Switch Application (sim-458, C).
+    private fun fullMenu(): Menu<Act> = if (formPage()?.screen == Screen.PASSWORD) {
+        Menu(listOf(MenuEntry(Act.SWITCH), MenuEntry(Act.PASSWORD, separatorAbove = true), MenuEntry(Act.SAVE, separatorAbove = true), MenuEntry(Act.CLOSE)), highlighted = 2)
+    } else if (formPage() != null) {
         Menu(listOf(MenuEntry(Act.SWITCH), MenuEntry(Act.SAVE, separatorAbove = true), MenuEntry(Act.CLOSE)), highlighted = 1)
     } else {
         Menu(listOf(MenuEntry(Act.SWITCH), MenuEntry(Act.CLOSE, separatorAbove = true)), highlighted = 1)
@@ -482,20 +627,27 @@ class OptionsActivity : Activity() {
 
     companion object {
         private const val TAG = "Bold7/Options"
+        private const val REQUEST_PICTURE = 1
+        private const val PICTURES = "dev.bold7.pictures"
+        private val UNREAD = Any()
 
         /** The screen to open at the root ([Screen] name); the launcher's Change Sounds and Alerts gives SOUNDS. */
         const val EXTRA_SCREEN = "dev.bold7.options.SCREEN"
 
         /** Opens Options, at [screen] when given. */
         fun start(context: Context, screen: Screen = Screen.MAIN) {
-            context.startActivity(
-                Intent(context, OptionsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(EXTRA_SCREEN, screen.name),
-            )
+            context.startActivity(intent(context, screen))
         }
 
-        /** The input language as Typing shows it, "English(UK)" (sim-91a, C): the phone's language, D. */
-        fun inputLanguage(): String {
-            val l = Locale.getDefault()
+        /** Options on [screen], in its own task. */
+        fun intent(context: Context, screen: Screen = Screen.MAIN): Intent =
+            Intent(context, OptionsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(EXTRA_SCREEN, screen.name)
+
+        /**
+         * The input language as Typing shows it, "English(UK)" (sim-91a, C): the phone's language
+         * [l], D; not Locale.getDefault(), which is OS 7's in every Bold7 app.
+         */
+        fun inputLanguage(l: Locale): String {
             val language = l.getDisplayLanguage(Locale.ENGLISH)
             return if (l.country.isEmpty()) language else "$language(${l.country})"
         }

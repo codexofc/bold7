@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LineageOS 24 turns these to Google Sans Flex by a static overlay of its own, enabled and
+         immutable (org.lineageos.overlay.font.googlesansflex, /product/overlay, priority 1), whose
+         families come from /product/etc/fonts_customization.xml and so escape the module's
+         fonts.xml. Back to AOSP's sans-serif, which the module's fonts.xml makes BBAlpha Sans
+         (net_rim_font_latin_truetype of the 9900): this static overlay of /system_ext wins. -->
+    <string name="config_bodyFontFamily" translatable="false">sans-serif</string>
+    <string name="config_bodyFontFamilyMedium" translatable="false">sans-serif-medium</string>
+    <string name="config_headlineFontFamily" translatable="false">sans-serif</string>
+    <string name="config_headlineFontFamilyMedium" translatable="false">sans-serif-medium</string>
+    <string name="config_clockFontFamily" translatable="false">sans-serif</string>
+</resources>

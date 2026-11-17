@@ -27,15 +27,19 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-// The SystemUI classes Bouncer reaches by name (the module's class loader cannot see them).
-// LockTest finds each in stubs/systemui.jar, LockTargets.kt compiles the members.
+// The SystemUI classes Bouncer reaches by name (the module's class loader cannot see them), rows
+// of hook-targets.tsv; LockTargets.kt compiles the members.
 internal const val KEYGUARD_PIN_VIEW = "com.android.keyguard.KeyguardPINView"
 internal const val KEYGUARD_PASSWORD_VIEW = "com.android.keyguard.KeyguardPasswordView"
 internal const val PASSWORD_TEXT_VIEW = "com.android.keyguard.PasswordTextView"
 internal const val KEYGUARD_PIN_BASED_VIEW = "com.android.keyguard.KeyguardPinBasedInputView"
 internal const val KEYGUARD_SECURITY_CONTAINER = "com.android.keyguard.KeyguardSecurityContainer"
-internal const val KEYGUARD_SIM_VIEW = "com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView"
+internal const val KEYGUARD_SIM_PIN_VIEW = "com.android.keyguard.KeyguardSimPinView"
+internal const val KEYGUARD_SIM_PUK_VIEW = "com.android.keyguard.KeyguardSimPukView"
 private const val SYSTEMUI_PACKAGE = "com.android.systemui"
+
+/** The PasswordTextView of each PIN view, by its id (getPasswordTextViewId). */
+private val ENTRY_IDS = mapOf(KEYGUARD_PIN_VIEW to "pinEntry", KEYGUARD_SIM_PIN_VIEW to "simPinEntry", KEYGUARD_SIM_PUK_VIEW to "pukEntry")
 
 /**
  * The 9900's password entry over Android's bouncer (docs/BBOS7-VISUEL.md §10, sim-85 to sim-89):
@@ -46,11 +50,11 @@ private const val SYSTEMUI_PACKAGE = "com.android.systemui"
  * many characters Android holds and what its message areas say, and draws OS 7's box. Nothing here
  * may send Android down a path this SystemUI never takes.
  *
- * The same box over MediaTek's view of the SIM's PIN and PUK: the digits stay in its
- * PasswordTextView, which keeps the focus and the keys; its controller sends them to the modem
- * (supplyPinReportResult, supplyPukReportResult) when Android's confirm key or OK says so, and its
- * messages and attempts left are Android's, in the box. Only the label is OS 7's, by the state the
- * controller is in ([simEntry]).
+ * The same box over AOSP's views of the SIM's PIN and PUK: the digits stay in their
+ * PasswordTextView, which keeps the focus and the keys; their controllers send them to the modem
+ * (supplyIccLockPin, supplyIccLockPuk) when Android's confirm key or OK says so, and their
+ * messages and attempts left are Android's, in the box. Only the label is OS 7's, by the view and
+ * the prompt Android shows ([simEntry]).
  */
 internal class Bouncer(private val images: (Context) -> Images?, private val fail: (String, Exception?) -> Unit) {
     // Weak: Android inflates the bouncer's views again (density, reinflateViewFlipper).
@@ -73,16 +77,17 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
 
     fun passwordTarget(loader: ClassLoader): Method = loader.loadClass(KEYGUARD_PASSWORD_VIEW).getDeclaredMethod("onFinishInflate")
 
-    fun simTarget(loader: ClassLoader): Method = loader.loadClass(KEYGUARD_SIM_VIEW).getDeclaredMethod("onFinishInflate")
+    fun simTarget(loader: ClassLoader, cls: String): Method = loader.loadClass(cls).getDeclaredMethod("onFinishInflate")
 
     fun pinKeyTarget(loader: ClassLoader): Method =
         loader.loadClass(KEYGUARD_PIN_BASED_VIEW).getDeclaredMethod("onKeyDown", Int::class.javaPrimitiveType, KeyEvent::class.java)
 
     /**
-     * After KeyguardPINView.onFinishInflate, KeyguardPasswordView.onFinishInflate or
-     * KeyguardSimPinPukMeView.onFinishInflate, on the main thread: OS 7's cover on top of the view,
-     * with a keyboard at hand only ([padCovered]); the device's PIN and password, and MediaTek's SIM
-     * view ([bouncerDressed]). Android's views stay
+     * After KeyguardPINView.onFinishInflate, KeyguardPasswordView.onFinishInflate,
+     * KeyguardSimPinView.onFinishInflate or KeyguardSimPukView.onFinishInflate, on the main thread:
+     * OS 7's cover on top of the view, with a keyboard at hand ([bouncerCovered]); the device's PIN
+     * and password, and the SIM's views ([bouncerDressed]). The 9900 had no pattern: a pattern
+     * left from before Bold7 keeps Android's own grid, never covered. Android's views stay
      * where they are, visible under the cover, so that the entry keeps the focus and the keys
      * (BenOS's LockscreenPinEntry still clicks the PIN's keys by their ids). The cover takes every
      * touch, so that no key of the pad answers under it, but the Emergency button's, which clicks
@@ -91,14 +96,14 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
      * is not as expected: Android's bouncer stays.
      */
     fun dress(view: ViewGroup, find: (View, String) -> View?) {
-        if (!bouncerDressed(view.javaClass.name)) return
+        val viewClass = view.javaClass.name
         val config = view.resources.configuration
-        if (!padCovered(config.keyboard, config.hardKeyboardHidden)) return
+        if (!bouncerCovered(viewClass, config.keyboard, config.hardKeyboardHidden)) return
         val images = images(view.context) ?: return
-        val sim = view.javaClass.name == KEYGUARD_SIM_VIEW
-        val typed: () -> Int = when (view.javaClass.name) {
-            KEYGUARD_PIN_VIEW, KEYGUARD_SIM_VIEW -> {
-                val entry = find(view, if (sim) "simPinPukMeEntry" else "pinEntry") ?: return
+        val sim = simView(viewClass)
+        val typed: () -> Int = when (viewClass) {
+            KEYGUARD_PIN_VIEW, KEYGUARD_SIM_PIN_VIEW, KEYGUARD_SIM_PUK_VIEW -> {
+                val entry = find(view, ENTRY_IDS.getValue(viewClass)) ?: return
                 val chars = try {
                     entry.javaClass.getField("mTextChars")
                 } catch (e: NoSuchFieldException) {
@@ -123,25 +128,23 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
         val prompts: List<CharSequence>
         val wrong: List<CharSequence>
         if (sim) {
-            // Public fields of MtkSystemUI (LockTargets.kt): the controller is made right after the
-            // inflation, before the view is drawn; null or an unknown state gives Android's screen back.
-            val (controller, state) = try {
-                val field = view.javaClass.getField("mKeyguardSimPinPukMeViewController")
-                field to field.type.getField("mUnlockEnterState")
-            } catch (e: NoSuchFieldException) {
-                fail("view target missing: $KEYGUARD_SIM_VIEW controller state, Android's SIM screen kept", e)
-                return
-            }
             val labels = mapOf(
                 SimEntry.PIN to images.text(R.string.lock_enter_sim_pin),
                 SimEntry.PUK to images.text(R.string.lock_enter_sim_puk),
                 SimEntry.NEW_PIN to images.text(R.string.lock_enter_new_sim_pin),
                 SimEntry.CONFIRM_PIN to images.text(R.string.lock_confirm_sim_pin),
             )
-            label = { simEntry(controller.get(view)?.let(state::getInt))?.let(labels::get) }
-            // Each state's prompt (KeyguardSimPinPukMeViewController.resetState, verifyPasswordAndUnlock)
-            // is OS 7's label; a wrong code keeps Android's words, which carry the attempts left.
-            prompts = texts("kg_sim_pin_instructions", "kg_puk_enter_puk_hint", "keyguard_password_enter_new_pin_code", "keyguard_password_Confirm_pin_code", "keyguard_enter_your_pin")
+            // The PUK view's states by the prompt KeyguardSimPukViewController's StateMachine shows.
+            val pukPrompts = listOf("kg_puk_enter_puk_hint" to SimEntry.PUK, "kg_puk_enter_pin_hint" to SimEntry.NEW_PIN, "kg_enter_confirm_pin_hint" to SimEntry.CONFIRM_PIN)
+                .mapNotNull { (name, entry) -> texts(name).firstOrNull()?.let { it.toString() to entry } }.toMap()
+            var last: SimEntry? = null
+            label = {
+                last = simEntry(viewClass, areas.firstOrNull { it.isShown && !it.text.isNullOrBlank() }?.text, pukPrompts, last)
+                last?.let(labels::get)
+            }
+            // Each state's prompt (the controllers' resetState and StateMachine) is OS 7's label; a
+            // wrong code keeps Android's words, which carry the attempts left.
+            prompts = texts("kg_sim_pin_instructions", "kg_puk_enter_puk_hint", "kg_puk_enter_pin_hint", "kg_enter_confirm_pin_hint", "keyguard_enter_your_pin")
             wrong = emptyList()
         } else {
             val enter = images.text(R.string.lock_enter_password)
@@ -153,7 +156,7 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
         if (!overlay(view as? LinearLayout ?: return, cover)) return
         covers.removeAll { it.get() == null }
         covers += WeakReference(cover)
-        Log.i(TAG, "bouncer: the 9900's entry over Android's ${view.javaClass.simpleName}, typed on the keyboard")
+        Log.i(TAG, "bouncer: the 9900's entry over Android's ${view.javaClass.simpleName}")
     }
 
     /**
@@ -227,7 +230,7 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
     fun pinKeyArgs(view: Any, keyCode: Int, event: KeyEvent?): Array<Any?>? {
         if (event == null) return null
         val cls = view.javaClass.name
-        if (!pinKeysTranslated(cls, simCovered = cls == KEYGUARD_SIM_VIEW && simCovered(view))) return null
+        if (!pinKeysTranslated(cls, simCovered = simView(cls) && simCovered(view))) return null
         val code = pinKeyCode(keyCode, event.number, event.repeatCount) ?: return null
         return arrayOf(code, event)
     }
@@ -256,7 +259,7 @@ internal class Bouncer(private val images: (Context) -> Images?, private val fai
 private class BouncerCover(
     context: Context,
     val input: View,
-    /** Over MediaTek's SIM view: kept out of [Bouncer.dressed], its box on Android's black. */
+    /** Over a SIM view: kept out of [Bouncer.dressed], its box on Android's black. */
     val sim: Boolean,
     private val images: Images,
     private val typed: () -> Int,
@@ -291,7 +294,7 @@ private class BouncerCover(
     private val field = textPaint(Typography.TEXT, Typography.REGULAR, 0xFF000000.toInt())
     private val label = textPaint(Typography.TEXT, Typography.REGULAR, DialogColors.ButtonText)
     private val labelFocused = textPaint(Typography.TEXT, Typography.REGULAR, DialogColors.ButtonTextFocused)
-    private val separator = Paint().apply { color = PasswordBox.SEPARATOR_COLOR }
+        private val separator = Paint().apply { color = PasswordBox.SEPARATOR_COLOR }
     private val caret = focusPaint(PasswordBox.CARET_HEIGHT)
     private val popup: Drawable = images["ui_popup"]
     private val fieldImage: Drawable = images["ui_find"]
@@ -393,7 +396,8 @@ private class BouncerCover(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         // In the screen's y, as the box.
         getLocationOnScreen(location)
-        val onButton = box().onButton(event.x, event.y + location[1])
+        val y = event.y + location[1]
+        val onButton = box().onButton(event.x, y)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downOnButton = onButton
@@ -447,7 +451,11 @@ private class BouncerCover(
                 canvas.save()
                 canvas.translate((location[0] - containerLocation[0]).toFloat(), -containerLocation[1].toFloat())
                 val m = shownMessage
-                if (m != null && bouncerBox(m, shownTyped) == BouncerBox.ERROR) drawError(canvas, errorText(m, wrong, incorrect)) else drawEntry(canvas)
+                if (m != null && bouncerBox(m, shownTyped) == BouncerBox.ERROR) {
+                    drawError(canvas, errorText(m, wrong, incorrect))
+                } else {
+                    drawEntry(canvas)
+                }
                 canvas.restore()
             } catch (e: RuntimeException) {
                 broken = true
@@ -476,18 +484,22 @@ private class BouncerCover(
         canvas.translate(x, b.caretTop.toFloat())
         canvas.drawRect(0f, 0f, PasswordBox.CARET_WIDTH.toFloat(), PasswordBox.CARET_HEIGHT.toFloat(), caret)
         canvas.restore()
-        if (!b.emergency) return
-        canvas.drawRect(b.separatorLeft.toFloat(), b.separatorY.toFloat(), b.separatorRight.toFloat(), b.separatorY + 1f, separator)
+        if (b.emergency) drawEmergency(canvas, b.separatorLeft, b.separatorY, b.separatorRight, b.buttonLeft, b.buttonTop, b.buttonWidth)
+    }
+
+    /** The separator and the Emergency button of sim-65. */
+    private fun drawEmergency(canvas: Canvas, separatorLeft: Int, separatorY: Int, separatorRight: Int, buttonLeft: Int, buttonTop: Int, buttonWidth: Int) {
+        canvas.drawRect(separatorLeft.toFloat(), separatorY.toFloat(), separatorRight.toFloat(), separatorY + 1f, separator)
         // border_button*.png, 60x102: border pixels at its column 3 and 56, its row 3 and 98.
         val image = if (held) buttonFocused else button
-        image.setBounds(b.buttonLeft - 3, b.buttonTop - 3, b.buttonLeft + b.buttonWidth + 3, b.buttonTop + DialogDimens.BUTTON_HEIGHT + 3)
+        image.setBounds(buttonLeft - 3, buttonTop - 3, buttonLeft + buttonWidth + 3, buttonTop + DialogDimens.BUTTON_HEIGHT + 3)
         image.draw(canvas)
-        var lx = b.buttonLeft + (b.buttonWidth - emergencyWidth) / 2
-        val iy = b.buttonTop + (DialogDimens.BUTTON_HEIGHT - handset.intrinsicHeight) / 2
+        var lx = buttonLeft + (buttonWidth - emergencyWidth) / 2
+        val iy = buttonTop + (DialogDimens.BUTTON_HEIGHT - handset.intrinsicHeight) / 2
         handset.setBounds(lx.toInt(), iy, lx.toInt() + handset.intrinsicWidth, iy + handset.intrinsicHeight)
         handset.draw(canvas)
         lx += handset.intrinsicWidth + PasswordBox.ICON_GAP
-        canvas.drawText(emergencyLabel, lx, (b.buttonTop + DialogDimens.BUTTON_BASELINE).toFloat(), if (held) labelFocused else label)
+        canvas.drawText(emergencyLabel, lx, (buttonTop + DialogDimens.BUTTON_BASELINE).toFloat(), if (held) labelFocused else label)
     }
 
     /** OS 7's dialog without button, the exclamation mark at its left (DialogLayout of core/ui, sim-87). */

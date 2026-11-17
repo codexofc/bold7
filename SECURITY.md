@@ -8,7 +8,7 @@ Report privately through GitHub: open the **Security** tab of this repository an
 
 Please include:
 
-- the Bold7 module version and the BenOS version;
+- the Bold7 module version, and the system and its version (LineageOS 24 build or BenOS);
 - what an attacker needs (a malicious app installed, physical access to a locked phone, a crafted message or email, a network position);
 - the steps to reproduce, and what they lead to;
 - a proof of concept if you have one.
@@ -33,6 +33,6 @@ Only the latest release receives security fixes.
 ## What does not count
 
 - Issues that need an already rooted attacker, or the user granting root to another app.
-- Flaws in Android, BenOS, KernelSU, Vector or Google Messages that Bold7 does not make worse. Report those upstream; tell us if Bold7 should work around them.
+- Flaws in Android, LineageOS, BenOS, KernelSU, Vector or Google Messages that Bold7 does not make worse. Report those upstream; tell us if Bold7 should work around them.
 - The absence of signature verification by the KernelSU manager itself (release zips are signed, and the manager does not check them).
 - Visual differences from BlackBerry OS 7.1. Those are fidelity issues, welcome in the public tracker.

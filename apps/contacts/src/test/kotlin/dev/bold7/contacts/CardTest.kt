@@ -9,7 +9,7 @@ class CardTest {
     private val work = Detail(Kind.PHONE, "Work", "999", 11)
     private val email = Detail(Kind.EMAIL, "Email", "dexter@cn.com", 12)
     private val home = Detail(Kind.ADDRESS, "Home", "1 Lab Street\nMiami", 13)
-    private val dexter = Card(1, "Dexter", company = "", details = listOf(email, home, work, mobile), groups = listOf("Family"))
+    private val dexter = Card(1, "Dexter", company = "", details = listOf(email, home, work, mobile))
 
     @Test fun sectionsComeInTheOrderOfTheCard() {
         // gsm 015: Phone Numbers, then Email Addresses (C); Addresses and Groups after them (D).
@@ -37,7 +37,7 @@ class CardTest {
 
     @Test fun aCardWithoutDetailsHasNoFocusAndItsMenuOpensOnEdit() {
         // sim-182b (C): Edit focused, Delete.
-        val s = CardScreen(Card(2, "Nobody", "", emptyList(), emptyList()))
+        val s = CardScreen(Card(2, "Nobody", "", emptyList()))
         assertNull(s.focused)
         val m = s.menu()
         assertEquals(listOf(CardAct.SWITCH, CardAct.EDIT, CardAct.DELETE, CardAct.SEND, CardAct.HELP, CardAct.CLOSE), m.entries.map { it.action })

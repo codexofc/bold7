@@ -2,7 +2,6 @@ package dev.bold7.design
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 // The texts of the 9900's home banner (docs/BBOS7-VISUEL.md §1), which the lock screen repeats
 // (§10, sim-64): one rule for the launcher's banner and SystemUI's lock screen.
@@ -14,6 +13,5 @@ fun bannerTime(t: LocalDateTime, is24Hour: Boolean): Pair<String, String> {
     return "%d:%02d".format(h, t.minute) to if (t.hour < 12) "AM" else "PM"
 }
 
-/** "Fri 13 Nov" (sim-03, sim-64, C), in the phone's language, without the abbreviations' dots (D). */
-fun bannerDate(t: LocalDateTime, locale: Locale): String =
-    DateTimeFormatter.ofPattern("EEE d MMM", locale).format(t).replace(".", "")
+/** "Fri 13 Nov" (sim-03, sim-64, C), in OS 7's names whatever the phone's language. */
+fun bannerDate(t: LocalDateTime): String = DateTimeFormatter.ofPattern("EEE d MMM", OS7_NAMES).format(t)

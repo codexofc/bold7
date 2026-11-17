@@ -29,6 +29,7 @@ import dev.bold7.ui.MenuEntry
 import dev.bold7.ui.MenuKey
 import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
+import dev.bold7.ui.PasswordDialog
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.status
 import dev.bold7.ui.withSwitchApplication

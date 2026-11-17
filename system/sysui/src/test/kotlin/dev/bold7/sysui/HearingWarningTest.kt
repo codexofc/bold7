@@ -52,27 +52,22 @@ class HearingWarningTest {
         assertEquals(0, face.focused)
     }
 
-    @Test fun dialogsAreTheQ25s() = ZipFile("../../stubs/systemui.jar").use { jar ->
-        assertNotNull(jar.getEntry(CSD_DIALOG.replace('.', '/') + ".class"))
-        // R8 folded SafetyWarningDialog into VolumeDialogImpl's fifth anonymous class: the one
-        // that holds SafetyWarningDialog's receiver and its volume key switch.
-        val bytes = jar.getInputStream(jar.getEntry(SAFE_VOLUME_DIALOG.replace('.', '/') + ".class")).readBytes().toString(Charsets.ISO_8859_1)
-        assertTrue("SafetyWarningDialog\$1" in bytes && "mDisableOnVolumeUp" in bytes)
+    // LineageOS 24's delegates of the two warnings; HearingWarningTargets.kt compiles their onStart.
+    @Test fun dialogsAreLineages() = ZipFile("../../stubs/systemui.jar").use { jar ->
+        for (cls in listOf(SAFE_VOLUME_DIALOG, CSD_DIALOG)) assertNotNull(jar.getEntry(cls.replace('.', '/') + ".class"), cls)
     }
 
-    // The whole of OS 7's warning shows on the Q25's 720x720, BBAlpha Sans 27 px, in English and
-    // in French: nothing cut (DialogLayout ends what does not fit in an ellipsis).
+    // The whole of OS 7's warning shows on the Q25's 720x720, BBAlpha Sans 27 px, in OS 7's English:
+    // nothing cut (DialogLayout ends what does not fit in an ellipsis).
     @Test fun os7sWarningFitsTheScreen() {
         val font = Font.createFont(Font.TRUETYPE_FONT, File("../../assets-gen/module/system/fonts/BBAlphaSans.ttf")).deriveFont(27f)
         val context = FontRenderContext(null, true, true)
         // 3 % wider than AWT measures it, for Android's own rounding.
         val measure = { s: String -> font.getStringBounds(s, context).width.toFloat() * 1.03f }
-        for ((values, buttons) in listOf("values" to listOf("Proceed", "Cancel"), "values-fr" to listOf("Continuer", "Annuler"))) {
-            val strings = File("src/main/res/$values/strings.xml").readText()
-            val text = Regex("""<string name="hearing_warning">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1]
-                .replace("\\n", "\n").replace("\\'", "'")
-            val layout = DialogLayout(text, buttons, icon = true, measure = measure, screenWidth = 720, screenHeight = 720)
-            assertTrue(layout.lines.none { it.endsWith(ELLIPSIS) }, "$values:\n" + layout.lines.joinToString("\n"))
-        }
+        val strings = File("src/main/res/values/strings.xml").readText()
+        val text = Regex("""<string name="hearing_warning">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1]
+            .replace("\\n", "\n").replace("\\'", "'")
+        val layout = DialogLayout(text, listOf("Proceed", "Cancel"), icon = true, measure = measure, screenWidth = 720, screenHeight = 720)
+        assertTrue(layout.lines.none { it.endsWith(ELLIPSIS) }, layout.lines.joinToString("\n"))
     }
 }

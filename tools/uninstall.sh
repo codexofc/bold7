@@ -4,7 +4,7 @@
 #   The module gives back itself what it changed (system/module/src/setup.sh): its
 #   uninstall.sh, at the boot that follows the removal, leaves a script in /data/adb/boot-completed.d
 #   which, once the phone is unlocked, gives back the values saved in /data/adb/bold7-state (sounds,
-#   silence, End key, trackpad, HOME, DIALER, input method), each only while it is still the one
+#   silence, End key, HOME, DIALER, input method, density), each only while it is still the one
 #   Bold7 set, turns Do Not Disturb off if a profile's policy was left, deletes the bold7_* settings,
 #   disables SystemUI's palette overlays, uninstalls the apps, then deletes itself.
 #   What stays here: the saves an older tools/install.sh and the tools/*.sh poser scripts wrote in
@@ -28,7 +28,7 @@
 #   gone from /data/adb/boot-completed.d; what it could not give back is shown), checks that none of
 #   the module's mounts is left, gives home back to Launcher3 (enabled again if it was disabled),
 #   removes the empty /data/misc/<uuid> Vector leaves behind, then compares with the state saved
-#   before the first install (build/state/before-install.txt of the main checkout).
+#   before the first install (build/state/before-install-lineage.txt of the main checkout).
 #
 # It refuses while the BB10 build (module "cascade") is still on the phone, and says how to remove it.
 #
@@ -38,7 +38,7 @@ cd "$(dirname "$0")/.."
 sh() { adb shell "$@" | tr -d '\r'; }
 # The main checkout's build/state, also from a worktree (tools/sons.sh does the same).
 STATE=$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)/build/state
-BBKB=com.blackberry.keyboard/com.blackberry.inputmethod.core.BlackBerryIME
+LATIN=com.android.inputmethod.latin/.LatinIME
 L=dev.bold7.launcher
 L3=com.android.launcher3
 . tools/messages-api.sh
@@ -66,7 +66,7 @@ tools/touches.sh retour || touches=$?
 # The trackpad's daemon stops now, before its module goes: keyboard and trackpad Android's again.
 trackpad=0
 tools/trackpad.sh retour || trackpad=$?
-# Calls first: the role back to Google's Phone (or the holder saved), while our Phone is still there.
+# Calls first: the role back to LineageOS's Phone (or the holder saved), while our Phone is still there.
 dialer=0
 tools/dialer.sh retour || dialer=$?
 # Set below when the Do Not Disturb policy could not be given back.
@@ -78,7 +78,7 @@ uninstall_end() {
   case $dialer in
     0) ;;
     2) failed=1; echo "DIALER not given back: $STATE/dialer-avant.txt is broken (see above), kept. Read it, then adb shell cmd role add-role-holder android.app.role.DIALER <its package>, and delete it." >&2 ;;
-    *) failed=1; echo "DIALER not given back by tools/dialer.sh retour (see above): adb shell cmd role add-role-holder android.app.role.DIALER com.google.android.dialer" >&2 ;;
+    *) failed=1; echo "DIALER not given back by tools/dialer.sh retour (see above): adb shell cmd role add-role-holder android.app.role.DIALER com.android.dialer" >&2 ;;
   esac
   case $trackpad in
     0) ;;
@@ -194,8 +194,8 @@ if [ -e "$SAISIE_SAVE" ]; then
   ime=$(sed -n 's/^default_input_method=//p' "$SAISIE_SAVE")
   list=$(sed -n 's/^enabled_input_methods=//p' "$SAISIE_SAVE")
   if [ "$(wc -l <"$SAISIE_SAVE" | tr -d ' ')" != 2 ] || [ -z "$ime" ] || [ "$ime" = null ] || [[ $ime$list == *"'"* ]]; then
-    echo "$SAISIE_SAVE is not the save tools/install.sh writes, kept: selecting $BBKB, the enabled list left as it is." >&2
-    ime=$BBKB list=
+    echo "$SAISIE_SAVE is not the save tools/install.sh writes, kept: selecting $LATIN, the enabled list left as it is." >&2
+    ime=$LATIN list=
   fi
   sh "ime set $ime" >/dev/null 2>&1 || true
   if [ -n "$list" ] && [ "$list" != null ]; then
@@ -268,5 +268,5 @@ for d in $(sh "su -c 'ls -dZ /data/misc/*'" |
 done
 
 echo "Modules gone, no mount left, home is $(sh 'cmd role get-role-holders android.app.role.HOME')."
-echo "Differences with $STATE/before-install.txt:"
-tools/state.sh | diff "$STATE/before-install.txt" - && echo "(none)"
+echo "Differences with $STATE/before-install-lineage.txt:"
+tools/state.sh | diff "$STATE/before-install-lineage.txt" - && echo "(none)"

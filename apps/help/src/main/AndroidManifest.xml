@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Help of BBOS 7.1: an ordinary app the module installs. No permission at all, so no network
+  (no INTERNET); it reads the decoded help the module mounts and its own assets, nothing else.
+  No icon on the home (the 9900 has none): H on the home and Help in the apps' menus open it.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Opening Help (dev.bold7.ui.Help): signature, declared here and by each app that opens it,
+         so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+
+    <!-- Switch Application of the menu, as every app's. -->
+    <permission
+        android:name="dev.bold7.permission.SWITCH_APPLICATION"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <application
+        android:name=".HelpApp"
+        android:allowBackup="false"
+        android:label="@string/title">
+
+        <!-- Exported behind HELP: its one extra names a topic, which only picks the page shown. -->
+        <activity
+            android:name=".HelpActivity"
+            android:exported="true"
+            android:permission="dev.bold7.permission.HELP"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="dev.bold7.help.SHOW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

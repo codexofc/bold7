@@ -7,20 +7,6 @@ import kotlin.test.assertTrue
 
 class TextSetupTest {
     @Test
-    fun `the first unlock shows the screen once, and only when Google Messages is there and consent is not given`() {
-        assertEquals(Launch.SHOW, launch(asked = false, messagesInstalled = true, consent = Consent.OFF))
-        assertEquals(Launch.SHOW, launch(asked = false, messagesInstalled = true, consent = Consent.UNKNOWN))
-        assertEquals(Launch.SKIP, launch(asked = true, messagesInstalled = true, consent = Consent.OFF))
-        assertEquals(Launch.SKIP, launch(asked = false, messagesInstalled = false, consent = Consent.OFF))
-    }
-
-    @Test
-    fun `a consent already given closes the screen for good without showing it`() {
-        assertEquals(Launch.FINISH, launch(asked = false, messagesInstalled = true, consent = Consent.ON))
-        assertEquals(Launch.SKIP, launch(asked = true, messagesInstalled = true, consent = Consent.ON))
-    }
-
-    @Test
     fun `back from Google's page, the state read decides the next step`() {
         assertNull(afterReturn(Consent.ON))
         assertEquals(Step.STILL_OFF, afterReturn(Consent.OFF))

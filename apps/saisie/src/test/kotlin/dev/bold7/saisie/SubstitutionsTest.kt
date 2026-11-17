@@ -80,7 +80,7 @@ class SubstitutionsTest {
 
     @Test fun theListsParse() {
         // OS 7's, copied by tools/import-assets.sh saisie.
-        val en = Substitutions.parse(java.io.File("../../assets-gen/saisie/assets/substitution/en.tsv").readText())
+        val en = Substitutions.parse(java.io.File("../../assets-gen/saisie/assets/os7/substitution/en.tsv").readText())
         assertEquals("The", en.find("teh", sentenceStart = true))
         assertEquals("the", en.find("hte", sentenceStart = false))
         assertEquals("don't", en.find("dont", sentenceStart = false))
@@ -99,10 +99,10 @@ class SubstitutionsTest {
     }
 
     @Test fun bothRealListsTogetherBreakNoFrenchWord() {
-        // OS 7's English list and the French word list, copied by tools/import-assets.sh saisie;
-        // our French list, in git. the user writes French with English words, whatever the subtype.
-        val words = WordList.parse(java.io.File("../../assets-gen/saisie/assets/dictionary/fr.tsv").readText())
-        val en = Substitutions.parse(java.io.File("../../assets-gen/saisie/assets/substitution/en.tsv").readText())
+        // OS 7's English list and its part of the French word list, copied by tools/import-assets.sh saisie;
+        // AOSP's French word list and our French list, in git. The user writes French with English words, whatever the subtype.
+        val words = WordList.parse(java.io.File("../../assets-gen/saisie/assets/os7/dictionary/fr.tsv").readText() + "\n" + java.io.File("src/main/assets/dictionary/fr.tsv").readText())
+        val en = Substitutions.parse(java.io.File("../../assets-gen/saisie/assets/os7/substitution/en.tsv").readText())
         val fr = Substitutions.parse(java.io.File("src/main/assets/substitution/fr.tsv").readText())
         val both = fr + en.without(words::contains)
         for (w in listOf("dont", "il", "sec", "secs", "mo", "id", "mn", "hel")) assertNull(both.find(w, sentenceStart = false), w)

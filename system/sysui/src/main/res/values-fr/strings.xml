@@ -1,22 +1,5 @@
 <resources>
+    <!-- Read by Vector's own app, in the phone's language, outside Bold7: the module's other
+         strings are drawn by Bold7 in SystemUI, always in OS 7's English. -->
     <string name="description">Barre d\'état, volume, extinction, messages d\'état et écran verrouillé d\'OS 7 dans MtkSystemUI, derrière une garde d\'empreinte.</string>
-    <!-- No French capture nor readable string of the 9900's firmware (its language resources are
-         compressed): by eye until one is found. Each label starts with its own letter (the
-         underlined one chooses it). -->
-    <string name="power_question">Éteindre l\'appareil ?</string>
-    <string name="power_full_off">Éteindre</string>
-    <string name="power_restart">Redémarrer</string>
-    <string name="power_cancel">Annuler</string>
-    <string name="power_emergency">Urgence</string>
-    <string name="lock_enter_password">Mot de passe :</string>
-    <string name="lock_incorrect_password">Mot de passe incorrect !</string>
-    <string name="lock_emergency">Urgence</string>
-    <string name="lock_enter_sim_pin">PIN de la SIM :</string>
-    <string name="lock_enter_sim_puk">PUK de la SIM :</string>
-    <string name="lock_enter_new_sim_pin">Nouveau PIN de la SIM :</string>
-    <string name="lock_confirm_sim_pin">Confirmer le PIN de la SIM :</string>
-    <!-- OS 7's warning before Audio Boost, made French by eye and short enough for the screen (D). -->
-    <string name="hearing_warning">AVERTISSEMENT : vous allez activer l\'amplification audio et dépasser les limites de volume de sortie recommandées pour le smartphone BlackBerry. Risque de lésions auditives. Consultez le site Web avant de continuer.\nRAPPEL IMPORTANT : les spécialistes de l\'audition déconseillent l\'écoute d\'un lecteur multimédia portable à volume élevé. En cas de bourdonnements d\'oreilles ou de gêne, arrêtez aussitôt le lecteur et consultez un médecin.</string>
-    <string name="hearing_proceed">Continuer</string>
-    <string name="hearing_cancel">Annuler</string>
 </resources>

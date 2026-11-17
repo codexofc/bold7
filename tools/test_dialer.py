@@ -13,7 +13,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OURS = "dev.bold7.phone"
-GOOGLE = "com.google.android.dialer"
+GOOGLE = "com.android.dialer"
 ROLE = "android.app.role.DIALER"
 
 FAKE_ADB = textwrap.dedent(r'''
@@ -43,7 +43,7 @@ FAKE_ADB = textwrap.dedent(r'''
     elif cmd[:2] == ["telecom", "get-default-dialer"]:
         out = phone["holder"]
     elif cmd[:2] == ["telecom", "get-system-dialer"]:
-        out = "com.google.android.dialer"
+        out = "com.android.dialer"
     else:
         raise SystemExit(f"fake adb: unknown {cmd}")
     json.dump(phone, open(path, "w"))

@@ -1,14 +1,11 @@
 package dev.bold7.sysui
 
-import android.content.Context
-import android.graphics.Canvas
 import com.android.internal.widget.LockPatternUtils
 import com.android.keyguard.KeyguardPINView
 import com.android.keyguard.KeyguardPasswordView
-import com.android.keyguard.KeyguardStatusView
 import com.android.keyguard.PasswordTextView
 
-// What Bouncer reaches by name, compiled against the Q25's SystemUI (stubs/systemui.jar), like
+// What Bouncer reaches by name, compiled against LineageOS 24's SystemUI (stubs/systemui.jar), like
 // HookTargets.kt. Never run, the stubs have no code.
 @Suppress("unused", "UNUSED_VARIABLE")
 private fun bouncerTargets(pin: KeyguardPINView, password: KeyguardPasswordView, entry: PasswordTextView, key: android.view.KeyEvent) {
@@ -22,14 +19,16 @@ private fun bouncerTargets(pin: KeyguardPINView, password: KeyguardPasswordView,
     val chars: java.util.ArrayList<*> = entry.mTextChars
 }
 
-// MediaTek's SIM view: its inflation, its layout, and the state its controller is in,
-// read to choose OS 7's label; the digits stay in its PasswordTextView, of which the box reads the
-// count only (entry.mTextChars, above).
+// AOSP's SIM views: their inflation, their layout (KeyguardInputView, a LinearLayout) and the
+// key handling they share with the device's PIN; the digits stay in their PasswordTextView, of
+// which the box reads the count only (entry.mTextChars, above).
 @Suppress("unused", "UNUSED_VARIABLE")
-private fun simTargets(sim: com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView) {
-    sim.onFinishInflate()
-    val layout: android.widget.LinearLayout = sim
-    val state: Int = sim.mKeyguardSimPinPukMeViewController.mUnlockEnterState
+private fun simTargets(pin: com.android.keyguard.KeyguardSimPinView, puk: com.android.keyguard.KeyguardSimPukView, key: android.view.KeyEvent) {
+    pin.onFinishInflate()
+    puk.onFinishInflate()
+    val layouts: List<android.widget.LinearLayout> = listOf(pin, puk)
+    val keys: List<com.android.keyguard.KeyguardPinBasedInputView> = listOf(pin, puk)
+    keys[0].onKeyDown(android.view.KeyEvent.KEYCODE_1, key)
 }
 
 // What the box reads of the bouncer around it, and what the scrims' hook reads and writes
@@ -37,7 +36,7 @@ private fun simTargets(sim: com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeV
 @Suppress("unused", "UNUSED_VARIABLE")
 private fun boxTargets(container: com.android.keyguard.KeyguardSecurityContainer, scrims: com.android.systemui.statusbar.phone.ScrimController) {
     val disappearing: Boolean = container.mDisappearAnimRunning
-    scrims.applyState()
+    // applyState$* carries R8's suffix, which a build renumbers: resolved by the table, not named here.
     val state: com.android.systemui.statusbar.phone.ScrimState = scrims.mState
     val name: String = state.name
     scrims.mBehindAlpha = 0f
@@ -46,48 +45,25 @@ private fun boxTargets(container: com.android.keyguard.KeyguardSecurityContainer
     val fullShade: Float = scrims.mTransitionToFullShadeProgress
 }
 
-// What LockFace reaches by name.
+// LockFace (group lockface) on LineageOS 24's keyguard: the shade window it joins, the root it
+// leaves undrawn (KeyguardRootView, final, a ConstraintLayout drawing through ConstraintLayout's
+// dispatchDraw), and the stack it hides, read as on BenOS.
 @Suppress("unused", "UNUSED_VARIABLE")
-private fun lockFaceTargets(
+private fun faceTargets(
+    window: com.android.systemui.shade.NotificationShadeWindowView,
+    root: com.android.systemui.keyguard.ui.view.KeyguardRootView,
     stack: com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout,
-    area: com.android.systemui.statusbar.phone.KeyguardBottomAreaView,
-    indication: com.android.systemui.statusbar.phone.KeyguardIndicationTextView,
-    icon: com.android.keyguard.LockIconView,
-    status: KeyguardStatusView,
-    canvas: Canvas,
-    context: Context,
+    canvas: android.graphics.Canvas,
 ) {
+    window.onAttachedToWindow()
+    val frame: android.widget.FrameLayout = window
+    val layout: androidx.constraintlayout.widget.ConstraintLayout = root
+    layout.dispatchDraw(canvas)
     val state: Int = stack.mStatusBarState
-    stack.dispatchDraw(canvas)
-    stack.onDraw(canvas)
-    status.dispatchDraw(canvas)
-    area.onFinishInflate()
-    indication.setNextIndication()
-    val images: List<android.widget.ImageView> = listOf(icon.mLockIcon, icon.mBgView)
-    icon.onFinishInflate()
-    val under: com.android.systemui.statusbar.notification.row.ExpandableView? = stack.getChildAtRawPosition(0f, 0f)
-    val dozing: Boolean = stack.mAmbientState.mDozing
-    val dozeAmount: Float = stack.mAmbientState.mDozeAmount
-    stack.onInterceptTouchEvent(android.view.MotionEvent.obtain(0, 0, 0, 0f, 0f, 0))
-    // onTouchEvent is declared in the dex (dexdump), the stubs dropped it: compiled against View.
-    stack.onTouchEvent(android.view.MotionEvent.obtain(0, 0, 0, 0f, 0f, 0))
-    // The owner's information, as KeyguardIndicationController reads it (framework stubs).
-    val utils = LockPatternUtils(context)
-    val owner: String? = utils.getDeviceOwnerInfo() ?: if (utils.isOwnerInfoEnabled(0)) utils.getOwnerInfo(0) else null
+    val ambient: com.android.systemui.statusbar.notification.stack.AmbientState = stack.mAmbientState
+    val dozing: Boolean = ambient.mDozing
+    val dozeAmount: Float = ambient.mDozeAmount
 }
 
-// What the Call key's hook reads on the lock screen (PlaceCall.kt): the shade
-// window's key dispatch, then from its controller the bar's state, whether the device is awake, and
-// the keyguard's showing, occluded and bouncer.
-@Suppress("unused", "UNUSED_VARIABLE")
-private fun placeCallTargets(window: com.android.systemui.shade.NotificationShadeWindowView, key: android.view.KeyEvent) {
-    val handled: Boolean = window.dispatchKeyEvent(key)
-    val controller: com.android.systemui.shade.NotificationShadeWindowViewController = window.mInteractionEventHandler.`this$0`
-    val surfaces = controller.mService as com.android.systemui.statusbar.phone.CentralSurfacesImpl
-    val state: Int = surfaces.mState
-    val interactive: Boolean = surfaces.mDeviceInteractive
-    val keyguard = surfaces.mKeyguardStateController as com.android.systemui.statusbar.policy.KeyguardStateControllerImpl
-    val showing: Boolean = keyguard.mShowing
-    val occluded: Boolean = keyguard.mOccluded
-    val bouncer: Boolean = keyguard.mPrimaryBouncerShowing
-}
+// PlaceCall (group placecall) is off on LineageOS 24: NotificationShadeWindowView.dispatchKeyEvent
+// is gone. Its targets are BenOS's rows of hook-targets.tsv until an L6 lot rewrites them.

@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Process
 import dev.bold7.platform.enableStrictModeIfDebuggable
+import dev.bold7.platform.speakOs7Language
 import dev.bold7.showcase.showcaseOn
 import java.time.LocalDate
 import java.time.ZoneId
@@ -17,6 +18,7 @@ class CalendarApp : Application() {
 
     override fun onCreate() {
         enableStrictModeIfDebuggable()
+        speakOs7Language()
         super.onCreate()
     }
 }

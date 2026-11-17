@@ -204,8 +204,10 @@ enum class BarKind {
 
     /**
      * None: the app's own title bar (Contacts sim-178, MemoPad sim-254, Tasks sim-267, Pictures
-     * sim-344) or nothing at all (Calculator sim-249). The app hides Android's bar; nothing is drawn
-     * should it show for a moment (a dialog, a swipe).
+     * sim-344) or nothing at all (Calculator sim-249, the Camera's full-screen viewfinder sim-365).
+     * The app hides Android's bar; nothing is drawn should it show for a moment (a dialog, a swipe),
+     * nor over a camera that draws under it without hiding it (BenOS Camera, edge to edge; Bold7's
+     * fork of it hides the bar).
      */
     NONE,
 }
@@ -218,6 +220,7 @@ fun barKind(controllingPackage: String?): BarKind = when (controllingPackage) {
     PHONE_PACKAGE -> BarKind.ONE_LINE
     "dev.bold7.calendar" -> BarKind.PLAIN_LINE
     "dev.bold7.contacts", "dev.bold7.memopad", "dev.bold7.tasks", "dev.bold7.pictures", "dev.bold7.calculator" -> BarKind.NONE
+    "dev.bold7.camera.benos", "com.light.lightcamera", "org.lineageos.aperture" -> BarKind.NONE
     else -> BarKind.TWO_LINES
 }
 
@@ -297,8 +300,19 @@ val KIND_IMAGES = linkedMapOf(
 internal fun unreadRows(showcase: Boolean, event: ShowcaseEvent? = null, hub: () -> Map<String, Int>): Map<String, Int> =
     pick(showcase, hub) { Showcase.unread(event) }
 
-/** A counter: its image of the strip and its count. */
-data class Counter(val image: String, val count: Int)
+/** A counter: its image of the strip and its count; another [app]'s own icon in its image's place when it has one (AppIndicators). */
+data class Counter(val image: String, val count: Int, val app: String? = null)
+
+/** The strip's "?" bubble: another app's counter while its own icon is not drawn. */
+const val OTHER_APP_IMAGE = "banner_count_other"
+
+/**
+ * Each other app's counter after the kinds' (HubContract.KINDS_URI's rows with an app, newest
+ * first), as the home's banner does: the firmware's third-party apps carry their own ribbon icon
+ * (App World, Facebook, Twitter, A).
+ */
+fun appCounters(unread: Map<String, Int>): List<Counter> =
+    unread.mapNotNull { (app, n) -> n.takeIf { it > 0 }?.let { Counter(OTHER_APP_IMAGE, it, app) } }
 
 /**
  * The counters of the banner's second line (sim-43, gsm 022) and of the lock screen's row (sim-64),

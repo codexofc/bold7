@@ -2,6 +2,7 @@ package dev.bold7.clock
 
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 
 // The Clock's pages and their menus, pure (sim-154, sim-155, sim-166, sim-168, C). Tested on the
@@ -9,7 +10,7 @@ import dev.bold7.ui.withSwitchApplication
 
 enum class Page { CLOCK, STOPWATCH, TIMER, BEDSIDE }
 
-enum class Act { SET_ALARM, SET_TIME, BEDSIDE, EXIT_BEDSIDE, STOPWATCH, TIMER, CLOCK, START, STOP, LAP, RESET, SET_TIMER, OPTIONS, CLOSE, CANCEL_SNOOZE, SEND_RESULTS, SWITCH }
+enum class Act { SET_ALARM, SET_TIME, BEDSIDE, EXIT_BEDSIDE, STOPWATCH, TIMER, CLOCK, START, STOP, LAP, RESET, SET_TIMER, OPTIONS, HELP, CLOSE, CANCEL_SNOOZE, SEND_RESULTS, SWITCH }
 
 /**
  * The page shown and the trackpad's focus on its buttons: on the stopwatch and the timer, 0 the left
@@ -44,7 +45,7 @@ data class ClockScreen(val page: Page = Page.CLOCK, val focus: Int = 0) {
                 MenuEntry(Act.STOPWATCH, separatorAbove = true), MenuEntry(Act.TIMER),
             )
         }
-        val full = Menu(entries + tail, highlighted = 0).withSwitchApplication(Act.SWITCH)
+        val full = Menu(entries + tail, highlighted = 0).withHelp(Act.HELP, before = Act.CLOSE).withSwitchApplication(Act.SWITCH)
         return full.entries to full.highlighted!!
     }
 

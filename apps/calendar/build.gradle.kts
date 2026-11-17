@@ -2,16 +2,20 @@ plugins { id("com.android.application") }
 
 // The Calendar's images of the 9900's firmware (theme and calendar app), out of git (provenance in
 // assets-private/MANIFEST.md), copied into this checkout's assets-gen by tools/import-assets.sh calendar.
+// Read by name at run time: from the folder the module mounts, else from these compiled
+// resources, which only the development build carries. A public build (-Pbold7.public=true)
+// carries none of them.
 val privateRes = rootProject.file("assets-gen/calendar/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 // Calendar of BBOS 7.1 (docs/BBOS7-VISUEL.md §29): an ordinary app on Android's calendar
 // provider. Google Calendar stays the engine of the reminders; this one shows OS 7's box.
 android {
     namespace = "dev.bold7.calendar"
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }

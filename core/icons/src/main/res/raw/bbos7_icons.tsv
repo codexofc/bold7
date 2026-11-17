@@ -8,6 +8,7 @@
 com.android.chrome	*	bbos7_browser	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_browser_daemon.browser.png	A theme; C sim-06
 com.android.settings	*	bbos7_options	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_options_app.png	A theme
 dev.bold7.launcher	dev.bold7.launcher.options.OptionsActivity	bbos7_options	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_options_app.png	A theme
+dev.bold7.launcher	dev.bold7.launcher.setup.WizardActivity	bbos7_setup	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_setupwizard_app.SetupWizard.png	A theme
 com.android.soundrecorder	*	bbos7_voice_notes_recorder	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_voicenotesrecorder.VoiceNotesRecorder.png	A theme
 com.android.stk	*	bbos7_sim_toolkit	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_SIMToolKit.png	A theme
 com.android.vending	*	bbos7_app_world	bbos7-9900/images/net_rim_bb_appworld_img_dither/res/img/bbaw_icon.png	A firmware, .cod of App World, 100x100; D the circle BlackBerry logo of sim-06 looks like it
@@ -36,3 +37,9 @@ dev.bold7.messages	*	bbos7_messages	bbos7-9900/theme/net_rim_theme_BlackBerry7_6
 dev.bold7.messages	dev.bold7.messages.TextMessages	bbos7_text_messages	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_messaging_app.sms_and_mms.png	A theme; C sim-02, sim-03, sim-06 (at its cell's place, RMSE 0.011 to 0.017; messaging_app.sms is the same picture 2 px off)
 org.fossify.filemanager	*	bbos7_files	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_file_explorer.Files.png	A theme
 xyz.cybertopia.salam	*	bbos7_bbm	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_qm_peer.BlackBerryMessenger.png	A theme; C sim-06
+org.lineageos.aperture	*	bbos7_camera	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_camera.Camera.png	A theme; C sim-06
+dev.bold7.camera.benos	*	bbos7_camera	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_camera.Camera.png	A theme; C sim-06
+org.lineageos.recorder	*	bbos7_voice_notes_recorder	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_voicenotesrecorder.VoiceNotesRecorder.png	A theme
+org.lineageos.twelve	*	bbos7_music	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_file_explorer.Music.png	A theme; D Music of the Media folder
+org.lineageos.jelly	*	bbos7_browser	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_browser_daemon.browser.png	A theme; C sim-06
+com.android.documentsui	*	bbos7_files	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_file_explorer.Files.png	A theme; B p18 (Files)

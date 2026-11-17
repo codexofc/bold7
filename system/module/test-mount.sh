@@ -33,7 +33,7 @@ expect "our subfolder too"            "$(su_ "cat $T/target/dir/sub/g")" "deep"
 expect "the target's own file stays"  "$(su_ "cat $T/target/dir/orig")" "stock"
 expect "ours wins over a same name"   "$(su_ "cat $T/target/dir/same")" "ours"
 expect "read-only"                    "$(su_ "touch $T/target/dir/x 2>/dev/null && echo writable || echo read-only")" "read-only"
-# What ReZygisk does in apps: the image mount goes, the overlay reads on (pinned layers).
+# What NeoZygisk does in apps: the image mount goes, the overlay reads on (pinned layers).
 su_ "umount -l $T/img"
 expect "overlay survives the image unmount" "$(su_ "cat $T/target/dir/f")" "layer"
 cleanup

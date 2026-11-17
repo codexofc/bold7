@@ -11,7 +11,6 @@ import android.content.ContentUris
 import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CalendarContract
@@ -55,6 +54,7 @@ import dev.bold7.ui.TitleBar
 import dev.bold7.ui.Travel
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -305,16 +305,16 @@ class MessagesActivity : Activity() {
     /** The status icons, the scroll arrows and the short menu's images, decoded off the main thread. */
     private fun loadImages() = scope.launch {
         val sm = mapOf(
-            Act.OPEN to R.drawable.msg_sm_open, Act.MARK_READ to R.drawable.msg_sm_mark_read, Act.MARK_UNREAD to R.drawable.msg_sm_mark_unread,
-            Act.MARK_PRIOR_READ to R.drawable.msg_sm_mark_prior_opened, Act.DELETE to R.drawable.msg_sm_delete, Act.DELETE_PRIOR to R.drawable.msg_sm_delete,
-            Act.COMPOSE to R.drawable.msg_sm_compose, Act.COMPOSE_EMAIL to R.drawable.msg_sm_compose, Act.SEARCH to R.drawable.msg_sm_search, Act.VIEW_FOLDER to R.drawable.msg_sm_select_folder,
-            Act.OPTIONS to R.drawable.msg_sm_options_generic,
+            Act.OPEN to "msg_sm_open", Act.MARK_READ to "msg_sm_mark_read", Act.MARK_UNREAD to "msg_sm_mark_unread",
+            Act.MARK_PRIOR_READ to "msg_sm_mark_prior_opened", Act.DELETE to "msg_sm_delete", Act.DELETE_PRIOR to "msg_sm_delete",
+            Act.COMPOSE to "msg_sm_compose", Act.COMPOSE_EMAIL to "msg_sm_compose", Act.SEARCH to "msg_sm_search", Act.VIEW_FOLDER to "msg_sm_select_folder",
+            Act.OPTIONS to "msg_sm_options_generic",
         )
         val decoded = withContext(graph.io) {
-            strips.message = decode(R.drawable.msg_message_icons)
-            strips.phone = decode(R.drawable.msg_phone_icons)
-            arrows.up = decode(R.drawable.msg_scroll_up)
-            arrows.down = decode(R.drawable.msg_scroll_down)
+            strips.message = decode("msg_message_icons")
+            strips.phone = decode("msg_phone_icons")
+            arrows.up = decode("msg_scroll_up")
+            arrows.down = decode("msg_scroll_down")
             sm.mapValues { decode(it.value) }
         }
         decoded.forEach { (act, bitmap) -> glyphs[act.ordinal] = bitmap }
@@ -323,7 +323,7 @@ class MessagesActivity : Activity() {
         menuView.invalidate()
     }
 
-    private fun decode(id: Int): Bitmap? = BitmapFactory.decodeResource(resources, id)
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
     // State
 
@@ -541,7 +541,7 @@ class MessagesActivity : Activity() {
             Act.NOTIFIERS -> if (!locked()) notifiers()
             Act.SEARCH -> update(InboxEvent.SearchOpened)
             // Help has no source for its text (unsourced): it only closes the menu, as the Calculator's does.
-            Act.HELP -> Unit
+            Act.HELP -> dev.bold7.ui.Help.open(this, "messages_index")
             Act.CLOSE -> finish()
             Act.VIEW_FOLDER -> update(InboxEvent.FoldersOpened)
             else -> navigate(act, state.lines, state.focus, page)?.let { update(InboxEvent.Moved(it)) }
@@ -731,7 +731,7 @@ class MessagesActivity : Activity() {
 
     /** Sends a notification's contentIntent as the shade does, lending it this foreground app's right to start an activity. */
     private fun send(intent: PendingIntent): Boolean = try {
-        val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+        val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE)
         intent.send(this, 0, null, null, null, null, options.toBundle())
         true
     } catch (e: PendingIntent.CanceledException) {

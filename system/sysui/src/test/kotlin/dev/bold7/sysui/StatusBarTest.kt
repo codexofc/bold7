@@ -96,15 +96,23 @@ class StatusBarTest {
     // Class names written as strings in StatusBarLayout.kt, tied to the Q25's SystemUI like
     // GuardTest does for the others; StatusBarTargets.kt compiles the members.
     @Test fun statusBarTargetClassesAreInTheQ25SystemUi() = ZipFile("../../stubs/systemui.jar").use { jar ->
-        for (cls in listOf(CLOCK_VIEW, COMMAND_QUEUE, BAR_BACKGROUND, HEADS_UP_APPEARANCE, ICON_VIEW)) {
+        for (cls in listOf(CLOCK_VIEW, COMMAND_QUEUE, BAR_BACKGROUND, ICON_VIEW)) {
             assertNotNull(jar.getEntry(cls.replace('.', '/') + ".class"), cls)
         }
     }
 
     // Every image the counters can name, so that none is missing at run time.
+    // Another app's counter after the kinds', the Hub's order kept, the "?" bubble as its image until its own icon is drawn.
+    @Test fun otherAppsCountAfterTheKinds() {
+        assertEquals(
+            listOf(Counter(OTHER_APP_IMAGE, 2, "com.whatsapp"), Counter(OTHER_APP_IMAGE, 1, "dev.bold7.essai")),
+            appCounters(linkedMapOf("com.whatsapp" to 2, "dev.bold7.essai" to 1, "gone" to 0)),
+        )
+    }
+
     @Test fun everyCounterImageIsThere() {
-        val names = KIND_IMAGES.values.toSet()
-        assertEquals(4, names.size)
+        val names = KIND_IMAGES.values.toSet() + OTHER_APP_IMAGE
+        assertEquals(5, names.size)
         for (name in names) assertTrue(File("../../assets-gen/sysui/res/drawable-nodpi/$name.png").exists(), name)
     }
 }

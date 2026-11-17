@@ -536,7 +536,7 @@ private class TextRow(context: Context, private val label: String) : View(contex
 private class SaveBar(context: Context, private val onSave: () -> Unit) : View(context) {
     private val button = themeImage(context, "ui_button")
     private val buttonFocus = themeImage(context, "ui_button_focus")
-    private val icon = themeImage(context, R.drawable.cal_save)
+    private val icon = themeImage(context, "cal_save")
 
     init {
         setBackgroundColor(Look.FORM)

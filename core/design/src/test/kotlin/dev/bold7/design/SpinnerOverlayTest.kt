@@ -26,7 +26,8 @@ class SpinnerOverlayTest {
             "Widget.DeviceDefault.Spinner", "Widget.DeviceDefault.Light.Spinner")
         for (n in names) {
             val body = style(n)
-            assertTrue("popupBackground\">@drawable/bold7_inplace" in body, "$n: panel")
+            // The panel is bold7_inplace, laid by the fabricated overlay (ImageOverlays) on this public drawable.
+            assertTrue("popupBackground\">@android:drawable/editbox_dropdown_dark_frame" in body, "$n: panel")
             assertTrue("dropDownSelector\">@drawable/spin_row_bold7" in body, "$n: row selector")
         }
     }

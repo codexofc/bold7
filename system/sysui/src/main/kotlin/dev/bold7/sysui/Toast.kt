@@ -35,8 +35,9 @@ internal class Toasts(
     /** SystemUI's diagnostic log, also kept by Vector (SysuiModule.diag). */
     private val diag: (String) -> Unit,
 ) {
+    // LineageOS 24: two contexts first (the dress reads none of the arguments, only the toast built).
     val createToast: Method = loader.loadClass(TOAST_FACTORY).getDeclaredMethod(
-        "createToast", Context::class.java, CharSequence::class.java, String::class.java, Int::class.java, Int::class.java,
+        "createToast", Context::class.java, Context::class.java, CharSequence::class.java, String::class.java, Int::class.java, Int::class.java,
     )
     private val toast = loader.loadClass(SYSTEMUI_TOAST)
     private val plugin = toast.getField("mPluginToast")
@@ -61,7 +62,7 @@ internal class Toasts(
         val layout = root as LinearLayout
         val message = text as TextView
         val images = images(root.context) ?: return
-        val status = DialogView(images.context(root.context), message.text.toString(), emptyList(), null)
+        val status = DialogView(images.context, message.text.toString(), emptyList(), null)
         // Both animators or neither, before anything else: Android's in animation sets the text and
         // the icon transparent and scales the whole, its own pair alone undoes it. Ours are instant.
         val androidIn = fadeIn.get(toast)

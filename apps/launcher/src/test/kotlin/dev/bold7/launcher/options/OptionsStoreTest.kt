@@ -1,5 +1,7 @@
 package dev.bold7.launcher.options
 
+import dev.bold7.launcher.home.HomeChoices
+import dev.bold7.launcher.home.Panel
 import dev.bold7.launcher.keys.LaunchByTyping
 import dev.bold7.launcher.keys.LaunchByTypingSetting
 import dev.bold7.launcher.profiles.Profile
@@ -75,9 +77,109 @@ class OptionsStoreTest {
     }
 
     private val zl = FakeZoneAndLanguage()
-    private val store = OptionsStore(settings, volumes, typing, typingOptions, device, zl, { Instant.parse("2026-01-15T12:00:00Z") }) { "English(US)" }
+
+    private class FakeHome : HomePreferences {
+        var choices: HomeChoices? = HomeChoices(listOf("Games", "Work"), null, emptySet())
+        var wallpaper: WallpaperChange? = null
+        var refuse = false
+        override fun read() = choices
+        override fun write(choices: HomeChoices) = this.choices?.let { this.choices = choices; true } ?: false
+        override fun setWallpaper(change: WallpaperChange) = !refuse && true.also { wallpaper = change }
+    }
+
+    private val home = FakeHome()
+    private val store = OptionsStore(settings, volumes, typing, typingOptions, device, zl, { Instant.parse("2026-01-15T12:00:00Z") }, home = home) { "English(US)" }
 
     private fun Form.choice(i: Int) = fields[i] as Choice
+
+    private var passwordSet = false
+    private var message: Pair<String, String>? = "Sam" to "If found, call 555-0100"
+    private val lock = object : LockSettings {
+        override fun passwordSet() = passwordSet
+        override fun lockMessage() = message
+        override fun setLockMessage(name: String, info: String) = (message != null).also { if (it) message = name to info }
+    }
+    private val passwordStore = OptionsStore(settings, volumes, typing, typingOptions, device, zl, { Instant.parse("2026-01-15T12:00:00Z") }, lock) { "English(US)" }
+
+    // Simulator (C): Text on Home Screen, Display Owner Name and Display Information, as SystemUI reads them.
+    @Test fun lockMessageReadAndSaved() {
+        val f = passwordStore.form(Screen.LOCK_MESSAGE)
+        assertEquals("Message on Lock Screen", f.title)
+        assertEquals("Text on Home Screen", f.groups.single().title)
+        assertEquals(listOf(Note(OWNER_NAME, "Sam", enabled = true), Note(OWNER_INFO, "If found, call 555-0100", enabled = true)), f.fields)
+        val edited = f.withNote(1, "Reward")
+        assertTrue(edited.changed)
+        assertTrue(passwordStore.save(Screen.LOCK_MESSAGE, edited))
+        assertEquals("Sam" to "Reward", message)
+    }
+
+    // Without SystemUI's answer the fields are grey and nothing is written.
+    @Test fun lockMessageWithoutSystemUi() {
+        message = null
+        val f = passwordStore.form(Screen.LOCK_MESSAGE)
+        assertTrue(f.fields.none { it.enabled })
+        assertTrue(passwordStore.save(Screen.LOCK_MESSAGE, f))
+        assertEquals(null, message)
+    }
+
+    // sim-60 (C): no password, Enable empty, Set Password, Lock After grey.
+    @Test fun passwordWithoutOne() {
+        val f = passwordStore.form(Screen.PASSWORD)
+        assertEquals("Password", f.title)
+        assertEquals("General", f.groups.single().title)
+        assertEquals(Check("Enable:", false), f.fields[0])
+        assertEquals(Button("Set Password", enabled = true), f.fields[1])
+        assertFalse(f.choice(2).enabled)
+        assertEquals(0, f.focus)
+    }
+
+    // sim-299 (C): a password, Enable ticked, Change Password, Lock After as Android holds it.
+    @Test fun passwordSetShowsAndroidsLockDelay() {
+        passwordSet = true
+        settings.secure[LOCK_AFTER] = "1800000"
+        val f = passwordStore.form(Screen.PASSWORD)
+        assertEquals(Check("Enable:", true), f.fields[0])
+        assertEquals("Change Password", (f.fields[1] as Button).label)
+        assertEquals("30 Min.", f.choice(2).values[f.choice(2).chosen])
+        assertTrue(f.choice(2).enabled)
+    }
+
+    // Absent, Android locks 5 s after the screen goes off: shown so, never a value Android does not hold.
+    @Test fun lockAfterAbsentIsAndroidsFiveSeconds() {
+        passwordSet = true
+        val f = passwordStore.form(Screen.PASSWORD)
+        assertEquals("5 Sec.", f.choice(2).values[f.choice(2).chosen])
+        assertEquals("1 Hour", lockAfterLabel(3_600_000))
+    }
+
+    // sim-458 to sim-462 (C): Enable acts at Save, through SystemUI's boxes; Lock After greys with it.
+    @Test fun enableActsAtSave() {
+        passwordSet = true
+        val set = passwordStore.form(Screen.PASSWORD)
+        assertEquals(null, passwordSaveTask(set))
+        val cleared = followEnable((set.key(FormKey.SPACE) as FormResult.Show).form)
+        assertFalse(cleared.fields[2].enabled)
+        assertEquals(PasswordSave.REMOVE, passwordSaveTask(cleared))
+        passwordSet = false
+        val none = passwordStore.form(Screen.PASSWORD)
+        val ticked = followEnable((none.key(FormKey.SPACE) as FormResult.Show).form)
+        assertTrue(ticked.fields[2].enabled)
+        assertEquals("Set Password", (ticked.fields[1] as Button).label)
+        assertEquals(PasswordSave.SET, passwordSaveTask(ticked))
+    }
+
+    @Test fun lockAfterSavedOnlyWithAPassword() {
+        passwordSet = true
+        val f = passwordStore.form(Screen.PASSWORD)
+        // Android's 5 s is listed last, under OS 7's 1 Min.; 1 Hour at the top.
+        assertEquals(listOf("1 Hour", "30 Min.", "20 Min.", "15 Min.", "10 Min.", "5 Min.", "2 Min.", "1 Min.", "5 Sec."), f.choice(2).values)
+        assertTrue(passwordStore.save(Screen.PASSWORD, (f.copy(focus = 2).key(FormKey.CLICK) as FormResult.Show).form.choose(0)))
+        assertEquals("3600000", settings.secure[LOCK_AFTER])
+        passwordSet = false
+        settings.secure.clear()
+        assertTrue(passwordStore.save(Screen.PASSWORD, passwordStore.form(Screen.PASSWORD)))
+        assertEquals(null, settings.secure[LOCK_AFTER])
+    }
     private fun Form.pick(field: Int, value: Int) = copy(focus = field).choose(value)
 
     @Test
@@ -136,6 +238,18 @@ class OptionsStoreTest {
     }
 
     @Test
+    fun `LED Coverage Indicator is clear by default and saved for the LED`() {
+        val f = store.form(Screen.SCREEN_DISPLAY)
+        val led = f.fields[3] as Check
+        assertEquals("LED Coverage Indicator:", led.label)
+        assertFalse(led.checked)
+        val g = (f.copy(focus = 3).key(FormKey.SPACE) as FormResult.Show).form
+        assertTrue(store.save(Screen.SCREEN_DISPLAY, g))
+        assertEquals("1", settings.global[LED_COVERAGE])
+        assertTrue((store.form(Screen.SCREEN_DISPLAY).fields[3] as Check).checked)
+    }
+
+    @Test
     fun `a timeout off OS 7's list is kept as a value of its own`() {
         settings.system[SCREEN_OFF_TIMEOUT] = "1800000"
         val f = store.form(Screen.SCREEN_DISPLAY)
@@ -189,16 +303,86 @@ class OptionsStoreTest {
         assertEquals(1, store.form(Screen.HOME).choice(0).chosen) // read back from the file
     }
 
-    // sim-284 (C): Reset to Default Settings, the last group of Home Screen Preferences.
+    // sim-284, sim-287 (C): the groups of Home Screen Preferences, in their order.
     @Test
-    fun `Reset Settings puts Launch by Typing back to Universal Search`() {
+    fun `Home Screen Preferences has the 9900's five groups`() {
         val f = store.form(Screen.HOME)
-        assertEquals("Reset to Default Settings", f.groups[1].title)
-        assertTrue(f.groups[1].fields[1] is Button)
+        assertEquals(listOf("Launch by Typing", "Wallpaper Settings", "Downloads Folder", "Home Screen Panels", "Reset to Default Settings"), f.groups.map { it.title })
+        assertEquals(listOf(Wallpaper(), Button("Change Wallpaper", true), Button("Reset Wallpaper", true)), f.groups[1].fields)
+        assertEquals(Choice("", listOf("Home", "Games", "Work"), 0, folder = true), f.groups[2].fields.single())
+        assertEquals(Button("Manage Panels", true), f.groups[3].fields.single())
+        assertTrue(f.groups[4].fields[1] is Button)
+        // The thumbnail never takes the focus: Launch by Typing, then Change Wallpaper.
+        assertEquals(0, f.focus)
+        assertEquals(2, (f.key(FormKey.DOWN) as FormResult.Show).form.focus)
+    }
+
+    // Guide 7.1 p. 23 (B): Change the Downloads Folder field, then Save.
+    @Test
+    fun `Downloads Folder is written at Save only`() {
+        home.choices = HomeChoices(listOf("Games", "Work"), "Work", setOf(Panel.MEDIA))
+        val f = store.form(Screen.HOME)
+        assertEquals(2, f.choice(4).chosen)
+        val g = f.pick(4, 1)
+        assertEquals("Work", home.choices?.downloads)
+        assertTrue(store.save(Screen.HOME, g))
+        assertEquals(HomeChoices(listOf("Games", "Work"), "Games", setOf(Panel.MEDIA)), home.choices)
+        assertTrue(store.save(Screen.HOME, store.form(Screen.HOME).pick(4, 0)))
+        assertEquals(null, home.choices?.downloads)
+    }
+
+    // Reset Wallpaper and Change Wallpaper show the wallpaper chosen; Save sets it (D: as every field of Options).
+    @Test
+    fun `the wallpaper chosen is set at Save only`() {
+        val f = store.form(Screen.HOME).withWallpaper(WallpaperChange.Default)
+        assertTrue(f.changed)
+        assertEquals(null, home.wallpaper)
+        assertTrue(store.save(Screen.HOME, f))
+        assertEquals(WallpaperChange.Default, home.wallpaper)
+        val picked = WallpaperChange.Picture("content://media/external/images/media/7")
+        assertTrue(store.save(Screen.HOME, store.form(Screen.HOME).withWallpaper(picked)))
+        assertEquals(picked, home.wallpaper)
+        home.wallpaper = null
+        assertTrue(store.save(Screen.HOME, store.form(Screen.HOME)))
+        assertEquals(null, home.wallpaper) // nothing chosen: the wallpaper is left alone
+        home.refuse = true
+        assertFalse(store.save(Screen.HOME, store.form(Screen.HOME).withWallpaper(picked)))
+    }
+
+    // Before the home is loaded, its folders and views are unknown: the fields are grey.
+    @Test
+    fun `Downloads Folder and Manage Panels are grey while the home is not read`() {
+        home.choices = null
+        val f = store.form(Screen.HOME)
+        assertEquals(listOf(false, false), listOf(f.fields[4].enabled, f.fields[5].enabled))
+        assertTrue(store.save(Screen.HOME, f))
+    }
+
+    // Guide 7.1 p. 23 (B): Manage Panels, a box per view, Save. All stays (D).
+    @Test
+    fun `Manage Panels hides the views cleared at Save`() {
+        val f = store.form(Screen.PANELS)
+        assertEquals("Manage Panels", f.title)
+        assertEquals(listOf("All", "Favourites", "Media", "Downloads", "Frequent"), f.fields.map { it.label })
+        assertEquals(listOf(true, true, true, true, true), f.fields.map { (it as Check).checked })
+        assertFalse(f.fields[0].enabled)
+        val g = (f.copy(focus = 2).key(FormKey.CLICK) as FormResult.Show).form
+        assertTrue(store.save(Screen.PANELS, g))
+        assertEquals(setOf(Panel.MEDIA), home.choices?.hiddenPanels)
+        assertEquals(false, (store.form(Screen.PANELS).fields[2] as Check).checked)
+    }
+
+    // sim-284 (C): Reset to Default Settings, the last group of Home Screen Preferences: every one of its settings back.
+    @Test
+    fun `Reset Settings puts Home Screen Preferences back to the 9900's defaults`() {
+        home.choices = HomeChoices(listOf("Games"), "Games", setOf(Panel.MEDIA))
+        val f = store.form(Screen.HOME)
         store.save(Screen.HOME, f.pick(0, 1))
-        store.resetHome()
+        assertTrue(store.resetHome())
         assertEquals(LaunchByTyping.UNIVERSAL_SEARCH, typing.mode)
         assertEquals(0, store.form(Screen.HOME).choice(0).chosen)
+        assertEquals(HomeChoices(listOf("Games"), null, emptySet()), home.choices)
+        assertEquals(WallpaperChange.Default, home.wallpaper)
     }
 
     // sim-92a (C): Advanced Style Options, Word Learning's Typing box; deleting the learned words (D).

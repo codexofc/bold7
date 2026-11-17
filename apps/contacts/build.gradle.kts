@@ -3,16 +3,20 @@ plugins { id("com.android.application") }
 // The Contacts' images of the 9900's theme (pictures, card boxes, short menu), out of git
 // (provenance in assets-private/MANIFEST.md), copied into this checkout's assets-gen by
 // tools/import-assets.sh contacts.
+// Read by name at run time: from the folder the module mounts, else from these compiled
+// resources, which only the development build carries. A public build (-Pbold7.public=true)
+// carries none of them.
 val privateRes = rootProject.file("assets-gen/contacts/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 // Contacts of BBOS 7.1 (docs/BBOS7-VISUEL.md §30): an ordinary app over Android's
 // contacts provider, which keeps every contact where it is (nothing copied).
 android {
     namespace = "dev.bold7.contacts"
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Q25 under LineageOS 24 runs in night mode (cmd uimode night: yes), and the target's
+     PermissionGrantTitleIconMaterial3 has a night entry, which beats the overlay's anydpi one there
+     (uiMode is compared before density): the group icon came back above the question. The same
+     value again for night. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingDefaultResource">
+    <style name="PermissionGrantTitleIconMaterial3">
+        <item name="android:layout_width">0px</item>
+        <item name="android:layout_height">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+</resources>

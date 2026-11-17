@@ -71,8 +71,15 @@ fun textIntent(p: Picture): Intent = Intent(Intent.ACTION_SEND)
     .putExtra(Intent.EXTRA_STREAM, Store.uri(p.id))
     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-/** The Camera row: the phone's camera app (D: the Q25's, which OS 7's Camera stands for). */
-fun camera(): Intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+/**
+ * The Camera row: the phone's camera app (D: the Q25's, which OS 7's Camera stands for), Bold7's
+ * Camera first ([BOLD7_CAMERA]): with Aperture and BenOS Camera beside it, the bare intent asks
+ * which one.
+ */
+fun camera(pkg: String? = null): Intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).setPackage(pkg)
+
+/** Bold7's fork of BenOS Camera, which the module installs. */
+const val BOLD7_CAMERA = "dev.bold7.camera.benos"
 
 /** Starts [intent], false when no app takes it or it is refused. */
 fun Activity.startSafely(intent: Intent, request: Int? = null): Boolean = try {

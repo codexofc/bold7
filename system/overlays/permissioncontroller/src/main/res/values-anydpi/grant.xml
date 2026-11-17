@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The permission request (GrantPermissionsActivity), as OS 7 draws its dialogs (docs/BBOS7-VISUEL.md
-     §12; the framework's Bold7Android overlay does the box). On Android 14
-     PermissionController always inflates grant_permissions_material3, whose every view takes its
-     look from one of these styles, all in the PermissionControllerStyles overlayable. Checked
-     against the Q25's GooglePermissionController aml_per_341410020 (aapt2, outside the
-     repository); its styles as they were are kept in ../../../../target-styles.txt for
-     the next update.
+     §12; the framework's Bold7Android overlay does the box). On LineageOS 24 (Android 17, SDK 37)
+     GrantPermissionsViewHandlerImpl.createView inflates grant_permissions_new_location_design for
+     every request, since the read-only flag location_permission_new_radio_buttons_enabled is on
+     (aflags); grant_permissions_expressive when it is off and the expressive design
+     on; grant_permissions_material3 otherwise. The first two share the *Expressive styles, the third
+     the Material3 ones and PermissionGrantButtonTop, Middle and Bottom: all are overlaid here, every
+     one in the PermissionControllerStyles overlayable. Checked
+     against the Q25's PermissionController of LineageOS 24 (com.android.permissioncontroller,
+     CP2A.260605.016, aapt2, outside the repository): same layout and views, the button styles now
+     unqualified, wrap_content high with a 56 dp minimum, which the heights here replace; its styles
+     as they are kept in ../../../../target-styles.txt for the next update.
 
      Rules:
      - an overlaid style replaces the whole entry: every item the layout relies on is copied, above
        all layout_width and layout_height, which the layout leaves to the styles (without them the
        inflation throws and no permission can be granted any more);
-     - anydpi: PermissionController ships the button styles as v31 only, and an overlay value wins
+     - anydpi: an overlay value wins
        only in a configuration as good as the target's. Density is compared before the SDK
-       version, and anydpi always wins it (as for BBKB); a v31 qualifier would not survive here,
-       aapt2 drops it under minSdk 34. Only a night-v31 entry still beats it, in night mode,
+       version, and anydpi always wins it; a v31 qualifier would not survive here,
+       aapt2 drops it under minSdk 37. Only a night entry still beats it, in night mode,
        which the Q25 does not use (the title icon below);
      - no reference to PermissionController's own resources (their ids change with each update),
        only public framework ones and the overlay's own drawable and color.
 
      The panel itself: PermissionGrantDialogMaterial3 draws ?android:windowBackground of
      Theme.PermissionGrantDialog, a Light.Dialog.Alert theme, which Bold7Android turns into the dark
-     box of OS 7 (border_popup.png as a 9-patch, whose padding is the inside of its border). -->
+     box of OS 7 (border_popup.png as a 9-patch on alert_dark_frame, whose padding is the inside of its border). -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingDefaultResource">
 
     <!-- The text block, as the framework's alert (alert_dialog_material.xml, sim-19, C): 18 px
@@ -147,6 +152,66 @@
         <item name="android:layout_marginBottom">0px</item>
     </style>
     <style name="PermissionGrantButtonBottom" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@color/grant_button_text_bold7</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:background">@drawable/grant_button_bold7</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:gravity">center_horizontal|top</item>
+        <item name="android:firstBaselineToTopHeight">38px</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:minWidth">359px</item>
+        <item name="android:maxWidth">614px</item>
+        <item name="android:minHeight">57px</item>
+        <item name="android:paddingTop">0px</item>
+        <item name="android:paddingBottom">0px</item>
+        <item name="android:paddingLeft">23px</item>
+        <item name="android:paddingRight">23px</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">57px</item>
+        <item name="android:layout_marginLeft">0px</item>
+        <item name="android:layout_marginTop">17px</item>
+        <item name="android:layout_marginRight">0px</item>
+        <item name="android:layout_marginBottom">0px</item>
+    </style>
+
+    <!-- Android 17's layouts (new location design and expressive): the same question, explanation,
+         column and buttons as above, under the names they now take. One button style for all,
+         PermissionGrantButtonExpressive, the parent of each button's own (Allow, While using the
+         app, Only this time, Don't allow...), which only name it: overlaying it reaches them all.
+         Android: SettingsLib's HeadlineSmall centred, BodyMedium, filled pills 8 dp apart. -->
+    <style name="PermissionGrantTitleMessageExpressive" parent="@android:style/TextAppearance.DeviceDefault.WindowTitle">
+        <item name="android:gravity">start</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:lineHeight">32px</item>
+        <item name="android:firstBaselineToTopHeight">25px</item>
+        <item name="android:lastBaselineToBottomHeight">7px</item>
+    </style>
+    <style name="PermissionGrantDetailMessageExpressive" parent="@android:style/TextAppearance.DeviceDefault">
+        <item name="android:textSize">27px</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:lineHeight">32px</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8px</item>
+    </style>
+    <style name="PermissionGrantButtonListExpressive">
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:paddingBottom">37px</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+    <style name="PermissionGrantButtonExpressive" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
         <item name="android:textSize">27px</item>
         <item name="android:textColor">@color/grant_button_text_bold7</item>
         <item name="android:textAllCaps">false</item>

@@ -108,6 +108,7 @@ class TextDialog(
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setWindowAnimations(0)
+            fitBars() // under the banner, as an activity (Bars.kt)
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
             setTitle(label)
         }

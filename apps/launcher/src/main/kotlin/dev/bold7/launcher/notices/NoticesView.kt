@@ -2,7 +2,6 @@ package dev.bold7.launcher.notices
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -16,8 +15,8 @@ import dev.bold7.design.NoticeColors
 import dev.bold7.design.NoticeDimens as D
 import dev.bold7.design.Typography
 import dev.bold7.hub.data.HubItem
-import dev.bold7.launcher.R
 import dev.bold7.launcher.home.HomeView
+import dev.bold7.launcher.home.UNREAD_OTHER
 import dev.bold7.launcher.hub.ItemOpener
 import dev.bold7.launcher.hub.Opened
 import dev.bold7.launcher.keys.HomeList
@@ -27,10 +26,11 @@ import dev.bold7.ui.EmoticonPen
 import dev.bold7.ui.EmoticonStrip
 import dev.bold7.ui.emoticonChunks
 import dev.bold7.ui.fillPaint
-import dev.bold7.ui.fitEmoticons
 import dev.bold7.ui.fit
+import dev.bold7.ui.fitEmoticons
 import dev.bold7.ui.focusPaint
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +52,8 @@ internal class NoticesView(
     private val home: HomeView,
     private val opener: ItemOpener,
     private val markRead: (HubItem) -> Unit,
+    /** An app's home icon by package, already drawn by the home's source (main thread, no work); null if none. */
+    private val appIcon: (String) -> Bitmap?,
     io: CoroutineDispatcher,
     scope: CoroutineScope,
     /** Closed with a line focused: the home's focus is drawn again (HomeKeys.refocus). */
@@ -72,7 +74,7 @@ internal class NoticesView(
         isFocusable = false // the trackpad's focus stays the home's (HomeKeys)
         addView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         scope.launch {
-            content.strip = withContext(io) { BitmapFactory.decodeResource(resources, R.drawable.home_net_rim_ribbon_unreadcount_icons33x29) }
+            content.strip = withContext(io) { themeBitmap(context, "home_net_rim_ribbon_unreadcount_icons33x29") }
             content.invalidate()
         }
     }
@@ -163,6 +165,9 @@ internal class NoticesView(
         // The senders' and summaries' emojis as OS 7's emoticons, by line; null for a header.
         private var summaries: Array<List<Chunk>?> = emptyArray()
         private var senders: Array<List<Chunk>?> = emptyArray()
+        // Per line: an app header's own icon, in place of the counters' "?" bubble (D: an OS 7
+        // app showed its own indicator); null for the counters' sections and for rows.
+        private var icons: Array<Bitmap?> = emptyArray()
         private val pen = EmoticonPen()
         private val slop = ViewConfiguration.get(context).scaledTouchSlop
         private var downY = 0f
@@ -183,6 +188,7 @@ internal class NoticesView(
                 (lines[it] as? NoticeRow)?.let { l -> emoticonChunks(text.fitEmoticons(l.summary, (D.SUMMARY_RIGHT - D.SUMMARY_X).toFloat())) }
                     ?.also { c -> EmoticonStrip.want(this, c) }
             }
+            icons = Array(lines.size) { (lines[it] as? NoticeHeader)?.takeIf { h -> h.frame == UNREAD_OTHER }?.app?.let(appIcon) }
             senders = Array(lines.size) {
                 (lines[it] as? NoticeRow)?.let { l -> emoticonChunks(text.fitEmoticons(l.sender, D.SENDER_WIDTH.toFloat())) }
                     ?.also { c -> EmoticonStrip.want(this, c) }
@@ -213,7 +219,8 @@ internal class NoticesView(
                 when (val l = lines[i]) {
                     is NoticeHeader -> {
                         if (!lit) canvas.drawRect(0f, (top + D.LINE - 1).toFloat(), width.toFloat(), (top + D.LINE).toFloat(), divider)
-                        strip?.let { drawFrame(canvas, it, l.frame, D.ICON_X, top + D.ICON_Y) }
+                        val own = icons[i]
+                        if (own != null) drawIcon(canvas, own, D.ICON_X, top + D.ICON_Y) else strip?.let { drawFrame(canvas, it, l.frame, D.ICON_X, top + D.ICON_Y) }
                         canvas.drawText(s[0], D.TITLE_X.toFloat(), (top + D.TITLE_BASELINE).toFloat(), title)
                     }
                     is NoticeRow -> {
@@ -232,6 +239,17 @@ internal class NoticesView(
             src.set(f * 33, 0, (f + 1) * 33, 29)
             dst.set(x, y, x + 33, y + 29)
             canvas.drawBitmap(strip, src, dst, bitmap)
+        }
+
+        /**
+         * An app's 92 px icon in the 33x29 place of a frame: 29 px square, centred, without the
+         * 12 px of margin and shadow round an OS 7 icon's image (D).
+         */
+        private fun drawIcon(canvas: Canvas, icon: Bitmap, x: Int, y: Int) {
+            val m = icon.width * 12 / 92
+            src.set(m, m, icon.width - m, icon.height - m)
+            dst.set(x + 2, y, x + 31, y + 29)
+            canvas.drawBitmap(icon, src, dst, bitmap)
         }
 
         // A tap: the line under it, or under the lines the list closes. A drag is the scroll's.

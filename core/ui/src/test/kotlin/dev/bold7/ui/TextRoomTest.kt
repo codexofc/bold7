@@ -108,5 +108,26 @@ class TextRoomTest {
     @Test fun `a submenu label stops before its panel's right pad`() {
         for (w in listOf(0, 60, 120, 400)) assertTrue(MenuDimens.SUB_TEXT_X + end(long, TextRoom.submenuLabel(w)) <= maxOf(w - MenuDimens.SUB_PAD_RIGHT, MenuDimens.SUB_TEXT_X), "w $w")
     }
-}
 
+    // sim-270, sim-271: an open list as wide as its longest value and 8 px each side ("Not Started"
+    // fits whole), never narrower than OS 7's 78 px (sim-66), and only as wide as the screen leaves it.
+    @Test fun anOpenListTakesItsLongestValue() {
+        assertEquals(ListDimens.CHOICE_LIST_WIDTH, TextRoom.choiceList(ListDimens.CHOICE_LIST_WIDTH, 48f, 600))
+        assertEquals(157 + 2 * TextRoom.LIST_PAD, TextRoom.choiceList(ListDimens.CHOICE_LIST_WIDTH, 156.3f, 600))
+        assertEquals(154, TextRoom.choiceList(154, 80f, 600))
+        assertEquals(300, TextRoom.choiceList(ListDimens.CHOICE_LIST_WIDTH, 500f, 300))
+        // sim-417: a list too wide for the room right of its field moves left, its right edge on the screen's.
+        assertEquals(500, TextRoom.choiceListLeft(500, 120, 720))
+        assertEquals(480, TextRoom.choiceListLeft(500, 240, 720))
+        assertEquals(0, TextRoom.choiceListLeft(500, 900, 720))
+        assertTrue(TextRoom.inside(TextRoom.choiceList(ListDimens.CHOICE_LIST_WIDTH, 156.3f, 600)) >= 156.3f)
+    }
+
+    // sim-170, sim-270: in a group box (white from x 5) the label is at 11 and the field 12 px from the screen's right edge.
+    @Test fun aRowCountsItsMarginsFromTheScreenThroughItsBox() {
+        assertEquals(0, TextRoom.screenGap(0))
+        assertEquals(5, TextRoom.screenGap(5))
+        assertEquals(ListDimens.BOX_INSET, TextRoom.screenGap(40))
+        assertEquals(0, TextRoom.screenGap(-3))
+    }
+}

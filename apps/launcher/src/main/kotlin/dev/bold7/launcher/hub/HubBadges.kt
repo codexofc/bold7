@@ -7,6 +7,7 @@ import dev.bold7.hub.data.ItemKind
 import dev.bold7.hub.data.isSystemNotice
 import dev.bold7.hub.data.isText
 import dev.bold7.hub.data.isUnread
+import dev.bold7.hub.data.unreadByApp
 import dev.bold7.hub.data.unreadByKind
 import dev.bold7.hub.data.withoutEchoes
 import dev.bold7.icons.CALENDAR_ICON
@@ -33,6 +34,8 @@ data class HubBadges(
      * home banner's indicator row (BBOS7-VISUEL §1, sim-03: "2" and the missed call icon, C).
      */
     val counts: Map<ItemKind, Int> = emptyMap(),
+    /** Every other app's unread notifications, newest app first (unreadByApp): its own indicator after the counts. */
+    val appCounts: Map<String, Int> = emptyMap(),
     /** Something new is a text (isText): the star of Text Messages (gsm 020, C). */
     val texts: Boolean = false,
 ) {
@@ -52,8 +55,9 @@ fun hubBadges(accounts: List<Account>, items: List<HubItem>, smsApp: String?, di
     val byId = accounts.associateBy { it.id }
     val unread = items.filterNot { it.isSystemNotice() }.withoutEchoes(smsApp, dialer).filter { it.accountId in byId && it.isUnread() }
     val counts = unreadByKind(accounts, items, smsApp, dialer)
+    val appCounts = unreadByApp(accounts, items, smsApp, dialer)
     val new = unread.filter { it.addedAt > byId.getValue(it.accountId).seenAt }
-    if (new.isEmpty()) return HubBadges(counts = counts)
+    if (new.isEmpty()) return HubBadges(counts = counts, appCounts = appCounts)
     val newest = HashMap<String, Long>()
     for (item in new) newest.merge(item.accountId, item.addedAt, ::maxOf)
     return HubBadges(
@@ -68,6 +72,7 @@ fun hubBadges(accounts: List<Account>, items: List<HubItem>, smsApp: String?, di
             }
         },
         counts = counts,
+        appCounts = appCounts,
         texts = new.any { it.isText(smsApp) },
     )
 }

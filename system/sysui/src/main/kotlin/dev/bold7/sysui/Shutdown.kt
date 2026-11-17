@@ -22,11 +22,12 @@ internal const val SHUTDOWN_BUSY = "shutdown_busy"
 /**
  * Whether OS 7's screen replaces Android's while the phone powers off or restarts, and Android's
  * words it keeps for a screen reader (the framework's string, by name), as GlobalActionsImpl
- * chooses them; null for a restart into recovery (factory reset, update), where Android's screen
- * says what is going on.
+ * chooses them; null for a restart into recovery (factory reset, update) and for LineageOS's
+ * advanced restart ([custom]: bootloader, recovery, fastbootd), where Android's screen says what
+ * is going on.
  */
-internal fun shutdownScreenText(isReboot: Boolean, reason: String?): String? = when {
-    reason != null && reason.startsWith("recovery") -> null
+internal fun shutdownScreenText(isReboot: Boolean, reason: String?, custom: Boolean): String? = when {
+    custom || (reason != null && reason.startsWith("recovery")) -> null
     isReboot -> "reboot_to_reset_message"
     else -> "shutdown_progress"
 }
@@ -41,19 +42,19 @@ internal fun shutdownScreenText(isReboot: Boolean, reason: String?): String? = w
  */
 internal class ShutdownScreen(loader: ClassLoader, private val images: (Context) -> Images?) {
     private val impl = loader.loadClass(GLOBAL_ACTIONS_IMPL)
-    val showShutdownUi: Method = impl.getDeclaredMethod("showShutdownUi", Boolean::class.java, String::class.java)
+    val showShutdownUi: Method = impl.getDeclaredMethod("showShutdownUi", Boolean::class.java, String::class.java, Boolean::class.java)
     private val context = impl.getField("mContext")
 
     /** False: Android's screen, as it is. A throw is counted by the hook, Android's screen then. */
-    fun show(globalActions: Any, isReboot: Boolean, reason: String?): Boolean {
-        val words = shutdownScreenText(isReboot, reason) ?: return false
+    fun show(globalActions: Any, isReboot: Boolean, reason: String?, custom: Boolean): Boolean {
+        val words = shutdownScreenText(isReboot, reason, custom) ?: return false
         val context = context.get(globalActions) as Context
         val images = images(context) ?: return false
         val res = context.resources
         val theme = res.getIdentifier("Theme.SystemUI.Dialog.GlobalActions", "style", "com.android.systemui")
         check(theme != 0) { "shutdown: no Theme.SystemUI.Dialog.GlobalActions" }
         val text = context.getString(res.getIdentifier(words, "string", "android"))
-        val busy = images[SHUTDOWN_BUSY]
+        val busy = images.animation(SHUTDOWN_BUSY)
 
         val dialog = Dialog(context, theme)
         val window = dialog.window!!
@@ -86,8 +87,8 @@ internal class ShutdownScreen(loader: ClassLoader, private val images: (Context)
         dialog.setContentView(FrameLayout(context).apply { addView(image, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.CENTER)) })
         dialog.setCancelable(false)
         dialog.show()
-        // An animated GIF comes out of Resources as an AnimatedImageDrawable, drawn by the render
-        // thread; anything else would stay on its first frame.
+        // The GIF whole is an AnimatedImageDrawable (Images.animation), drawn by the render thread;
+        // anything else (an empty image) stays as it is.
         (busy as? Animatable)?.start()
         Log.i(TAG, "shutdown: OS 7's screen (reboot=$isReboot, ${if (busy is Animatable) "busy clock turning" else "busy clock still"})")
         return true

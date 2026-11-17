@@ -10,12 +10,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.NinePatch
 import android.graphics.Rect
 import android.net.Uri
 import android.util.Log
+import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -26,7 +25,6 @@ import dev.bold7.design.Durations
 import dev.bold7.design.HomeDimens
 import dev.bold7.design.toInterpolator
 import dev.bold7.launcher.R
-import dev.bold7.launcher.switcher.startSwitcher
 import dev.bold7.launcher.hub.HubBadges
 import dev.bold7.launcher.hub.iconSplat
 import dev.bold7.launcher.keys.Focus
@@ -34,14 +32,14 @@ import dev.bold7.launcher.keys.focusName
 import dev.bold7.launcher.keys.scrollTo
 import dev.bold7.launcher.quickstep.WindowZoom
 import dev.bold7.launcher.quickstep.spring
-import android.view.Choreographer
+import dev.bold7.launcher.switcher.startSwitcher
 import dev.bold7.platform.RemoteLaunches
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
 import dev.bold7.ui.MenuKey
 import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
-import dev.bold7.ui.TextDialog
+import dev.bold7.ui.themeBitmap
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -104,6 +102,9 @@ class HomeView(
     /** The home's Options (menu, guide 7.1 p. 24 and 44): Launch by Typing, set by LauncherActivity. */
     var onOptions: () -> Unit = {}
 
+    /** Manage Panels of the home's menu (sim-04, C): Options' screen of it. */
+    var onManagePanels: () -> Unit = {}
+
     /**
      * The tray (veil, tab, grids, folder band) gone while the search shows (sim-54: no drawer under
      * the results, the bar at the bottom closing them), back when it closes.
@@ -147,7 +148,6 @@ class HomeView(
     private val folderHeader = FolderHeader(context)
     private val folderPanel = GridPanel(context)
     private var builtFolder: Folder? = null
-    private var editFolder = false
 
     /** The grid shown: the open folder's, or the view's. */
     private val shownPanel get() = if (state.folder != null) folderPanel else panels.getValue(state.panel)
@@ -160,7 +160,8 @@ class HomeView(
     private var builtVersion = -1
     private val first = HashMap<Panel, Int>() // each view's first row shown
 
-    private var folderImage: Bitmap? = null
+    /** The folders' icons, the chooser's 21 (FOLDER_ICONS): empty until decoded. */
+    private var folderImages: List<Bitmap> = emptyList()
     private var moveImage: Bitmap? = null
     private var newImage: Bitmap? = null
     /** What is new in the Hub: the stars of the icons. */
@@ -196,7 +197,7 @@ class HomeView(
     private val today = CalendarDay()
 
 
-    private class Images(val banner: BannerImages, val tab: TabImages, val focus: NinePatch, val folder: Bitmap, val move: Bitmap, val new: Bitmap, val folderBand: Bitmap, val folderIcons: Bitmap, val glyphs: Map<HomeAction, Bitmap>)
+    private class Images(val banner: BannerImages, val tab: TabImages, val focus: FocusPatch, val folders: List<Bitmap>, val move: Bitmap, val new: Bitmap, val folderBand: Bitmap, val glyphs: Map<HomeAction, Bitmap>)
 
     private fun HomeAction.label() = when (this) {
         HomeAction.LAUNCH -> R.string.home_launch
@@ -213,6 +214,7 @@ class HomeView(
         HomeAction.MAXIMISE_PANEL -> R.string.home_maximise_panel
         HomeAction.RESTORE_PANEL -> R.string.home_restore_panel
         HomeAction.ADD_FOLDER -> R.string.home_add_folder
+        HomeAction.MANAGE_PANELS -> R.string.home_manage_panels
         HomeAction.SHOW_ALL -> R.string.home_show_all
         HomeAction.OPTIONS -> R.string.home_options
         HomeAction.SWITCH_APPLICATION -> R.string.home_switch_application
@@ -310,25 +312,27 @@ class HomeView(
             HomeAction.DELETE -> app?.let { startPlain(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", it.packageName, null))) }
             HomeAction.MAXIMISE_PANEL -> dispatch(HomeEvent.Expand(true))
             HomeAction.RESTORE_PANEL -> dispatch(HomeEvent.Expand(false))
-            HomeAction.ADD_FOLDER -> askName("") { dispatch(HomeEvent.AddFolder(it)) }
+            HomeAction.ADD_FOLDER -> editFolder(R.string.home_add_folder, R.string.folder_add, "", 0) { name, icon -> dispatch(HomeEvent.AddFolder(name, icon, index)) }
             HomeAction.SHOW_ALL -> dispatch(HomeEvent.ShowAll)
             HomeAction.OPTIONS -> onOptions()
+            HomeAction.MANAGE_PANELS -> onManagePanels()
             HomeAction.SWITCH_APPLICATION -> startSwitcher(context, fromHome = true)
             HomeAction.MOVE_TO_FOLDER -> index?.let(::pickFolder)
             HomeAction.OPEN_FOLDER -> index?.let { dispatch(HomeEvent.OpenFolder(it)) }
-            HomeAction.EDIT_FOLDER -> index?.let {
-                editFolder = true // once the folder shows
-                dispatch(HomeEvent.OpenFolder(it))
+            HomeAction.EDIT_FOLDER -> (index?.let(state::tileAt) as? Folder)?.let { folder ->
+                editFolder(R.string.home_edit_folder, R.string.folder_save, folder.name, folder.icon) { name, icon -> dispatch(HomeEvent.EditFolder(index, name, icon)) }
             }
             HomeAction.DELETE_FOLDER -> index?.let { dispatch(HomeEvent.DeleteFolder(it)) }
         }
     }
 
-    /** The text box of OS 7 for a folder's name (sim-61, C; the label is D), its text cleaned as the layout keeps it. */
-    private fun askName(initial: String, then: (String) -> Unit) =
-        TextDialog(context, context.getString(R.string.folder_name), initial, ::folderName, hideStatusBar = true, onDone = then).show()
+    /** Add Folder or Edit Folder (sim-472, sim-481, C): its name and its icon, chosen among the folders' images. */
+    private fun editFolder(title: Int, ok: Int, name: String, icon: Int, then: (String, Int) -> Unit) {
+        if (folderImages.isEmpty()) return // the images are still decoding: a menu this early opens nothing
+        FolderBox(context, context.getString(title), context.getString(ok), context.getString(dev.bold7.ui.R.string.ui_cancel), name, icon, folderImages, then).show()
+    }
 
-    private fun decode(id: Int): Bitmap = BitmapFactory.decodeResource(resources, id)
+    private fun decode(name: String): Bitmap = themeBitmap(context, name)
 
     private fun Panel.label() = when (this) {
         Panel.FREQUENT -> R.string.panel_frequent
@@ -358,11 +362,7 @@ class HomeView(
             folderPanel.removeAllViews()
             folder?.apps?.forEachIndexed { i, app -> folderPanel.addView(tileView(app, i)) }
         }
-        if (folder != null) folderHeader.show(folder.name)
-        if (editFolder && folder != null) {
-            editFolder = false
-            askName(folder.name) { dispatch(HomeEvent.RenameFolder(it)) }
-        }
+        if (folder != null) folderHeader.show(folder.name, folderImages.getOrNull(folder.icon))
         if ((folder != null) != (before.folder != null)) {
             if (folder != null) {
                 folderFirst = 0 // each folder opens on its first row
@@ -371,6 +371,7 @@ class HomeView(
             folderHeader.visibility = if (folder != null) VISIBLE else GONE
             showPanels(animate = false)
         }
+        tab.hidden(next.hiddenPanels)
         if (next.panel != before.panel) {
             tab.show(next.panel)
             showPanels(animate = true, from = before.panel)
@@ -397,7 +398,7 @@ class HomeView(
     private fun tileView(tile: Tile, index: Int): TileView {
         val icon = when (tile) {
             is App -> apps.icon(tile)
-            is Folder -> folderImage
+            is Folder -> folderImages.getOrNull(tile.icon)
         }
         return TileView(context, tile, icon, today.takeIf { tile is App && apps.showsDay(tile) }).apply {
             // A hidden icon Show All shows: at half its opacity (D).
@@ -577,8 +578,8 @@ class HomeView(
         landOtherGrid()
         val step = when {
             from == null || !animate || !isAttachedToWindow -> 0
-            from.next(1) == state.panel -> 1
-            from.next(-1) == state.panel -> -1
+            from.next(1, state.hiddenPanels) == state.panel -> 1
+            from.next(-1, state.hiddenPanels) == state.panel -> -1
             else -> 0
         }
         outgoing = if (step != 0 && from != null) panels.getValue(from) else null
@@ -824,8 +825,9 @@ class HomeView(
     private fun slideBy(dx: Float) {
         val w = width.toFloat()
         val step = if (dx < 0) 1 else -1
-        val next = panels.getValue(state.panel.next(step))
-        if (state.folder != null) return // a folder does not turn
+        val next = panels.getValue(state.panel.next(step, state.hiddenPanels))
+        // A folder does not turn, nor a home that shows one view (Manage Panels).
+        if (state.folder != null || next === panels.getValue(state.panel)) return
         if (neighbour !== next) {
             neighbour?.let { it.transitionAlpha = 0f; it.translationX = 0f }
             neighbour = next
@@ -841,7 +843,7 @@ class HomeView(
         val step = panelStep(dx, vx, w)
         val n = neighbour
         neighbour = null
-        if (state.folder != null) return
+        if (state.folder != null || state.panel.next(1, state.hiddenPanels) == state.panel) return
         if (step == 0) {
             // Back to its own view.
             outgoing = n
@@ -852,7 +854,7 @@ class HomeView(
             return
         }
         fingerSlide = (dx + step * w) to vx
-        dispatch(HomeEvent.ShowPanel(state.panel.next(step)))
+        dispatch(HomeEvent.ShowPanel(state.panel.next(step, state.hiddenPanels)))
     }
 
     private fun releaseRaise(vy: Float) {
@@ -876,7 +878,7 @@ class HomeView(
         if (!state.expanded) dispatch(HomeEvent.Expand(true))
         val icon = when (tile) {
             is App -> apps.icon(tile)
-            is Folder -> folderImage
+            is Folder -> folderImages.getOrNull(tile.icon)
         }
         carried = TileView(context, tile, icon, null).also {
             addView(it, LayoutParams(HomeDimens.COLUMN, HomeDimens.ROW))
@@ -1046,39 +1048,38 @@ class HomeView(
         showPanels(animate = false)
         scope.launch {
             val images = withContext(io) {
-                val banner = BannerImages(resources)
+                val banner = BannerImages(context)
                 Images(
                     banner,
-                    TabImages(decode(R.drawable.home_tabmanager_header_line_top), decode(R.drawable.home_tabmanager_header_line_bottom), banner.focus, decode(R.drawable.home_homescreen_mask_p)),
+                    TabImages(decode("home_tabmanager_header_line_top"), decode("home_tabmanager_header_line_bottom"), banner.focus, decode("home_homescreen_mask_p")),
                     banner.focus,
-                    decode(R.drawable.home_folder),
-                    decode(R.drawable.home_icon_move_underlay),
-                    decode(R.drawable.home_new_overlay),
-                    decode(R.drawable.home_background_folderview),
-                    decode(R.drawable.home_net_rim_folder_icons32x32),
+                    (0 until FOLDER_ICONS).map { decode(folderIcon(it)) },
+                    decode("home_icon_move_underlay"),
+                    decode("home_new_overlay"),
+                    decode("home_background_folderview"),
                     mapOf(
-                        HomeAction.LAUNCH to R.drawable.home_sm_launch,
-                        HomeAction.MARK_FAVOURITE to R.drawable.home_sm_mark_favourite,
-                        HomeAction.UNMARK_FAVOURITE to R.drawable.home_sm_unmark_favourite,
-                        HomeAction.MOVE to R.drawable.home_sm_move,
-                        HomeAction.HIDE to R.drawable.home_sm_hide,
-                        HomeAction.UNHIDE to R.drawable.home_sm_unhide,
-                        HomeAction.DELETE to R.drawable.home_sm_delete,
-                        HomeAction.ADD_FOLDER to R.drawable.home_sm_add_folder,
-                        HomeAction.MOVE_TO_FOLDER to R.drawable.home_sm_move_to_folder,
-                        HomeAction.OPEN_FOLDER to R.drawable.home_sm_folder_open,
-                        HomeAction.EDIT_FOLDER to R.drawable.home_sm_rename_folder,
-                        HomeAction.DELETE_FOLDER to R.drawable.home_sm_delete_folder,
+                        HomeAction.LAUNCH to "home_sm_launch",
+                        HomeAction.MARK_FAVOURITE to "home_sm_mark_favourite",
+                        HomeAction.UNMARK_FAVOURITE to "home_sm_unmark_favourite",
+                        HomeAction.MOVE to "home_sm_move",
+                        HomeAction.HIDE to "home_sm_hide",
+                        HomeAction.UNHIDE to "home_sm_unhide",
+                        HomeAction.DELETE to "home_sm_delete",
+                        HomeAction.ADD_FOLDER to "home_sm_add_folder",
+                        HomeAction.MOVE_TO_FOLDER to "home_sm_move_to_folder",
+                        HomeAction.OPEN_FOLDER to "home_sm_folder_open",
+                        HomeAction.EDIT_FOLDER to "home_sm_rename_folder",
+                        HomeAction.DELETE_FOLDER to "home_sm_delete_folder",
                     ).mapValues { decode(it.value) },
                 )
             }
             banner.images(images.banner)
             tab.images(images.tab)
             for (p in panels.values) p.focusImage = images.focus
-            folderImage = images.folder
+            folderImages = images.folders
             moveImage = images.move
             newImage = images.new
-            folderHeader.images(images.folderBand, images.folderIcons)
+            folderHeader.images(images.folderBand)
             folderPanel.focusImage = images.focus
             glyphs.putAll(images.glyphs)
             builtVersion = -1 // the folders' icon is in: build again

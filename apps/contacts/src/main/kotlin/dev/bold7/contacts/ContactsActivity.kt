@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.view.Gravity
@@ -32,6 +31,7 @@ import dev.bold7.ui.SearchField
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.slate
+import dev.bold7.ui.themeBitmap
 
 /**
  * The contact list of BBOS 7.1 (gsm 013, C; docs/BBOS7-VISUEL.md §30): the title "Contacts", the
@@ -139,8 +139,8 @@ open class ContactsActivity : Activity() {
         if (demo) set(state.reduce(ListEvent.Loaded(List(rows.coerceAtMost(DEMO_MAX)) { i -> demoPerson(i) })))
         graph.io.post {
             // New Contact's: 102 px in the firmware, 67 on sim-178 (D: scaled down).
-            val newImage = decode(R.drawable.cnt_new)?.let { Bitmap.createScaledBitmap(it, PersonRowView.PICTURE, PersonRowView.PICTURE, true) }
-            val frame = decode(R.drawable.cnt_picture)
+            val newImage = decode("cnt_new")?.let { Bitmap.createScaledBitmap(it, PersonRowView.PICTURE, PersonRowView.PICTURE, true) }
+            val frame = decode("cnt_picture")
             val images = ListAct.entries.map { glyphOf(it)?.let(::decode) }
             runOnUiThread {
                 newPicture = newImage
@@ -163,10 +163,10 @@ open class ContactsActivity : Activity() {
         super.onStop()
     }
 
-    private fun decode(id: Int): Bitmap? = BitmapFactory.decodeResource(resources, id, BitmapFactory.Options().apply { inScaled = false })
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
     private fun demoPerson(i: Int): Person {
-        val first = listOf("Alice", "Bruno", "Chloé", "David", "Élodie", "Farid", "Gaëlle", "Hugo")[i % 8]
+        val first = listOf("Alice", "Bruno", "Chloe", "David", "Ellen", "Frank", "Gail", "Hugo")[i % 8]
         return Person(-1L - i, "$first Demo ${i + 1}", phone = "5550100", email = null)
     }
 
@@ -260,7 +260,7 @@ open class ContactsActivity : Activity() {
             ListAct.SEND_EMAIL -> p?.let { sendCard(it.id, byEmail = true) }
             ListAct.SEND_TEXT -> p?.let { sendCard(it.id, byEmail = false) }
             // Help has no source for its text: it only closes the menu, as in the other apps.
-            ListAct.HELP -> Unit
+            ListAct.HELP -> dev.bold7.ui.Help.open(this, "contacts")
             ListAct.CLOSE -> finish()
         }
     }
@@ -419,15 +419,15 @@ open class ContactsActivity : Activity() {
 }
 
 /** The short menu's image of each action (sm_*.png of the theme, A; the match D). */
-fun glyphOf(a: ListAct): Int? = when (a) {
-    ListAct.NEW -> R.drawable.cnt_sm_add_contact
-    ListAct.VIEW -> R.drawable.cnt_sm_view_contact
-    ListAct.EDIT -> R.drawable.cnt_sm_edit
-    ListAct.DELETE -> R.drawable.cnt_sm_delete
-    ListAct.CALL -> R.drawable.cnt_sm_call
-    ListAct.TEXT -> R.drawable.cnt_sm_sms
-    ListAct.EMAIL -> R.drawable.cnt_sm_compose
-    ListAct.SELECT -> R.drawable.cnt_sm_select
+fun glyphOf(a: ListAct): String? = when (a) {
+    ListAct.NEW -> "cnt_sm_add_contact"
+    ListAct.VIEW -> "cnt_sm_view_contact"
+    ListAct.EDIT -> "cnt_sm_edit"
+    ListAct.DELETE -> "cnt_sm_delete"
+    ListAct.CALL -> "cnt_sm_call"
+    ListAct.TEXT -> "cnt_sm_sms"
+    ListAct.EMAIL -> "cnt_sm_compose"
+    ListAct.SELECT -> "cnt_sm_select"
     ListAct.SWITCH, ListAct.SEND, ListAct.SEND_EMAIL, ListAct.SEND_TEXT, ListAct.HELP, ListAct.CLOSE -> null // in the full menu only
 }
 

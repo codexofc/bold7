@@ -291,7 +291,9 @@ class HubSourcesTest {
         assertEquals(0, sources.posted(gmail.copy(packageName = "dev.bold7")))
         // Anything else enters by default, a lookalike package included.
         assertEquals(1, sources.posted(gmail.copy(packageName = "dev.bold7ur", key = "other")))
-        assertEquals(listOf("other@880"), stored("notifications").map { it.sourceKey })
+        // The test app stands for a third-party app.
+        assertEquals(1, sources.posted(gmail.copy(packageName = "dev.bold7.essai", key = "essai")))
+        assertEquals(listOf("essai@880", "other@880"), stored("notifications").map { it.sourceKey }.sorted())
     }
 
     @Test fun aNewMessageInTheSameNotificationIsANewItemOfItsConversation() = runTest {

@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.provider.ContactsContract
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -51,6 +50,7 @@ import dev.bold7.ui.textAct
 import dev.bold7.ui.textPaint
 import dev.bold7.ui.themeImage
 import dev.bold7.ui.SaveButton
+import dev.bold7.ui.themeBitmap
 
 /**
  * Editing a contact, or a new one (sim-184 to sim-188, sim-191, sim-192, C; guide p. 190 and 191,
@@ -150,7 +150,7 @@ open class EditActivity : Activity() {
         g.io.post {
             val stored = if (contact == null) emptyList() else g.store.stored(contact)
             val photo = contact?.let { g.store.card(it)?.photo }?.let { g.store.thumbnail(it) }
-            val frame = BitmapFactory.decodeResource(resources, R.drawable.cnt_picture, BitmapFactory.Options().apply { inScaled = false })
+            val frame = themeBitmap(applicationContext, "cnt_picture")
             runOnUiThread {
                 picture = photo ?: frame
                 val name = intent.getStringExtra(EXTRA_NAME).orEmpty()
@@ -169,7 +169,7 @@ open class EditActivity : Activity() {
         dateButtons.clear()
         val match = ViewGroup.LayoutParams.MATCH_PARENT
         page.addView(FrameLayout(this).apply {
-            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, R.drawable.cnt_save), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, BUTTON_HEIGHT, Gravity.END).apply {
+            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, "cnt_save"), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, BUTTON_HEIGHT, Gravity.END).apply {
                 topMargin = BAND_BUTTON_TOP
                 rightMargin = BAND_BUTTON_RIGHT
             })
@@ -287,7 +287,7 @@ open class EditActivity : Activity() {
             setTextSize(TypedValue.COMPLEX_UNIT_PX, Typography.TEXT.toFloat())
             setTextColor(ListColors.Title)
             includeFontPadding = false
-            background = themeImage(this@EditActivity, R.drawable.cnt_field)
+            background = themeImage(this@EditActivity, "cnt_field")
             setPadding(FIELD_TEXT_X, 0, FIELD_TEXT_X, 0)
             gravity = Gravity.CENTER_VERTICAL or Gravity.START
             minHeight = FIELD
@@ -398,7 +398,7 @@ open class EditActivity : Activity() {
             ContactAct.SAVE -> save()
             ContactAct.CLEAR -> dateButtons.entries.firstOrNull { it.value.isFocused }?.let { setDate(it.key, "") }
             // Help has no source for its text: it only closes the menu, as in the other apps.
-            ContactAct.HELP -> Unit
+            ContactAct.HELP -> dev.bold7.ui.Help.open(this, "contacts")
             ContactAct.CLOSE -> leave()
             ContactAct.START_SELECTION, ContactAct.CUT, ContactAct.COPY, ContactAct.PASTE -> (currentFocus as? EditText)?.let { selection.perform(it, a.textAct()!!) }
         }
@@ -494,8 +494,8 @@ open class EditActivity : Activity() {
  * has no title but the contact's picture in its 85 px band.
  */
 private class BoxLayout(context: Context, private val title: String?, private val picture: Bitmap?, band: Boolean) : LinearLayout(context) {
-    private val box = themeImage(context, R.drawable.cnt_box)
-    private val titleBar = themeImage(context, R.drawable.cnt_title)
+    private val box = themeImage(context, "cnt_box")
+    private val titleBar = themeImage(context, "cnt_title")
     private val text = textPaint(Typography.SUBTITLE, Typography.BOLD, ListColors.GroupTitle)
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 

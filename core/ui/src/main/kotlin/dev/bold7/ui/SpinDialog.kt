@@ -4,8 +4,8 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.LinearGradient
-import android.graphics.Shader
 import android.graphics.Paint
+import android.graphics.Shader
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -38,6 +38,7 @@ class SpinDialog<T>(context: Context, start: Spin<T>, private val hideStatusBar:
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setWindowAnimations(0)
+            fitBars() // under the banner, as an activity (Bars.kt)
         }
         view.setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_UP) view.touched(e.x, e.y)?.let(::apply); true }
     }

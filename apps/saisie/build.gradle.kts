@@ -1,18 +1,22 @@
 plugins { id("com.android.application") }
 
-// OS 7's English word substitution and the word lists of AOSP and OS 7 merged, out of git
-// (provenance in assets-private/MANIFEST.md, "saisie/"), copied into this checkout's assets-gen
-// by tools/import-assets.sh saisie.
+// OS 7's part of Typing's lists (os7/: its English word substitution and the words only its
+// firmware has), out of git (provenance in assets-private/MANIFEST.md, "saisie/"), copied into
+// this checkout's assets-gen by tools/import-assets.sh saisie. Read at run time from the folder
+// the module mounts, else from these assets, which only the development build carries. A public
+// build (-Pbold7.public=true) carries none of them: AOSP's word lists and our French substitution
+// (src/main/assets) are its only ones until OS 7's part is extracted.
 val privateAssets = rootProject.file("assets-gen/saisie/assets")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 // Bold7's input method: an ordinary app, installed by tools/install.sh,
 // never in the module nor a priv-app.
 android {
     namespace = "dev.bold7.saisie"
-    sourceSets.getByName("main").assets.srcDir(privateAssets)
+    if (!public) sourceSets.getByName("main").assets.srcDir(privateAssets)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateAssets
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh saisie" } }
 }

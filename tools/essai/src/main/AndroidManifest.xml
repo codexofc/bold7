@@ -3,6 +3,8 @@
          refused during the tests. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- NotifyActivity's made-up notifications; also PermissionActivity's "notifications". -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:label="Essai Bold7">
         <!-- Not exported: started by root only (su -c am start), as the test sessions do. -->
         <activity
@@ -34,10 +36,37 @@
             android:name=".DemoActivity"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+        <!-- Made-up notifications in Android's rich styles, as a third-party app. -->
+        <activity
+            android:name=".NotifyActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <!-- The measure of typing latency: Shift alone, the delay on the screen only. -->
         <activity
             android:name=".KeyLatencyActivity"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <!-- The common widgets, in the framework's themes and in the libraries an
+             ordinary app embeds (AppCompat, Material Components). -->
+        <activity
+            android:name=".WidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <activity
+            android:name=".MaterialWidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light" />
+        <activity
+            android:name=".DarkWidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault" />
+        <activity
+            android:name=".CompatWidgetsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light" />
+        <activity
+            android:name=".M3WidgetsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.Light" />
     </application>
 </manifest>

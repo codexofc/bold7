@@ -73,6 +73,8 @@ internal class ItemOpener(
     private val scope: CoroutineScope,
     /** Starts an app's activity as the home starts them (HomeView); false if nothing started. */
     private val start: (Intent) -> Boolean,
+    /** The options of a start from the home: OS 7's zoom (RemoteLaunches.activityOptions). */
+    private val homeOptions: () -> ActivityOptions,
 ) {
     fun locked() = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
@@ -149,8 +151,16 @@ internal class ItemOpener(
      * to start an activity (Android 14 asks the sender to say so). False if the app cancelled it.
      */
     private fun send(intent: PendingIntent): Boolean = try {
-        val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-        intent.send(context, 0, null, null, null, null, options.toBundle())
+        fun send(options: ActivityOptions) = intent.send(
+            context, 0, null, null, null, null,
+            options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE).toBundle(),
+        )
+        try {
+            send(homeOptions()) // leaving the home: OS 7's zoom, as an app of the grid
+        } catch (e: SecurityException) {
+            Log.w(TAG, "zoom refused for a notification, opened by Android", e)
+            send(ActivityOptions.makeBasic())
+        }
         true
     } catch (e: PendingIntent.CanceledException) {
         false

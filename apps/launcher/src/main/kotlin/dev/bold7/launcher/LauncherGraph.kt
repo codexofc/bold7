@@ -14,6 +14,7 @@ import dev.bold7.launcher.hub.AndroidHubReader
 import dev.bold7.launcher.hub.HubFeed
 import dev.bold7.launcher.hub.ShowcaseHubReader
 import dev.bold7.launcher.hub.SwitchedHubReader
+import dev.bold7.launcher.led.LedController
 import dev.bold7.launcher.home.LauncherAppsSource
 import dev.bold7.launcher.home.LayoutFile
 import dev.bold7.launcher.notices.NoticeNames
@@ -42,6 +43,9 @@ class LauncherGraph(private val app: Context) {
 
     /** Binder calls and buffers that must stay off the main and surface threads. */
     val io: Handler by lazy { looper("bold7-io", Process.THREAD_PRIORITY_BACKGROUND) }
+
+    /** When Charging of the Clock: the charger opens it from the home and the lock screen. */
+    val chargingClock by lazy { ChargingClock(app, io) }
 
     /**
      * The home's io: LauncherApps, PackageManager and icon drawing, its callbacks included. A
@@ -108,6 +112,9 @@ class LauncherGraph(private val app: Context) {
     val hubDispatcher: CoroutineDispatcher by lazy { Executor { hubThread.post(it) }.asCoroutineDispatcher() }
     val hubReader by lazy { AndroidHubReader(app) }
 
+    /** The LED's colour for bold7-led, on the Hub's thread: its reads are the Hub's. */
+    val led by lazy { LedController(app, hubReader, hubThread) }
+
     /** The Hub's reader, or the showcase's while bold7_showcase is 1: the Hub is not read then. */
     private val feedReader by lazy {
         SwitchedHubReader({ showcaseOn(app) }, { hubReader }, ShowcaseHubReader { hubReader.format() })
@@ -134,7 +141,9 @@ class LauncherGraph(private val app: Context) {
             hubDispatcher,
             CoroutineScope(SupervisorJob() + CoroutineExceptionHandler { _, e -> Log.e("Bold7/Hub", "hub work failed", e) }),
             names,
-            { pkg -> home.state.value.apps.firstOrNull { it.packageName == pkg }?.label ?: hubReader.appLabel(pkg) },
+            // The table's name before the first listing (X is "Twitter" on the home), then Android's.
+            { pkg -> home.state.value.apps.firstOrNull { it.packageName == pkg }?.label ?: apps.appTable().nameForPackage(pkg) ?: hubReader.appLabel(pkg) },
+            apps::drawIndicator,
         ) {
             Log.e("Bold7/Hub", "Hub list not worked out: ${it.javaClass.name}") // its message could hold a text
         }

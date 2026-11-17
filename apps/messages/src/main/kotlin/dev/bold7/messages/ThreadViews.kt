@@ -65,7 +65,7 @@ class ThreadBandView(context: Context, private val images: ThreadImages, private
     private val band = fillPaint(ThreadColors.Band)
     private val name = textPaint(Typography.TEXT, Typography.REGULAR, ThreadColors.BandText)
     private val fieldText = textPaint(Typography.TEXT, Typography.REGULAR, ThreadColors.Text)
-    private val field: Drawable = themeImage(context, R.drawable.msg_field)
+    private val field: Drawable = themeImage(context, "msg_field")
     private val caret = caretPaint()
     private val avatarDst = Rect(D.AVATAR_X, D.AVATAR_Y, D.AVATAR_X + D.AVATAR, D.AVATAR_Y + D.AVATAR)
     private val smooth = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -137,7 +137,7 @@ private fun drawCaret(canvas: Canvas, x: Float, top: Int, paint: Paint) {
 @SuppressLint("ViewConstructor")
 class ComposerView(context: Context, private val images: ThreadImages, onSmiley: () -> Unit) : FrameLayout(context) {
     private val band = Paint()
-    private val field: Drawable = themeImage(context, R.drawable.msg_field)
+    private val field: Drawable = themeImage(context, "msg_field")
     private var smileyFocused = false
 
     val editor = object : EditText(context) {

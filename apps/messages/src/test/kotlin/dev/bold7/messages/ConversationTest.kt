@@ -29,6 +29,7 @@ private class FakeContacts : ContactBook {
     val rows = HashMap<String, Recipient>()
     override fun all() = people.toList()
     override fun photo(number: String) = photos.entries.firstOrNull { sameNumber(it.key, number) }?.value
+    override fun name(number: String) = people.firstOrNull { c -> c.numbers.any { sameNumber(it.number, number) } }?.name
     override fun chosen(uri: String) = rows[uri]
 }
 

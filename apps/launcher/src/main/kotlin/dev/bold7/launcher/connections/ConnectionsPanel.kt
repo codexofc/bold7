@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.graphics.drawable.BitmapDrawable
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -119,9 +118,9 @@ internal class ConnectionsView(
 
     /** The panel, drawn on one canvas. */
     private inner class Content : View(context) {
-        private val box = themeImage(context, R.drawable.connections_box)
-        private val titleBar = themeImage(context, R.drawable.connections_title)
-        private val glyphs: Bitmap = (themeImage(context, R.drawable.connections_icons) as BitmapDrawable).bitmap
+        private val box = themeImage(context, "connections_box")
+        private val titleBar = themeImage(context, "connections_title")
+        private val glyphs: Bitmap = themeBitmap(context, "connections_icons")
         private val check: Bitmap = themeBitmap(context, "ui_check")
         private val button = themeImage(context, "ui_button")
         private val buttonFocused = themeImage(context, "ui_button_focus")

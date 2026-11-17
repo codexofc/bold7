@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -33,6 +32,7 @@ import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.status
 import dev.bold7.ui.withSwitchApplication
+import dev.bold7.ui.themeBitmap
 import java.io.IOException
 
 /** What the picker lists, read through MediaStore (READ_MEDIA_*, granted by tools/install.sh). */
@@ -131,8 +131,8 @@ class PickerActivity : Activity() {
         })
         graph.ioThread.post {
             val read = MediaReader.read(this, kind)
-            folder = BitmapFactory.decodeResource(resources, R.drawable.msg_folder)
-            for ((icon, res) in ICONS) kindIcons[icon] = BitmapFactory.decodeResource(resources, res)
+            folder = themeBitmap(applicationContext, "msg_folder")
+            for ((icon, res) in ICONS) kindIcons[icon] = themeBitmap(applicationContext, res)
             runOnUiThread {
                 if (gone) return@runOnUiThread
                 items = read
@@ -265,9 +265,9 @@ class PickerActivity : Activity() {
     }
 
     private val ICONS = mapOf(
-        AttachIcon.PICTURE to R.drawable.msg_attachment_generic_picture,
-        AttachIcon.VIDEO to R.drawable.msg_attachment_generic_video,
-        AttachIcon.MUSIC to R.drawable.msg_attachment_music,
-        AttachIcon.UNKNOWN to R.drawable.msg_attachment_unknown,
+        AttachIcon.PICTURE to "msg_attachment_generic_picture",
+        AttachIcon.VIDEO to "msg_attachment_generic_video",
+        AttachIcon.MUSIC to "msg_attachment_music",
+        AttachIcon.UNKNOWN to "msg_attachment_unknown",
     )
 }

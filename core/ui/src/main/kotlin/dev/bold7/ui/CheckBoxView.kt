@@ -41,6 +41,10 @@ class CheckBoxView(context: Context) : View(context) {
     private var enabled = true
     private var shown = ""
 
+    // The row as OS 7 measures it, from the screen's edges through its group box ([TextRoom.screenGap]).
+    private var leftGap = 0
+    private var rightGap = 0
+
     /** The box before its label, as the form of the Calendar has it (sim-228: All Day); the lists have it after (sim-23). */
     var boxFirst = false
         set(v) {
@@ -49,7 +53,8 @@ class CheckBoxView(context: Context) : View(context) {
             invalidate()
         }
 
-    private fun room(w: Int) = if (boxFirst) TextRoom.checkLabelAfterBox(w) else TextRoom.checkLabel(w)
+    private fun room(w: Int) = roomIn(w + leftGap + rightGap)
+    private fun roomIn(w: Int) = if (boxFirst) TextRoom.checkLabelAfterBox(w) else TextRoom.checkLabel(w)
 
     init {
         layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, HEIGHT)
@@ -80,9 +85,23 @@ class CheckBoxView(context: Context) : View(context) {
         shown = text.fit(label, room(w))
     }
 
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val at = IntArray(2).also(::getLocationInWindow)
+        val l = TextRoom.screenGap(at[0])
+        val r = TextRoom.screenGap(rootView.width - at[0] - width)
+        if (l == leftGap && r == rightGap) return
+        leftGap = l
+        rightGap = r
+        shown = text.fit(label, room(width))
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
-        val w = width
-        if (lit) canvas.drawRect(0f, 0f, w.toFloat(), HEIGHT.toFloat(), focus)
+        if (lit) canvas.drawRect(0f, 0f, width.toFloat(), HEIGHT.toFloat(), focus)
+        // Margins from the screen's edges (sim-170): the row's own canvas shifted by its box.
+        canvas.save()
+        canvas.translate(-leftGap.toFloat(), 0f)
+        val w = width + leftGap + rightGap
         canvas.drawText(shown, (if (boxFirst) TextRoom.CHECK_LABEL_AFTER_BOX else ListDimens.TEXT_X).toFloat(), ListDimens.CHECK_BASELINE.toFloat(), if (lit) litText else if (enabled) text else disabledText)
         val box = ListDimens.CHECK_BOX
         val column = (if (enabled) 0 else 2) + (if (lit) 1 else 0)
@@ -92,5 +111,6 @@ class CheckBoxView(context: Context) : View(context) {
         val y = (HEIGHT - box) / 2
         dst.set(x, y, x + box, y + box)
         canvas.drawBitmap(sprite, src, dst, bitmapPaint)
+        canvas.restore()
     }
 }

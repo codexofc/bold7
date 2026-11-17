@@ -65,6 +65,7 @@ abstract class FocusDialog<V>(
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setWindowAnimations(0)
+            fitBars() // under the banner, as an activity (Bars.kt)
         }
         view.setOnTouchListener { _, e ->
             if (e.actionMasked == MotionEvent.ACTION_UP) {
@@ -98,8 +99,12 @@ abstract class FocusDialog<V>(
         view.requestPointerCapture()
     }
 
-    /** The trackpad as a relative pointer: its steps move the focus, its button (BTN_MOUSE) chooses on release. */
-    private fun onPointer(e: MotionEvent): Boolean {
+    /**
+     * The trackpad as a relative pointer: its steps move the focus, its button (BTN_MOUSE) chooses
+     * on release. Captured events go to the focused view: a dialog that focuses a child (a text
+     * field) hands them here from that child.
+     */
+    protected fun onPointer(e: MotionEvent): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_BUTTON_PRESS -> clicking = true
             MotionEvent.ACTION_UP, MotionEvent.ACTION_BUTTON_RELEASE -> if (clicking) {

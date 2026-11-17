@@ -17,7 +17,7 @@
          Hub page: dev.bold7.permission.READ_HUB is Bold7's signature
          permission, declared by dev.bold7.hub; same here, and for CALL_PROMPT, declared by
          dev.bold7.phone ("Call …?" of a missed call), and for TYPING_OPTIONS, declared by
-         dev.bold7.saisie (Options' Word Learning and Word Substitution). The banner's ACCESS_NETWORK_STATE and Delete's REQUEST_DELETE_PACKAGES and SET_WALLPAPER_HINTS of the home's wallpaper size, are normal: same. Its sound profiles: ACCESS_NOTIFICATION_POLICY is normal: same. Manage
+         dev.bold7.saisie (Options' Word Learning and Word Substitution). The banner's ACCESS_NETWORK_STATE and Delete's REQUEST_DELETE_PACKAGES and SET_WALLPAPER_HINTS of the home's wallpaper size, and SET_WALLPAPER of the Setup Wizard, are normal: same. Its sound profiles: ACCESS_NOTIFICATION_POLICY is normal: same. Manage
          Connections: MODIFY_PHONE_STATE (signature|privileged|role, the radio)
          and WRITE_SECURE_SETTINGS (signature|privileged|development|installer|role, NFC) are
          granted by these lines alone; CHANGE_WIFI_STATE and ACCESS_WIFI_STATE are normal and
@@ -28,7 +28,8 @@
          by tools/install.sh: same as the search's. Options > Date and Time and Language:
          SET_TIME_ZONE (signature|privileged|role, AlarmManager.setTimeZone) and
          CHANGE_CONFIGURATION (signature|privileged|development|role, LocalePicker.updateLocales),
-         granted by these lines alone. -->
+         granted by these lines alone. Options > Home Screen Preferences: READ_WALLPAPER_INTERNAL
+         (signature|privileged), the wallpaper's thumbnail, granted by this line alone. -->
     <privapp-permissions package="dev.bold7.launcher">
         <permission name="android.permission.ACCESS_NETWORK_STATE" />
         <permission name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -47,10 +48,12 @@
         <permission name="android.permission.READ_CALL_LOG" />
         <permission name="android.permission.READ_CONTACTS" />
         <permission name="android.permission.READ_SMS" />
+        <permission name="android.permission.READ_WALLPAPER_INTERNAL" />
         <permission name="android.permission.REMOVE_TASKS" />
         <permission name="android.permission.REQUEST_DELETE_PACKAGES" />
         <permission name="android.permission.SET_TIME_ZONE" />
         <permission name="android.permission.SET_WALLPAPER_HINTS" />
+        <permission name="android.permission.SET_WALLPAPER" />
         <permission name="android.permission.START_TASKS_FROM_RECENTS" />
         <permission name="android.permission.WRITE_SECURE_SETTINGS" />
         <permission name="dev.bold7.permission.CALL_PROMPT" />

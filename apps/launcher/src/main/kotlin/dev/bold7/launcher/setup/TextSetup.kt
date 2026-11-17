@@ -1,23 +1,11 @@
 package dev.bold7.launcher.setup
 
-// The one screen of the first unlock: letting Bold7 read and send the texts through Google Messages.
-// Pure: when to show it, what each step says and does. The screen is TextSetupActivity.
+// Options > Device > Text Messages Setup: letting Bold7 read and send the texts through Google
+// Messages. Pure: what each step says and does. The screen is TextSetupActivity; the first unlock
+// shows the Setup Wizard (Wizard.kt) instead, whose Text Messages page does the same.
 
 /** What Google Messages' "Allow Bixby and text on Galaxy devices" switch reads: UNKNOWN when it cannot be read. */
 enum class Consent { ON, OFF, UNKNOWN }
-
-enum class Launch { SHOW, SKIP, FINISH }
-
-/**
- * What the home does at an unlock. The screen is asked once ([asked]) and never comes back on its
- * own; a consent already given ends it without showing it; without Google Messages there is
- * nothing to allow.
- */
-fun launch(asked: Boolean, messagesInstalled: Boolean, consent: Consent): Launch = when {
-    asked || !messagesInstalled -> Launch.SKIP
-    consent == Consent.ON -> Launch.FINISH
-    else -> Launch.SHOW
-}
 
 enum class Step(val text: String, val buttons: List<String>) {
     INTRO(

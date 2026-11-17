@@ -34,6 +34,8 @@
     <string name="options_inbox">Inbox Management</string>
     <string name="options_inbox_hint">Select types of messages to show</string>
     <string name="options_accounts_hint">Set up Internet email accounts</string>
+    <string name="options_texts">Text Messaging</string>
+    <string name="options_texts_hint">Set text messaging preferences</string>
     <string name="opt_hide_sent">Hide Sent Messages</string>
     <string name="opt_confirm_delete">Confirm Delete</string>
     <string name="opt_confirm_prior">Confirm Mark Prior Read</string>

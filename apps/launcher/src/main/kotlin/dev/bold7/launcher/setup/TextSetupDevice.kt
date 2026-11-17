@@ -74,7 +74,7 @@ class TextSetupDevice(private val context: Context) {
     // Started from the activity, without a new task: Back on Google's page comes back to this screen.
     private fun startPage(from: Activity, page: PendingIntent): Boolean = try {
         val options = ActivityOptions.makeBasic()
-            .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle()
+            .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE).toBundle()
         from.startIntentSender(page.intentSender, null, 0, 0, 0, options)
         true
     } catch (_: IntentSender.SendIntentException) {

@@ -3,7 +3,6 @@ package dev.bold7.launcher.home
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.NinePatch
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -107,7 +106,7 @@ internal class GridPanel(context: Context) : ViewGroup(context) {
             if (field != value) invalidate()
             field = value
         }
-    var focusImage: NinePatch? = null
+    var focusImage: FocusPatch? = null
         set(value) {
             field = value
             invalidate()

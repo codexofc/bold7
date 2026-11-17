@@ -28,6 +28,10 @@ FAKE_ADB = textwrap.dedent(r'''
         space = phone[cmd[2]]
         # FAKE_IGNORE_WRITES: a phone that says nothing and keeps its value.
         ignore = os.environ.get("FAKE_IGNORE_WRITES")
+        if cmd[1] == "get" and os.environ.get("FAKE_GET_FAILS"):
+            # What the settings service says when it does not answer (seen on the Q25).
+            # Its exit code is not counted on: 0 here, the worst case.
+            print("cmd: Failure calling service settings: Failed transaction (2147483646)"); sys.exit(0)
         if cmd[1] == "get":
             out = space.get(cmd[3], "null")
         elif cmd[1] == "put":
@@ -88,8 +92,10 @@ class SilenceTest(unittest.TestCase):
         p["writes"] = []
         self.write_phone(p)
 
-    def run_silence(self, *args, ignore_writes=False):
+    def run_silence(self, *args, ignore_writes=False, get_fails=False):
         env = dict(os.environ, PATH=f"{self.dir}:{os.environ['PATH']}", FAKE_PHONE=self.phone, SILENCE_SAVE=self.save)
+        if get_fails:
+            env["FAKE_GET_FAILS"] = "1"
         if ignore_writes:
             env["FAKE_IGNORE_WRITES"] = "1"
         return subprocess.run(["bash", os.path.join(HERE, "silence.sh"), *args], env=env, capture_output=True, text=True)
@@ -171,6 +177,19 @@ class SilenceTest(unittest.TestCase):
         r = self.run_silence("retour", ignore_writes=True)
         self.assertEqual(r.returncode, 1)
         self.assertTrue(os.path.exists(self.save))
+
+    def test_a_failed_read_is_never_a_value(self):
+        self.assertNotEqual(self.run_silence("poser", get_fails=True).returncode, 0)
+        self.assertFalse(os.path.exists(self.save))
+        self.run_silence("poser")
+        p = self.read_phone(); p["writes"] = []; self.write_phone(p)
+        r = self.run_silence("retour", get_fails=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn("kept", r.stdout)
+        self.assertEqual(self.read_phone()["writes"], [])
+        self.assertTrue(os.path.exists(self.save))
+        self.assertEqual(self.run_silence("retour").returncode, 0)
+        self.assertEqual(self.val(Y, "sound_effects_enabled"), "1")
 
     def test_retour_refuses_a_broken_save_without_writing(self):
         self.run_silence("poser")

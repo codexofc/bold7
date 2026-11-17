@@ -2,7 +2,6 @@ package dev.bold7.launcher.quickstep
 
 import dev.bold7.design.CubicBezier
 import dev.bold7.design.Curves
-import dev.bold7.design.Durations
 import dev.bold7.design.Fade
 
 // Pure math of OS 7's window transitions: no android.* here, tested on the JVM (ZoomTest).
@@ -31,14 +30,22 @@ class Zoom(val scale: Float, val entering: Boolean, durationMs: Long, private va
 
 /**
  * The shape of OS 7's transitions, set here only. The 9900's theme gives the kind and the scale
- * (theme.xml, transitions of the screen « homescreen », A); duration, curve and the fade are D,
- * to be fixed by a video of the simulator.
+ * (theme.xml, transitions of the screen « homescreen », A); the homescreen rules set neither a
+ * duration nor a pacing, so TransitionContext's defaults apply, read in the firmware (A,
+ * docs/BBOS7-VISUEL.md § 36). The fade that goes with the scale is still D.
  */
 object Transitions {
-    /** D: the homescreen's own animation-duration-portrait (A); the transitions give none. */
-    const val DURATION_MS = Durations.PORTRAIT_MS
+    /**
+     * TransitionContext's default ATTR_DURATION, 250 ms (A: net_rim_cldc-34, `sipush 250` in the
+     * defaults switch; M: API reference 7.1, « default 250 » for the zoom).
+     */
+    const val DURATION_MS = 250L
 
-    /** D: the theme's curve for a change of view (animation-easingcurve-tabmanager, A). */
+    /**
+     * TransitionContext's default pacing of a zoom, a slide and a wipe is « ease-out » (A:
+     * net_rim_cldc-34; a fade and none get « linear »). Which ease-out the firmware computes is
+     * not read: QuadraticOut, the theme's own ease-out for a change of view, stands for it (D).
+     */
     val CURVE: CubicBezier = Curves.QuadraticOut
 
     /**
@@ -64,6 +71,19 @@ object Transitions {
      * at the end as the opacity 0,3 ; 0,7 ; 0,9 ; 1 shows, fitted by QuadraticInOut (D; QuadraticOut starts too fast: 0,5). It appears as a cut.
      */
     val SWITCHER_CLOSE = Fade(1f, 0f, 150, Curves.QuadraticInOut)
+
+    /**
+     * An app chosen in the switcher: the app is at once under it and the switcher fades out above
+     * it (vid-04, C: the app at 0,28 ; 0,53 ; 0,81 ; 1 in 42 ms steps), which a linear 150 ms fits.
+     */
+    val SWITCHER_TO_APP = Fade(1f, 0f, 150, Curves.Linear)
+
+    /**
+     * Home Screen chosen in the switcher over an app: the app goes at once, the switcher fades out
+     * over the home (vid-04, C: the home at 0,38 ; 0,71 ; 0,92 ; 1 and 0,38 ; 0,71 ; 0,90 ; 0,99 ; 1
+     * in 42 ms steps, 183 ms to the end), which QuadraticOut over 180 ms fits.
+     */
+    val SWITCHER_TO_HOME = Fade(1f, 0f, 180, Curves.QuadraticOut)
 
     /** Manage Connections closing: the panel goes up in 190 ms (175 and 200 measured, C) at constant speed (1,8 to 2,6 px/ms), not a fade. Opening is a cut. */
     const val CONNECTIONS_CLOSE_MS = 190L

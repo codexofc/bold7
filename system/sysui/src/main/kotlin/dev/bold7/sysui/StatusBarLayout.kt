@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.ActivityTaskManager
 import android.app.KeyguardManager
 import android.app.TaskStackListener
+import android.graphics.Color
 import android.graphics.Typeface
 import android.provider.Settings
 import android.text.SpannableString
@@ -27,13 +28,13 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 // The SystemUI classes StatusBarLayout reaches by name (the module's class loader cannot see
-// them). StatusBarTest finds each in stubs/systemui.jar, StatusBarTargets.kt compiles
-// the members.
+// them), rows of hook-targets.tsv; StatusBarTargets.kt compiles the members.
 internal const val CLOCK_VIEW = "com.android.systemui.statusbar.policy.Clock"
 internal const val COMMAND_QUEUE = "com.android.systemui.statusbar.CommandQueue"
-internal const val BAR_BACKGROUND = "com.android.systemui.statusbar.phone.BarTransitions\$BarBackgroundDrawable"
-internal const val HEADS_UP_APPEARANCE = "com.android.systemui.statusbar.phone.HeadsUpAppearanceController"
+internal const val BAR_BACKGROUND = "com.android.systemui.shared.statusbar.phone.BarTransitions\$BarBackgroundDrawable"
 internal const val SURFACES_CALLBACKS = "com.android.systemui.statusbar.phone.CentralSurfacesCommandQueueCallbacks"
+/** The status bar's own CommandQueue callback, which gets showTransient (StatusBarModePerDisplayRepositoryImpl, an anonymous class). */
+internal const val TRANSIENT_CALLBACK = "com.android.systemui.statusbar.data.repository.StatusBarModePerDisplayRepositoryImpl\$commandQueueCallback\$1"
 
 /**
  * The 9900's banner over an app (docs/BBOS7-VISUEL.md §18, places in [Banner]) in
@@ -59,7 +60,7 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
     private var layoutBroken = false
     private var overrideAlpha: Field? = null
     /** Main thread only. */
-    private var shown = BarBackground.BLACK
+    private var shown = BarBackground.NONE
     private var backgroundBroken = false
     /** The bar is hidden (barHidden): written on binder threads, read on the main thread. */
     @Volatile private var hiddenNow = false
@@ -134,8 +135,8 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         clockBaseline = Banner.TIME_BASELINE
         layoutBroken = false
         banner.onPlaces = { timeX, batteryX -> guardedLayout { if (oneLineBanner(kind)) placeOneLine(timeX, batteryX) } }
-        // A re-inflated bar comes with new BarTransitions, black: the next attributes decide.
-        shown = BarBackground.BLACK
+        // A re-inflated bar comes without background: the next attributes decide.
+        shown = BarBackground.NONE
         backgroundBroken = false
 
         // The start side's own content goes: notification icons (the counters are the Hub's,
@@ -226,22 +227,6 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         }
     }
 
-    fun headsUpHideTarget(loader: ClassLoader): Method =
-        // The third parameter is an R8 lambda class: found by name and arity.
-        loader.loadClass(HEADS_UP_APPEARANCE).declaredMethods.firstOrNull { it.name == "hide" && it.parameterCount == 3 }
-            ?: throw NoSuchMethodException("$HEADS_UP_APPEARANCE.hide, 3 parameters")
-
-    /**
-     * Instead of HeadsUpAppearanceController.hide: true (Android's hide skipped) for the status
-     * bar's time, which a pinned notification fades out on Android, to put the notification's
-     * text in its place (HeadsUpStatusBarView). That text lives in the start side content,
-     * hidden here: without this, the time would go and nothing would replace it. The card itself
-     * lies under the bar (mHeadsUpInset: the bar's height plus heads_up_status_bar_padding), so
-     * nothing overlaps. Android's later show() of the clock, still visible, is
-     * CrossFadeHelper.fadeIn: it only animates the alpha to 1, where it already is.
-     */
-    fun keptShown(view: View?): Boolean = view != null && view === clock.get()
-
     fun barAttributesTarget(loader: ClassLoader): Method {
         overrideAlpha = loader.loadClass(BAR_BACKGROUND).getField("mOverrideAlpha")
         // Its parameters include framework types hidden from the module's compile classpath.
@@ -314,7 +299,10 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         clockX = Banner.TIME_X
         clockBaseline = Banner.TIME_BASELINE
         clock.get()?.let(::styleClock)
-        battery.get()?.let { margins(it, Banner.BATTERY_X, Banner.BATTERY_Y) }
+        battery.get()?.let {
+            margins(it, Banner.BATTERY_X, Banner.BATTERY_Y)
+            (it as? BatteryImage)?.oneLine = false
+        }
         statusIcons.get()?.let { icons ->
             (icons.layoutParams as FrameLayout.LayoutParams).apply {
                 height = Banner.ICONS_HEIGHT
@@ -330,7 +318,10 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         clockX = timeX
         clockBaseline = OneLine.BASELINE
         clock.get()?.let(::styleClock)
-        battery.get()?.let { margins(it, batteryX, OneLine.FRAME_Y) }
+        battery.get()?.let {
+            margins(it, batteryX, OneLine.FRAME_Y)
+            (it as? BatteryImage)?.oneLine = true
+        }
         val width = bar.get()?.width ?: return
         statusIcons.get()?.let { icons ->
             (icons.layoutParams as FrameLayout.LayoutParams).apply {
@@ -380,7 +371,7 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
             ?: throw NoSuchMethodException("WindowManagerGlobal.getWindowManagerService: null")
         hideTransientBars = Class.forName("android.view.IWindowManager").getMethod("hideTransientBars", Int::class.javaPrimitiveType)
         windowManager = wm
-        return loader.loadClass(SURFACES_CALLBACKS).getDeclaredMethod("showTransient", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+        return loader.loadClass(TRANSIENT_CALLBACK).getDeclaredMethod("showTransient", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
     }
 
     /**
@@ -396,31 +387,15 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
     }
 
     /**
-     * Over the keyguard, Android's bar background (BarTransitions, black by the overlay) fades to
-     * nothing (this window lies under the keyguard's, which draws the keyguard bar: its black
-     * showed through); back to Android's anywhere else. Android never writes the status bar
-     * background's override alpha (only the navigation bar's).
+     * The banner's black over an app (sim-43), nothing over the keyguard or the home. LineageOS 24's
+     * bar has no background of its own any more (apps draw under it, edge to edge, and
+     * BarTransitions' drawable stays transparent in MODE_TRANSPARENT): the dressed bar paints it.
      */
     // Runs posted on the main thread, outside the hook's guard: nothing may escape into SystemUI.
     private fun showBackground(bar: ViewGroup, look: BarBackground, controllingPackage: String?) {
         if (look == shown || backgroundBroken) return
-        try {
-            val background = generateSequence(bar.parent as? View) { it.parent as? View }
-                .mapNotNull { it.background }.firstOrNull { it.javaClass.name == BAR_BACKGROUND }
-            if (background == null) {
-                backgroundBroken = true
-                return fail("view target missing: $BAR_BACKGROUND above ${bar.javaClass.name}", null)
-            }
-            overrideAlpha!!.setFloat(background, barAlpha(look))
-            background.invalidateSelf()
-            shown = look
-            Log.i(TAG, "status bar background: $look under $controllingPackage")
-        } catch (e: ReflectiveOperationException) {
-            backgroundBroken = true
-            fail("status bar background", e)
-        } catch (e: RuntimeException) {
-            backgroundBroken = true
-            fail("status bar background", e)
-        }
+        bar.setBackgroundColor(if (barAlpha(look) == 1f) Color.BLACK else Color.TRANSPARENT)
+        shown = look
+        Log.i(TAG, "status bar background: $look under $controllingPackage")
     }
 }

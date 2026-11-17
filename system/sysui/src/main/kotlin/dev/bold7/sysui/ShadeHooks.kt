@@ -9,24 +9,26 @@ import io.github.libxposed.api.XposedInterface.Chain
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-// The SystemUI classes ShadeHooks reaches by name (the module's class loader cannot see them).
-// ShadeTest finds each in stubs/systemui.jar, ShadeTargets.kt compiles the members.
-// NOTIFICATION_STACK is LockFace's.
-internal const val QS_CONTROLLER = "com.android.systemui.shade.QuickSettingsController"
+// The SystemUI classes ShadeHooks reaches by name (the module's class loader cannot see them),
+// rows of hook-targets.tsv; ShadeTargets.kt compiles the members. NOTIFICATION_STACK is LockFace's.
+/** QuickSettingsController is an interface on LineageOS 24: its implementation. */
+internal const val QS_CONTROLLER = "com.android.systemui.shade.QuickSettingsControllerImpl"
+/** What the panel's mHeadsUpManager is (its interface HeadsUpManager is emptied by R8). */
+internal const val HEADS_UP_MANAGER = "com.android.systemui.statusbar.notification.headsup.HeadsUpManagerImpl"
 internal const val KEYGUARD_STATE = "com.android.systemui.statusbar.policy.KeyguardStateControllerImpl"
 internal const val PANEL_VIEW_CONTROLLER = "com.android.systemui.shade.NotificationPanelViewController"
 /**
  * SystemUI's mBarService, the binder proxy of the status bar service: a framework class
- * (stubs/framework.jar), hooked in SystemUI's process only, outside the SystemUI fingerprint: to
- * read again after an OTA.
+ * (stubs/framework.jar), hooked in SystemUI's process only; a row of hook-targets.tsv like
+ * SystemUI's own classes.
  */
 internal const val STATUS_BAR_SERVICE_PROXY = "com.android.internal.statusbar.IStatusBarService\$Stub\$Proxy"
 /** The status bar's touch handler, which hands a pull to the shade (installShut). */
 internal const val STATUS_BAR_TOUCH = "com.android.systemui.statusbar.phone.PhoneStatusBarViewController\$PhoneStatusBarViewTouchHandler"
 /** The lock screen's drag down to its shade (DragDownHelper's callback, installShut). */
 internal const val LOCKSCREEN_SHADE = "com.android.systemui.statusbar.LockscreenShadeTransitionController"
-private const val DRAG_DOWN_ENABLED = "isDragDownEnabledForView\$vendor__mediatek__proprietary__packages__apps__SystemUI__android_common__MtkSystemUI_core"
-private const val EXPANDABLE_VIEW = "com.android.systemui.statusbar.notification.row.ExpandableView"
+/** Suffixed by Kotlin with SystemUI's module name ($frameworks__base__packages__SystemUI__android_common__SystemUI_core): resolved by the table. */
+private const val DRAG_DOWN_ENABLED = "isDragDownEnabledForView\$*"
 
 /** The emergency switch, read where it is needed (Settings.Global caches it, no binder call per touch). */
 private fun androidShade(context: Context): Boolean =
@@ -54,6 +56,7 @@ private fun androidShade(context: Context): Boolean =
  */
 internal fun installShut(
     loader: ClassLoader,
+    targets: TargetResolution,
     after: (String, () -> Method, (Chain, Any?) -> Any?) -> Boolean,
     instead: (String, () -> Method, (Chain) -> Boolean) -> Boolean,
     replace: (String, () -> Method, (Chain) -> Any?) -> Boolean,
@@ -82,9 +85,8 @@ internal fun installShut(
     }
     var transitionContext: Field? = null
     after("$LOCKSCREEN_SHADE.$DRAG_DOWN_ENABLED(ExpandableView)Z + context", {
-        val cls = loader.loadClass(LOCKSCREEN_SHADE)
-        transitionContext = cls.getField("context")
-        cls.getDeclaredMethod(DRAG_DOWN_ENABLED, loader.loadClass(EXPANDABLE_VIEW))
+        transitionContext = loader.loadClass(LOCKSCREEN_SHADE).getField("context")
+        targets.method(loader, LOCKSCREEN_SHADE, DRAG_DOWN_ENABLED)
     }) { chain, enabled ->
         dragDownEnabled(enabled as Boolean, androidShade(transitionContext!!.get(chain.thisObject) as Context))
     }
@@ -105,7 +107,7 @@ internal fun installShut(
  * - NotificationStackScrollLayout.updateVisibility()V, after: the stack is INVISIBLE while the
  *   shade is alone, as Android makes it on the always-on display (neither drawn nor touched: its
  *   rows, footer with Manage and Clear all, section headers, shelf, empty shade text);
- * - QuickSettingsController.shouldQuickSettingsIntercept(FFF)Z, after: false while QS is expanded,
+ * - QuickSettingsControllerImpl.shouldQuickSettingsIntercept(FFF;MotionEvent)Z, after: false while QS is expanded,
  *   as in the split shade: a swipe up closes the whole panel (NotificationPanelViewController's
  *   onTrackingStarted, QS fully expanded: expand immediate, shelf only), instead of folding QS
  *   into its quick row over the emptied list;
@@ -127,13 +129,14 @@ internal fun installShut(
  */
 internal fun installShade(
     loader: ClassLoader,
+    targets: TargetResolution,
     fail: (String, Throwable?) -> Unit,
     after: (String, () -> Method, (Chain, Any?) -> Any?) -> Boolean,
     instead: (String, () -> Method, (Chain) -> Boolean) -> Boolean,
     withArgs: (String, () -> Method, (Chain) -> Array<Any?>?) -> Boolean,
 ) {
     val shade = try {
-        ShadeHooks(loader)
+        ShadeHooks(loader, targets)
     } catch (e: ReflectiveOperationException) {
         fail("hook target missing: shade, Android's notifications kept", e)
         return
@@ -141,30 +144,31 @@ internal fun installShade(
     shade.install(after, instead, withArgs)
 }
 
-private class ShadeHooks(loader: ClassLoader) {
+private class ShadeHooks(loader: ClassLoader, targets: TargetResolution) {
     private val panel = loader.loadClass(PANEL_VIEW_CONTROLLER)
     private val updateExpansion = panel.getDeclaredMethod("updateExpansionAndVisibility")
     private val animateCollapseQs = panel.getDeclaredMethod("animateCollapseQs", Boolean::class.javaPrimitiveType)
     private val collapse = panel.getDeclaredMethod("collapse", Float::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
     private val panelFraction = panel.getField("mExpandedFraction")
-    private val panelTracking = panel.getField("mTracking")
+    private val panelTracking = panel.getDeclaredMethod("isTracking")
     private val panelInstant = panel.getField("mInstantExpanding")
     private val panelAnimator = panel.getField("mHeightAnimator")
     private val panelHeadsUp = panel.getField("mHeadsUpManager")
-    private val cardPinned = panelHeadsUp.type.getField("mHasPinnedNotification")
+    private val cardPinned = loader.loadClass(HEADS_UP_MANAGER).getField("mHasPinnedNotification")
     private val panelBarState = panel.getField("mBarState")
     private val panelView = panel.getField("mView")
     private val panelQs = panel.getField("mQsController")
     private val panelStackController = panel.getField("mNotificationStackScrollLayoutController")
     private val stackView = panelStackController.type.getField("mView")
     private val stack = loader.loadClass(NOTIFICATION_STACK)
-    private val updateVisibility = stack.getDeclaredMethod("updateVisibility")
+    // R8 suffixes it (updateVisibility$4 on LineageOS 24): as the table resolved it.
+    private val updateVisibility = targets.method(loader, NOTIFICATION_STACK, "updateVisibility$*")
     private val stackState = stack.getField("mStatusBarState")
     private val qs = loader.loadClass(QS_CONTROLLER)
-    private val shouldIntercept = qs.getDeclaredMethod("shouldQuickSettingsIntercept", Float::class.javaPrimitiveType, Float::class.javaPrimitiveType, Float::class.javaPrimitiveType)
+    private val shouldIntercept = qs.getDeclaredMethod("shouldQuickSettingsIntercept", Float::class.javaPrimitiveType, Float::class.javaPrimitiveType, Float::class.javaPrimitiveType, MotionEvent::class.java)
     private val setExpandImmediate = qs.getDeclaredMethod("setExpandImmediate", Boolean::class.javaPrimitiveType)
     private val qsBarState = qs.getField("mBarState")
-    private val qsExpanded = qs.getField("mExpanded")
+    private val qsExpanded = qs.getDeclaredMethod("getExpanded")
     private val qsKeyguard = qs.getField("mKeyguardStateController")
     private val qsPanelView = qs.getField("mPanelView")
     private val keyguardShowing = loader.loadClass(KEYGUARD_STATE).getField("mShowing")
@@ -182,15 +186,15 @@ private class ShadeHooks(loader: ClassLoader) {
         instead: (String, () -> Method, (Chain) -> Boolean) -> Boolean,
         withArgs: (String, () -> Method, (Chain) -> Array<Any?>?) -> Boolean,
     ) {
-        val hidden = after("$NOTIFICATION_STACK.updateVisibility()V + mStatusBarState", { updateVisibility }) { chain, result ->
+        val hidden = after("$NOTIFICATION_STACK.updateVisibility$*()V + mStatusBarState", { updateVisibility }) { chain, result ->
             result.also { hide(chain.thisObject as View) }
         }
-        val whole = after("$QS_CONTROLLER.shouldQuickSettingsIntercept(FFF)Z + mBarState, mExpanded, mShowing, mPanelView", { shouldIntercept }) { chain, intercepts ->
+        val whole = after("$QS_CONTROLLER.shouldQuickSettingsIntercept(FFF;MotionEvent)Z + mBarState, getExpanded(), mShowing, mPanelView", { shouldIntercept }) { chain, intercepts ->
             val controller = chain.thisObject!!
             // On the lock screen, shut: its top pulls no quick settings.
             val lockedShut = keyguardShowing.getBoolean(qsKeyguard.get(controller)) &&
                 shadeShut(androidShade((qsPanelView.get(controller) as View).context))
-            qsIntercepts(intercepts as Boolean, aloneNow(qsBarState.getInt(controller), controller), qsExpanded.getBoolean(controller), lockedShut)
+            qsIntercepts(intercepts as Boolean, aloneNow(qsBarState.getInt(controller), controller), qsExpanded.invoke(controller) as Boolean, lockedShut)
         }
         val back = instead("$PANEL_VIEW_CONTROLLER.animateCollapseQs(Z)V + collapse(FZZ)V, mBarState, mShowing", { animateCollapseQs }) { chain ->
             val controller = chain.thisObject!!
@@ -212,7 +216,7 @@ private class ShadeHooks(loader: ClassLoader) {
             if (panelRevealedClears(clear, alone) == clear) null else arrayOf(false, chain.getArg(1))
         }
         if (!kept || !revealed) Log.w(TAG, "shade: opening it clears the notifications' LED and sound, as Android does")
-        after("$PANEL_VIEW_CONTROLLER.updateExpansionAndVisibility()V + mExpandedFraction, mTracking, mInstantExpanding, mHeightAnimator, setExpandImmediate(Z)V", { updateExpansion }) { chain, result ->
+        after("$PANEL_VIEW_CONTROLLER.updateExpansionAndVisibility()V + mExpandedFraction, isTracking(), mInstantExpanding, mHeightAnimator, setExpandImmediate(Z)V", { updateExpansion }) { chain, result ->
             result.also { expansionChanged(chain.thisObject!!) }
         }
     }
@@ -221,7 +225,7 @@ private class ShadeHooks(loader: ClassLoader) {
     private fun expansionChanged(controller: Any) {
         val opening = shadeOpening(
             panelFraction.getFloat(controller),
-            panelTracking.getBoolean(controller),
+            panelTracking.invoke(controller) as Boolean,
             panelInstant.getBoolean(controller),
             panelAnimator.get(controller) != null,
         )

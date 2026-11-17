@@ -2,7 +2,7 @@
 <resources>
     <!-- Order of SystemUI's status icons, left to right (StatusBarIconList follows this list):
          the slots we draw an indicator for first, in STATUS_ICON_IMAGES' order (system/sysui
-         StatusIcons.kt, BBOS7-VISUEL §18 "Status indicators": the theme's, then ours), then Android's others in the Q25's own order. Every slot of the Q25's framework-res kept, none added
+         StatusIcons.kt, BBOS7-VISUEL §18 "Status indicators": the theme's, then ours), then Android's others in the Q25's own order (LineageOS 24). Every slot of the Q25's framework-res kept, none added
          (StatusIconsTest). Literal names: the framework strings status_bar_* are private. -->
     <string-array name="config_statusBarIcons" translatable="false">
         <item>alarm_clock</item>
@@ -36,8 +36,11 @@
         <item>phone_evdo_signal</item>
         <item>phone_signal</item>
         <item>secure</item>
-        <item>wifi</item>
+        <item>connected_display</item>
+        <item>satellite</item>
+        <item>stacked_mobile</item>
         <item>mobile</item>
+        <item>wifi</item>
         <item>airplane</item>
         <item>battery</item>
     </string-array>

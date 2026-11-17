@@ -58,14 +58,14 @@ class CalendarScreenTest {
     @Test fun theMenuIsTheSimulatorsWithoutWhatIsNotThereYet() {
         // sim-221, sim-222: New Appointment under the focus without an appointment.
         val (empty, focus) = menu(null)
-        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.CLOSE), empty.map { it.action })
+        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.HELP, Act.CLOSE), empty.map { it.action })
         assertEquals(1, focus)
         // sim-240: Open under the focus on an appointment, Delete after it.
         val (onEvent, focus2) = menu(Occurrence(1, "e", 0, 1))
-        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.OPEN, Act.DELETE, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.CLOSE), onEvent.map { it.action })
+        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.OPEN, Act.DELETE, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.HELP, Act.CLOSE), onEvent.map { it.action })
         assertEquals(4, focus2)
         val invitation = menu(Occurrence(1, "e", 0, 1, invitation = true)).first.map { it.action }
-        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.OPEN, Act.DELETE, Act.ACCEPT, Act.TENTATIVE, Act.DECLINE, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.CLOSE), invitation)
+        assertEquals(listOf(Act.SWITCH, Act.NEW, Act.NEW_ALARM, Act.NEW_TASK, Act.OPEN, Act.DELETE, Act.ACCEPT, Act.TENTATIVE, Act.DECLINE, Act.TODAY, Act.GO_TO_DATE, Act.VIEW, Act.HELP, Act.CLOSE), invitation)
     }
 
     @Test fun viewsSubmenuListsTheOtherViews() =

@@ -22,6 +22,9 @@ data class Stopwatch(val base: Long = 0, val startedAt: Long? = null, val laps: 
     fun reset() = if (running) this else Stopwatch()
 }
 
+/** What the timer holds before anything is set: 00:05:00, start focused (sim-325, C: the first view of the page). */
+const val DEFAULT_TIMER_MS = 5 * 60_000L
+
 /** A countdown of [duration] ms: [remaining] while stopped, or ending at [endsAt] (elapsed realtime) while running. */
 data class Countdown(val duration: Long, val remaining: Long = duration, val endsAt: Long? = null) {
     val running: Boolean get() = endsAt != null

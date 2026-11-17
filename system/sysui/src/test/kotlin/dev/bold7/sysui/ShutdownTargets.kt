@@ -7,6 +7,6 @@ import com.android.systemui.globalactions.GlobalActionsImpl
 // like HookTargets.kt. Never run.
 @Suppress("unused", "UNUSED_VARIABLE")
 private fun shutdownTargets(impl: GlobalActionsImpl) {
-    impl.showShutdownUi(false, null)
+    impl.showShutdownUi(false, null, false)
     val context: Context = impl.mContext
 }

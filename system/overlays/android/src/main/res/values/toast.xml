@@ -22,6 +22,6 @@
 
     <!-- The frame of an older app's toast (layout/transient_notification.xml) and of the custom
          toasts that name it: the dialog box (sim-42, C; border_popup.png, A), its padding inside
-         its border (tools/import-assets.sh dialogues). -->
-    <item name="toast_frame" type="drawable">@drawable/bold7_box</item>
+         its border (alert_dark_frame: values/dialogs.xml). -->
+    <item name="toast_frame" type="drawable">@android:drawable/alert_dark_frame</item>
 </resources>

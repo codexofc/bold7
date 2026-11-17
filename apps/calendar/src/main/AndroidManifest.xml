@@ -24,6 +24,12 @@
     <!-- Its app-op, allowed by tools/install.sh, lets the reminder box open from the receiver. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
     <application
         android:name=".CalendarApp"
         android:allowBackup="false"

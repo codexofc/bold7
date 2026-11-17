@@ -382,15 +382,11 @@ class CalendarView(context: Context, private val onTap: (CalendarScreen) -> Unit
             solid(canvas, l + cw - 1, t, l + cw, t + ch, Look.MONTH_LINE)
             solid(canvas, l, t + ch - 1, l + cw, t + ch, Look.MONTH_LINE)
             canvas.drawText("${d.dayOfMonth}", l + cw - Look.NUMBER_RIGHT, t + Look.NUMBER_BASELINE, if (lit) rightWhite else if (other) rightGrey else right)
-            if (busy[d] == true) {
+            if (monthMark(busy[d] == true, lit)) {
                 val mx = l + Look.MARK_X
                 val my = t + ch - Look.MARK_BOTTOM
-                if (lit) {
-                    solid(canvas, mx - 1, my - 1, mx + Look.MARK_WIDTH + 1, my + Look.MARK_HEIGHT + 1, Look.MARK_FRAME)
-                    solid(canvas, mx, my, mx + Look.MARK_WIDTH, my + Look.MARK_HEIGHT, ListColors.Background)
-                } else {
-                    solid(canvas, mx, my, mx + Look.MARK_WIDTH, my + Look.MARK_HEIGHT, ListColors.Title)
-                }
+                solid(canvas, mx - 1, my - 1, mx + Look.MARK_WIDTH + 1, my + Look.MARK_HEIGHT + 1, Look.MARK_FRAME)
+                solid(canvas, mx, my, mx + Look.MARK_WIDTH, my + Look.MARK_HEIGHT, ListColors.Background)
             }
         }
     }

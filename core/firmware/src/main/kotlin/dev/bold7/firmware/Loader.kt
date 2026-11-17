@@ -16,7 +16,11 @@ internal fun interface Unpacker {
 }
 
 /** The OS Loader: InstallShield, then the MSI and its cabinet, then each .cod of CodFiles. */
-internal class LoaderUnpacker(private val reader: EntryReader = EntryReader(InstallShield::extract)) : Unpacker {
+internal class LoaderUnpacker(
+    private val reader: EntryReader = EntryReader(InstallShield::extract),
+    /** The .cod files to write; all by default, and then the OS image's boot logo too. */
+    private val only: ((String) -> Boolean)? = null,
+) : Unpacker {
     override fun unpack(file: File, work: File, tree: File, progress: (Float) -> Unit) {
         work.mkdirs()
         val msi = File(work, "loader.msi")
@@ -34,10 +38,12 @@ internal class LoaderUnpacker(private val reader: EntryReader = EntryReader(Inst
             // The cabinet's entries are the File table's keys; CodFiles holds the .cod modules.
             val cods = db.table("File").filter { it["Component_"] == "CodFiles" }
                 .associate { it["File"] as String to (it["FileName"] as String).substringAfterLast('|') }
+            // OS holds the OS image, where the boot screen is (BootScreen).
+            val os = if (only != null) emptySet() else db.table("File").filter { it["Component_"] == "OS" }.map { it["File"] as String }.toSet()
             val cab = db.cf.source(db.stream("Data1.cab"))
             var read = 0L
-            Cabinet.extract(cab, { it in cods }, { n -> read += n; progress(0.3f + 0.7f * read / cab.size) }) { key, data ->
-                writeCod(cods.getValue(key), data, tree)
+            Cabinet.extract(cab, { k -> cods[k]?.let { only?.invoke(it) ?: true } == true || k in os }, { n -> read += n; progress(0.3f + 0.7f * read / cab.size) }) { key, data ->
+                if (key in os) BootScreen.logoOrNull(data)?.let { put(work, BootScreen.LOGO, Png.encode(it)) } else writeCod(cods.getValue(key), data, tree)
             }
         }
         msi.delete()
@@ -48,12 +54,16 @@ internal class LoaderUnpacker(private val reader: EntryReader = EntryReader(Inst
     }
 }
 
-private val THEME = setOf("net_rim_theme_BlackBerry7_640x480_b.cod", "net_rim_theme_BlackBerry7_640x480_bs1.cod")
+internal val THEME = setOf("net_rim_theme_BlackBerry7_640x480_b.cod", "net_rim_theme_BlackBerry7_640x480_bs1.cod")
 private val KINDS = mapOf(
     "images" to setOf("png", "gif", "jpg", "jpeg", "bmp"),
     "sounds" to setOf("m4a", "mp3", "mid", "midi", "wav", "amr", "aac", "ogg"),
     "boot" to setOf("mp4"),
 )
+/** The word lists and the word substitution of OS 7 Typing reads ([Typing]). */
+internal val LING = setOf("french", "english_gb", "english_us", "misspellings_de").map { "net_rim_tid_dynamic_ling_data_$it" }.toSet()
+/** The help of the 9900 Bold7 shows, British English like the simulator ([Assets.help]). */
+internal const val HELP = "net_rim_bb_help_9900_series__en_GB"
 private val LOCALISED = Regex("__[a-z]{2}(_[A-Za-z]{2,4})?\\.cod$")
 
 /** What tools/extract-bbos7.py writes of one .cod, from the loader as from the simulator. */
@@ -62,6 +72,16 @@ internal fun writeCod(cod: String, data: ByteArray, tree: File) {
     val stem = cod.removeSuffix(".cod")
     if (cod in THEME) {
         for ((n, b) in res) put(tree, "theme/$stem/$n", b)
+        return
+    }
+    // Typing's lists (Typing.kt), which tools/extract-bbos7.py leaves: under ling/, outside its tree.
+    if (stem in LING) {
+        for ((n, b) in res) put(tree, "ling/$stem/$n", b)
+        return
+    }
+    // The help, whole (its pages are YK-compressed, its pictures plain): under help/, also outside it.
+    if (stem == HELP) {
+        for ((n, b) in res) put(tree, "help/$stem/$n", b)
         return
     }
     for ((n, b) in Cod.fonts(res)) put(tree, "fonts/$stem/$n", b)

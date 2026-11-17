@@ -2,6 +2,7 @@ package dev.bold7.memopad
 
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 import dev.bold7.ui.matchesWords
 
@@ -26,7 +27,7 @@ data object NewMemo : Row
 data class Entry(val memo: Memo) : Row
 
 /** The list's actions: its full menu (sim-260 to sim-262, C) and short menu (sim-265, C), Edit being what a click does. */
-enum class ListAct { NEW, EDIT, DELETE, OPTIONS, CLOSE, SWITCH }
+enum class ListAct { NEW, EDIT, DELETE, OPTIONS, HELP, CLOSE, SWITCH, HOME }
 
 sealed interface ListEvent {
     data class Loaded(val memos: List<Memo>) : ListEvent
@@ -91,12 +92,12 @@ data class MemoList(
             listOf(MenuEntry(ListAct.NEW), MenuEntry(ListAct.EDIT), MenuEntry(ListAct.DELETE), MenuEntry(ListAct.OPTIONS, separatorAbove = true), MenuEntry(ListAct.CLOSE)),
             highlighted = 1,
         )
-        else Menu(listOf(MenuEntry(ListAct.NEW), MenuEntry(ListAct.OPTIONS, separatorAbove = true), MenuEntry(ListAct.CLOSE)), highlighted = 0)).withSwitchApplication(ListAct.SWITCH)
+        else Menu(listOf(MenuEntry(ListAct.NEW), MenuEntry(ListAct.OPTIONS, separatorAbove = true), MenuEntry(ListAct.CLOSE)), highlighted = 0)).withHelp(ListAct.HELP, before = ListAct.CLOSE).withSwitchApplication(ListAct.SWITCH)
 
-    /** The short menu on a memo: Delete, then Edit by Full Menu, focused (sim-265, C, without Forward As and Switch Application); none on New Memo. */
+    /** The short menu on a memo: Delete, then Edit by Full Menu, focused (sim-265, C, without Forward As); none on New Memo. */
     fun shortMenu(): Menu<ListAct>? {
         if (focused !is Entry) return null
-        return Menu(listOf(MenuEntry(ListAct.DELETE), MenuEntry(ListAct.EDIT)), line = focus, highlighted = 1)
+        return Menu(listOf(MenuEntry(ListAct.DELETE), MenuEntry(ListAct.SWITCH), MenuEntry(ListAct.HOME), MenuEntry(ListAct.EDIT)), line = focus, highlighted = 3)
     }
 }
 

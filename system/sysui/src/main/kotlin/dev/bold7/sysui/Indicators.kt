@@ -1,5 +1,6 @@
 package dev.bold7.sysui
 
+import dev.bold7.design.ChargingBolt
 import dev.bold7.design.Strips
 
 // Which indicators of the 9900's banner show, from what Android says. Pure.
@@ -74,12 +75,29 @@ fun roamingImage(s: RadioState): String? = if (s.roaming && s.radio == Radio.IN_
 
 /**
  * net_rim_Indicator_BatteryLevel (50x25), by the rule the home's banner shares (Strips): its column
- * by tenths, "?" (11) for an unknown level; on external power, the row with the plug.
+ * by tenths, "?" (11) for an unknown level; [plugged], the row with the plug.
  */
-fun batteryImage(level: Int, charging: Boolean): String {
+fun batteryImage(level: Int, plugged: Boolean): String {
     val column = Strips.batteryColumn(level)
-    return if (charging) "banner_battery_charging_$column" else "banner_battery_$column"
+    return if (plugged) "banner_battery_charging_$column" else "banner_battery_$column"
 }
+
+private fun percent(raw: Int, scale: Int) = if (raw < 0) -1 else raw * 100 / scale.coerceAtLeast(1)
+
+/**
+ * The same from ACTION_BATTERY_CHANGED's extras ([raw] level on [scale], BatteryManager's [status]):
+ * the plug when full on power, as the home's banner (Strips.batteryRow, BannerSource).
+ */
+fun batteryImage(raw: Int, scale: Int, status: Int): String {
+    val level = percent(raw, scale)
+    return batteryImage(level, plugged = Strips.batteryRow(status, level) == Strips.BATTERY_PLUGGED_ROW)
+}
+
+/** Whether the bolt animates over the battery (ChargingBolt), from the same extras. */
+fun charging(raw: Int, scale: Int, status: Int): Boolean = ChargingBolt.shows(status, percent(raw, scale))
+
+/** lightning_bolt_01 to _05 (18x29) for the bolt's image 1 to 5, none for 0. */
+fun boltImage(image: Int): String? = if (image in 1..5) "banner_bolt_$image" else null
 
 /** Slots of Android's own icons that the banner's radio indicators replace (framework strings status_bar_*). */
 val RADIO_SLOTS = setOf("wifi", "mobile", "airplane")

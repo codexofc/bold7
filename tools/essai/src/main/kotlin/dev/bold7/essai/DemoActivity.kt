@@ -2,7 +2,6 @@ package dev.bold7.essai
 
 import android.app.Activity
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -31,6 +30,7 @@ import dev.bold7.ui.bb10List
 import dev.bold7.ui.confirm
 import dev.bold7.ui.shortcuts
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -186,10 +186,10 @@ class DemoActivity : Activity() {
     /** The short menu's images, sm_*.png of the theme (82x55), decoded off the main thread. */
     private fun loadGlyphs() = decoder.execute {
         val images = mapOf(
-            Act.OPEN to R.drawable.ui_sm_open, Act.DELETE to R.drawable.ui_sm_delete, Act.MARK_OPENED to R.drawable.ui_sm_mark_opened,
-            Act.SEARCH to R.drawable.ui_sm_search, Act.TO_TOP to R.drawable.ui_sm_to_top, Act.TO_BOTTOM to R.drawable.ui_sm_to_bottom,
-            Act.COMPOSE to R.drawable.ui_sm_compose, Act.SWITCH to R.drawable.ui_sm_switch_apps,
-        ).mapValues { BitmapFactory.decodeResource(resources, it.value) }
+            Act.OPEN to "ui_sm_open", Act.DELETE to "ui_sm_delete", Act.MARK_OPENED to "ui_sm_mark_opened",
+            Act.SEARCH to "ui_sm_search", Act.TO_TOP to "ui_sm_to_top", Act.TO_BOTTOM to "ui_sm_to_bottom",
+            Act.COMPOSE to "ui_sm_compose", Act.SWITCH to "ui_sm_switch_apps",
+        ).mapValues { themeBitmap(applicationContext, it.value) }
         runOnUiThread {
             if (isDestroyed) return@runOnUiThread
             images.forEach { (act, bitmap) -> glyphs[act.ordinal] = bitmap }

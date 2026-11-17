@@ -12,7 +12,8 @@ SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "release.sh")
 OPENSSL = shutil.which("openssl", path="/opt/homebrew/bin:/usr/local/bin:" + os.environ.get("PATH", ""))
 PASSWORD = "throwaway-passphrase"
 FIRMWARE = b"not really a 9900 sound"
-PROP = "id=bold7\nname=Bold7\nversion=0.1\nversionCode=1\nauthor=Someone\ndescription=x\n"
+UPDATE = "https://raw.githubusercontent.com/codexofc/bold7/main/update/benos.json"
+PROP = f"id=bold7\nname=Bold7\nversion=0.1\nversionCode=1\nauthor=Someone\ndescription=x\nupdateJson={UPDATE}\n"
 URL = "https://github.com/codexofc/bold7/releases"
 
 
@@ -32,13 +33,14 @@ def openssl_ok():
 class ReleaseTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
-        for d in ("keys", "system/module/release", "system/module/src", "assets-private/bbos7-9900"):
+        for d in ("keys", "system/module/release", "system/module/src", "assets-private/bbos7-9900", "vendor/bold7-camera"):
             os.makedirs(os.path.join(self.root, d))
         self.write("system/module/src/module.prop", PROP)
         self.write("local.properties", f"sdk.dir=/nowhere\nbold7.release.password={PASSWORD}\n")
         self.write("assets-private/bbos7-9900/bbos7-9900.sha256",
                    hashlib.sha256(FIRMWARE).hexdigest() + "  sounds/x/Spirit.m4a\n")
         self.write("notes.md", "- First release.\n")
+        self.write("vendor/bold7-camera/bold7-camera-9.9-src.tar.gz", "the fork's sources")
         key = self.path("keys/bold7-release.pem")
         subprocess.run([OPENSSL, "genpkey", "-algorithm", "ed25519", "-aes-256-cbc", "-pass", "pass:" + PASSWORD,
                         "-out", key], check=True, capture_output=True)
@@ -55,11 +57,11 @@ class ReleaseTest(unittest.TestCase):
         with open(self.path(rel), "w") as f:
             f.write(text)
 
-    def zip(self, version="1.2", code=10200, extra=None):
+    def zip(self, version="1.2-benos", code=10200, extra=None):
         z = self.path("fake.zip")
         with zipfile.ZipFile(z, "w") as f:
             f.writestr("module.prop", PROP.replace("version=0.1", f"version={version}")
-                       .replace("versionCode=1", f"versionCode={code}") + f"updateJson={URL}/latest/download/update.json\n")
+                       .replace("versionCode=1", f"versionCode={code}"))
             f.writestr("customize.sh", "ui_print hello\n")
             for name, data in (extra or {}).items():
                 f.writestr(name, data)
@@ -72,28 +74,37 @@ class ReleaseTest(unittest.TestCase):
     def test_release_files_signed_and_checked(self):
         r = self.release("1.2", self.path("notes.md"))
         self.assertEqual(0, r.returncode, r.stderr)
-        out = self.path("build/release/1.2")
-        self.assertEqual({"bold7.zip", "bold7.zip.sig", "update.json", "update.json.sig", "CHANGELOG.md"}, set(os.listdir(out)))
+        out = self.path("build/release/1.2-benos")
+        zipname = "bold7-1.2-benos.zip"
+        self.assertEqual({zipname, zipname + ".sig", "update.json", "update.json.sig", "CHANGELOG.md",
+                          "bold7-camera-9.9-src.tar.gz"}, set(os.listdir(out)))
         meta = json.loads(read(os.path.join(out, "update.json")))
-        self.assertEqual({"version": "1.2", "versionCode": 10200,
-                          "zipUrl": f"{URL}/download/v1.2/bold7.zip",
-                          "changelog": f"{URL}/download/v1.2/CHANGELOG.md"}, meta)
-        self.assertEqual("# Bold7 1.2\n\n- First release.\n", read(os.path.join(out, "CHANGELOG.md")))
-        for f in ("bold7.zip", "update.json"):
+        self.assertEqual({"version": "1.2-benos", "versionCode": 10200,
+                          "zipUrl": f"{URL}/download/v1.2-benos/{zipname}",
+                          "changelog": f"{URL}/download/v1.2-benos/CHANGELOG.md"}, meta)
+        self.assertEqual(read(os.path.join(out, "update.json")), read(self.path("public/update/benos.json")))
+        self.assertEqual("# Bold7 1.2-benos\n\n- First release.\n", read(os.path.join(out, "CHANGELOG.md")))
+        for f in (zipname, "update.json"):
             v = subprocess.run([OPENSSL, "pkeyutl", "-verify", "-pubin", "-rawin", "-inkey",
                                 self.path("system/module/release/bold7-release.pub"), "-in", os.path.join(out, f),
                                 "-sigfile", os.path.join(out, f + ".sig")], capture_output=True)
             self.assertEqual(0, v.returncode, f)
         prop = read(self.path("system/module/src/module.prop"))
-        self.assertIn("version=1.2\nversionCode=10200\n", prop)
-        self.assertTrue(prop.endswith(f"updateJson={URL}/latest/download/update.json\n"))
-        self.assertIn("gh release create v1.2 --repo codexofc/bold7", r.stdout)
+        self.assertIn("version=1.2-benos\nversionCode=10200\n", prop)
+        self.assertTrue(prop.endswith(f"updateJson={UPDATE}\n"))
+        self.assertIn("gh release create v1.2-benos --repo codexofc/bold7 --draft", r.stdout)
+        self.assertIn(f"'{out}/bold7-camera-9.9-src.tar.gz'", r.stdout)
 
     def assertRefused(self, r, message):
         self.assertNotEqual(0, r.returncode)
         self.assertIn(message, r.stderr)
-        self.assertFalse(os.path.exists(self.path("build/release/1.2/bold7.zip")))
+        self.assertFalse(os.path.exists(self.path("build/release/1.2-benos/bold7-1.2-benos.zip")))
+        self.assertFalse(os.path.exists(self.path("public/update/benos.json")))
         self.assertEqual(PROP, read(self.path("system/module/src/module.prop")), "module.prop not put back")
+
+    def test_no_camera_sources_refused(self):
+        os.remove(self.path("vendor/bold7-camera/bold7-camera-9.9-src.tar.gz"))
+        self.assertRefused(self.release("1.2", self.path("notes.md")), "Camera's sources")
 
     def test_empty_notes_refused(self):
         self.write("notes.md", " \n\n")
@@ -108,13 +119,27 @@ class ReleaseTest(unittest.TestCase):
         self.assertRefused(self.release("1.2", self.path("notes.md"), zip_path=z), "where the development zip puts")
 
     def test_zip_of_another_version_refused(self):
-        z = self.zip(version="1.1", code=10100)
-        self.assertRefused(self.release("1.2", self.path("notes.md"), zip_path=z), "version is '1.1'")
+        z = self.zip(version="1.1-benos", code=10100)
+        self.assertRefused(self.release("1.2", self.path("notes.md"), zip_path=z), "version is '1.1-benos'")
 
     def test_wrong_passphrase_refused(self):
         self.write("local.properties", "bold7.release.password=wrong\n")
-        self.assertRefused(self.release("1.2", self.path("notes.md")), "signing bold7.zip failed")
-        self.assertFalse(os.path.exists(self.path("build/release/1.2")))
+        self.assertRefused(self.release("1.2", self.path("notes.md")), "signing bold7-1.2-benos.zip failed")
+        self.assertFalse(os.path.exists(self.path("build/release/1.2-benos")))
+
+    def test_zip_of_another_line_refused(self):
+        self.write("system/module/src/module.prop", PROP.replace("benos", "lineage24"))
+        # A zip built on the BenOS line, released from the Lineage line: refused.
+        r = self.release("1.2", self.path("notes.md"))
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn("updateJson is", r.stderr)
+        self.assertFalse(os.path.exists(self.path("public/update/lineage24.json")))
+
+    def test_missing_update_json_refused(self):
+        self.write("system/module/src/module.prop", PROP.replace(f"updateJson={UPDATE}\n", ""))
+        r = self.release("1.2", self.path("notes.md"))
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn("not https://raw.githubusercontent.com/codexofc/bold7/main/update/<line>.json", r.stderr)
 
     def test_bad_version_and_downgrade_refused(self):
         self.assertEqual(2, self.release("v1.2", self.path("notes.md")).returncode)

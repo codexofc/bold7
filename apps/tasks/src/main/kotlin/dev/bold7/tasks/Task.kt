@@ -4,6 +4,7 @@ import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
 import dev.bold7.ui.TextAct
 import dev.bold7.ui.matchesWords
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -165,7 +166,7 @@ data object AddTask : Row
 data class Entry(val task: Task) : Row
 
 /** The list's actions: its full menu (sim-281, sim-282, C) and short menu (D). */
-enum class ListAct { NEW, OPEN, DELETE, DELETE_COMPLETED, COMPLETE, PROGRESS, HIDE, SHOW, OPTIONS, CLOSE, SWITCH }
+enum class ListAct { NEW, OPEN, DELETE, DELETE_COMPLETED, COMPLETE, PROGRESS, HIDE, SHOW, OPTIONS, HELP, CLOSE, SWITCH }
 
 sealed interface ListEvent {
     data class Loaded(val tasks: List<Task>, val sort: SortBy = SortBy.SUBJECT) : ListEvent
@@ -246,7 +247,7 @@ data class TaskList(
             add(MenuEntry(ListAct.OPTIONS, separatorAbove = true))
             add(MenuEntry(ListAct.CLOSE))
         }
-        return Menu(entries, highlighted = if (t != null) 1 else 0).withSwitchApplication(ListAct.SWITCH)
+        return Menu(entries, highlighted = if (t != null) 1 else 0).withHelp(ListAct.HELP, before = ListAct.CLOSE).withSwitchApplication(ListAct.SWITCH)
     }
 
     /** The short menu on a task: Delete, Mark Completed when open, then Open by Full Menu, focused (D); none on Add Task. */

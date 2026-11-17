@@ -11,7 +11,7 @@ import com.android.systemui.toast.ToastFactory
 // HookTargets.kt. Never run.
 @Suppress("unused", "UNUSED_VARIABLE")
 private fun toastTargets(factory: ToastFactory, context: Context) {
-    val toast: SystemUIToast = factory.createToast(context, "", "", 0, 0)
+    val toast: SystemUIToast = factory.createToast(context, context, "", "", 0, 0)
     val plugin: `ToastPlugin$Toast`? = toast.mPluginToast
     val view: View = toast.mToastView
     val fadeIn: Animator? = toast.mInAnimator

@@ -1,7 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- A Vector module, nothing to launch: Vector reads META-INF/xposed/ from the APK. -->
+    <!-- The Bold7 logo, on Vector's card of the module. -->
     <application
+        android:icon="@mipmap/bold7_logo"
         android:label="Bold7 SystemUI"
+        android:roundIcon="@mipmap/bold7_logo"
+        tools:replace="android:icon,android:roundIcon"
         android:description="@string/description">
     </application>
 </manifest>

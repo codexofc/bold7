@@ -9,11 +9,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Region
 import android.os.Handler
+import android.os.LocaleList
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -24,10 +27,10 @@ import android.view.ViewGroup
 import android.view.ViewParent
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import io.github.libxposed.api.XposedInterface.Chain
+import io.github.libxposed.api.XposedInterface.HookHandle
 import io.github.libxposed.api.XposedInterface.Hooker
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
@@ -35,13 +38,14 @@ import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 import io.github.libxposed.api.error.HookFailedError
 import java.io.File
 import java.io.IOException
-import java.lang.ref.WeakReference
 import java.lang.reflect.Executable
 import java.lang.reflect.Field
+import dev.bold7.design.OS7_LOCALE
 import dev.bold7.design.ShellColors
 import java.lang.reflect.Method
 import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.zip.ZipFile
 
 private const val SYSTEMUI = "com.android.systemui"
 internal const val TAG = "Bold7/SystemUI"
@@ -52,6 +56,13 @@ internal const val TAG = "Bold7/SystemUI"
 private const val FAULT_TAG = "Bold7GuardFault"
 
 /**
+ * Every hook below belongs to a group of hook-targets.tsv (statusbar, battery, statusicons,
+ * volume, hearing, powermenu, shutdown, scrim, toast, palette, splash, clipboard, bouncer,
+ * lockface, placecall, shade, shut, headsup), resolved at SystemUI's start ([resolve]) and
+ * installed whole or not at all ([group]). On LineageOS 24, placecall and splash are off:
+ * their targets are gone (L6 rewrites them). The battery group leaves out Android's charging
+ * chip and low battery notification (installBattery); the bar's battery is BatteryImage.
+ *
  * The 9900's banner over apps where a resource cannot do it (system/overlays/android gives the
  * bar its 67 px and the indicators' order, system/overlays/systemui its black): the banner's two
  * lines, the theme's indicator images, which SystemUI could only tint in one color. Nine hooks,
@@ -64,43 +75,41 @@ private const val FAULT_TAG = "Bold7GuardFault"
  *   BannerView, HubCounts);
  * - KeyguardStatusBarView.onFinishInflate()V: the lock screen's bar, clipped away while the
  *   9900's face draws its banner in its place (LockFace);
- * - StatusBarWifiView, StatusBarMobileView and StatusBarIconView .isIconVisible()Z: false for
- *   Android's radio icons in those two bars, which now have ours ([androidIconShown]);
- * - BatteryMeterView.onBatteryLevelChanged(IZ)V: the 9900's battery, in the status bar only;
+ * - ModernStatusBarView (the Wi-Fi's and the mobile network's) and StatusBarIconView
+ *   .isIconVisible()Z: false for Android's radio icons in those two bars, which now have ours
+ *   ([androidIconShown]);
  * - Clock.getSmallTime() and CommandQueue.onSystemBarAttributesChanged: the banner's time, no
  *   black under the keyguard, no bar of Android over the home's banner ([installStatusBar]);
- * - CentralSurfacesCommandQueueCallbacks.showTransient(IIZ)V: on the home, the bar a swipe from
- *   the top shows is hidden again at once (shade hooks);
- * - HeadsUpAppearanceController.hide(View;I;Lambda)V, instead of Android's for the time only: a
- *   pinned notification no longer wipes it (its text, which would replace it, stays hidden).
+ * - StatusBarModePerDisplayRepositoryImpl$commandQueueCallback$1.showTransient(IIZ)V: on the
+ *   home, the bar a swipe from the top shows is hidden again at once (shade hooks);
  * Then four for the status icons ([installStatusIcons]).
  *
- * Then the volume overlay and the power key's dialog, six hooks ([installVolume], [installPowerMenu]):
- * - VolumeDialogImpl.-$$Nest$mshowH(VolumeDialogImpl;IZI)V, instead of Android's: the 9900's
- *   volume overlay, Android's dialog whenever it cannot show;
- * - VolumeDialogImpl.onStateChangedH(State)V and dismissH(I)V, after: refresh and hide it;
- * - VolumePanelFactory.create()V, instead of Android's, and VolumeDialogImpl.initSettingsH(I)V,
- *   after: no panel of every stream's slider, no settings button in the fallback.
- * - GlobalActionsDialogLite$ActionsDialogLite.onCreate(Bundle)V, after: OS 7's dialog over
- *   Android's menu, running Android's own actions.
+ * Then the volume overlay and the power key's dialog, three hooks ([installVolume], [installPowerMenu]):
+ * - VolumeDialogPluginViewModel$launchVolumeDialog$1.invoke(Object;Object)Object, instead of
+ *   Android's on a Visible: the 9900's volume overlay drawing the controller's state, Android's
+ *   dialog whenever it cannot show;
+ * - VolumePanelGlobalStateInteractor.setVisible(Z)V, instead of Android's when true: no panel of
+ *   every stream's slider.
+ * - GlobalActionsDialogLite$ActionsDialogLiteDelegate.onCreate(Dialog;Bundle)V, after: OS 7's
+ *   dialog over Android's menu, running Android's own actions.
  *
  * Then Android's warnings of a loud headset, two hooks ([installHearingWarnings]):
- * - VolumeDialogImpl$5.start()V (SafetyWarningDialog, folded there by R8) and
- *   CsdWarningDialog.start()V, after: OS 7's dialog over Android's, its buttons clicking
- *   Android's (HearingWarnings).
+ * - SafetyWarningDialogDelegate.onStart(Dialog)V and CsdWarningDialogDelegate.onStart(Dialog)V,
+ *   after: OS 7's dialog over Android's, its buttons clicking Android's (HearingWarnings).
  *
  * Then the screen while the phone powers off or restarts, one hook ([installShutdown]):
- * - GlobalActionsImpl.showShutdownUi(Z;String)V, instead of Android's: black, OS 7's busy clock
- *   (ShutdownScreen); Android's screen for a restart into recovery and whenever ours fails.
+ * - GlobalActionsImpl.showShutdownUi(Z;String;Z)V, instead of Android's: black, OS 7's busy clock
+ *   (ShutdownScreen); Android's screen for a restart into recovery, LineageOS's advanced restart
+ *   and whenever ours fails.
  *
  * Then the toasts, one hook ([installToasts]):
- * - ToastFactory.createToast(Context;CharSequence;String;II)SystemUIToast, after: OS 7's status
+ * - ToastFactory.createToast(Context;Context;CharSequence;String;II)SystemUIToast, after: OS 7's status
  *   message on the view and animators Android just built (Toasts); the place and the framework's
  *   own toasts are the framework overlay's.
  *
  * Then the shade's scrim, one hook ([installScrim]):
  * - ScrimController.updateThemeColors()V, after: black as the scrims' colour (mColors) and every
- *   ScrimState's surface, in place of the light ones Android puts behind its shade.
+ *   ScrimState's surfaces, in place of the light ones Android puts behind its shade.
  *
  * Then the apps' starting window, one hook ([installSplash]):
  * - PhoneStartingWindowTypeAlgorithm.getSuggestedWindowType(StartingWindowInfo)I, after: no
@@ -110,10 +119,10 @@ private const val FAULT_TAG = "Bold7GuardFault"
  * - ClipboardListener.onPrimaryClipChanged()V, instead of Android's: no « copied » preview at the
  *   bottom left, as on the 9900. The clipboard itself is untouched.
  *
- * Then the lock screen, fifteen hooks ([installLock], [installLockFace], [installPlaceCall]): the
+ * Then the lock screen, sixteen hooks ([installLock], [installLockFace], [installPlaceCall]): the
  * 9900's banner, counters, padlock and owner's information, its password entry over the bouncer
  * and over the SIM's PIN and PUK, never the bouncer's input nor its checks, the wallpaper whole
- * under the device's (ScrimController.applyState), and the Call key opening the Phone's Place Call
+ * under the device's (ScrimController.applyState$*), and the Call key opening the Phone's Place Call
  * (NotificationShadeWindowView.dispatchKeyEvent).
  *
  * Then the shade without Android's notifications, six hooks ([installShade], ShadeHooks.kt):
@@ -125,14 +134,15 @@ private const val FAULT_TAG = "Bold7GuardFault"
  * hook) nor at an app's request, as on the 9900; bold7_android_shade=1 gives it back.
  *
  * Then no heads-up card but for calls, alarms and full screen intents, one hook ([installHeadsUp],
- * HeadsUp.kt): after NotificationInterruptStateProviderImpl.checkHeadsUp.
+ * HeadsUp.kt): after VisualInterruptionDecisionProviderImpl.makeLoggablePeekDecision.
  *
  * No custom quick settings panel, tiles or instant previews: Android's quick settings are used.
  *
  * Its second scope, Google Messages' main process: none of the above, only the
  * bridge that opens ExternalMessagingApiService to Messages of Bold7 and hands Google Messages'
  * consent page to the launcher's Setup screen ([installMessagesBridge]), logged under Bold7/MessagesBridge. One Vector module for both: one APK to install, scope and
- * remove, and the same switches (bold7 mounted, fault injection) turn both off.
+ * remove, and the same switches (bold7 mounted, fault injection) turn both off. The bridge goes in
+ * on its contract ([bridgeAllowed]); its rows (group messages) are checked on the Mac only.
  */
 class SysuiModule : XposedModule() {
     private var installed = 0
@@ -140,18 +150,22 @@ class SysuiModule : XposedModule() {
     // wmshell.splashscreen).
     private val failed = AtomicInteger()
     private var images: Images? = null
-    private var statusBarBattery = WeakReference<View>(null)
     private val bouncer = Bouncer(::images, ::fail)
     private val face = LockFace(::images, ::fail, bouncer)
     private val main by lazy { Handler(Looper.getMainLooper()) }
-    private var batteryIcon: Field? = null
     /** The StatusIconContainer of each dressed bar, by the bar's name; weak, bars get re-inflated. */
     private val dressedIcons = WeakHashMap<ViewParent, String>()
     private val loggedHidden = HashSet<String>()
     private val layout = StatusBarLayout(::fail)
+    private val password = PasswordScreen(::images, ::fail)
 
     private var process = ModuleProcess.NONE
     private var tag = TAG
+
+    /** The table resolved at SystemUI's start ([resolve]). */
+    private var targets: TargetResolution? = null
+    /** Its groups going in whole or not at all ([group]); none in Google Messages' process. */
+    private var groups: GroupInstaller<HookHandle>? = null
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         process = moduleProcess(param.processName)
@@ -175,71 +189,116 @@ class SysuiModule : XposedModule() {
             }
             PackageReady.INSTALL -> Unit
         }
-        val apk = param.applicationInfo.sourceDir
-        val start = SystemClock.elapsedRealtime()
-        val actual = try {
-            apkFingerprint(readApkEntries(apk))
-        } catch (e: IOException) {
-            diag(Log.ERROR, "guard: cannot read $apk, no hooks", e)
-            return
-        }
-        val took = SystemClock.elapsedRealtime() - start
         val fault = Log.isLoggable(FAULT_TAG, Log.VERBOSE)
         val mounted = File(BOLD7_MOUNT_WITNESS).exists()
-        if (!hooksAllowed(actual, fault, mounted)) {
-            diag(Log.WARN, "guard: no hooks, fingerprint=$actual expected=$EXPECTED_SYSTEMUI_FINGERPRINT fault=$fault bold7Mounted=$mounted apk=$apk (${took} ms)")
+        if (!hooksAllowed(fault, mounted)) {
+            diag(Log.WARN, "guard: no hooks, fault=$fault bold7Mounted=$mounted")
             return
         }
-        diag(Log.INFO, "guard: fingerprint matches ($actual, ${took} ms), installing hooks (first=${param.isFirstPackage})")
         val loader = param.classLoader
-        after("$STATUS_BAR_VIEW.onFinishInflate()V", { loader.loadClass(STATUS_BAR_VIEW).getDeclaredMethod("onFinishInflate") }) { chain, result ->
-            result.also { dress(chain.thisObject as ViewGroup) }
+        if (!resolve(loader) { it != MESSAGES_GROUP }) return
+        group("statusbar") {
+            after("$STATUS_BAR_VIEW.onFinishInflate()V", { loader.loadClass(STATUS_BAR_VIEW).getDeclaredMethod("onFinishInflate") }) { chain, result ->
+                result.also { dress(chain.thisObject as ViewGroup) }
+            }
+            after("$KEYGUARD_BAR_VIEW.onFinishInflate()V", { loader.loadClass(KEYGUARD_BAR_VIEW).getDeclaredMethod("onFinishInflate") }) { chain, result ->
+                result.also { face.onKeyguardBar(chain.thisObject as View) }
+            }
+            // The Wi-Fi's and the mobile network's views, by their slot (wifi, mobile).
+            var modernSlot: Method? = null
+            after("$MODERN_ICON_VIEW.isIconVisible()Z + getSlot()", {
+                val cls = loader.loadClass(MODERN_ICON_VIEW)
+                modernSlot = cls.getDeclaredMethod("getSlot")
+                cls.getDeclaredMethod("isIconVisible")
+            }) { chain, shown ->
+                val view = chain.thisObject as View
+                if (shown as Boolean && view.parent in dressedIcons) radioIconShown(view, modernSlot!!.invoke(view) as String?, true) else shown
+            }
+            var iconSlot: Method? = null
+            after("$ICON_VIEW.isIconVisible()Z + getSlot()", {
+                val cls = loader.loadClass(ICON_VIEW)
+                iconSlot = cls.getDeclaredMethod("getSlot")
+                cls.getDeclaredMethod("isIconVisible")
+            }) { chain, shown ->
+                val view = chain.thisObject as View
+                // Notification icons go through here too: the slot is read only in a dressed bar.
+                if (shown as Boolean && view.parent in dressedIcons) radioIconShown(view, iconSlot!!.invoke(view) as String?, true) else shown
+            }
+            installStatusBar(loader)
         }
-        after("$KEYGUARD_BAR_VIEW.onFinishInflate()V", { loader.loadClass(KEYGUARD_BAR_VIEW).getDeclaredMethod("onFinishInflate") }) { chain, result ->
-            result.also { face.onKeyguardBar(chain.thisObject as View) }
+        group("battery") { installBattery(loader, ::instead) }
+        group("statusicons") { installStatusIcons(loader, ::images, ::fail, ::after) { it in dressedIcons } }
+        group("volume") { installVolume(loader) }
+        group("hearing") { installHearingWarnings(loader) }
+        group("powermenu") { installPowerMenu(loader) }
+        group("shutdown") { installShutdown(loader) }
+        group("scrim") { installScrim(loader) }
+        group("toast") { installToasts(loader) }
+        group("palette") { installSystemPalette(loader, ::fail, ::after, ::instead) }
+        group("splash") { installSplash(loader) }
+        group("clipboard") { installClipboard(loader) }
+        group("bouncer") { installLock(loader) }
+        group("lockface") { installLockFace(loader) }
+        group("placecall") { installPlaceCall(loader, ::after) }
+        group("shade") { installShade(loader, targets!!, ::fail, ::after, ::instead, ::withArgs) }
+        group("shut") { installShut(loader, targets!!, ::after, ::instead, ::replace) }
+        group("headsup") { installHeadsUp(loader, targets!!, ::after) }
+        // Not a hook, and nothing of SystemUI read: outside the groups and the table.
+        installPassword()
+        val groups = groups!!
+        diag(Log.INFO, "hooks installed=$installed failed=$failed groups on=${groups.on.size} off=${groups.off.size}" +
+            if (groups.off.isEmpty()) "" else " (${groups.off.keys.joinToString()})")
+    }
+
+    /**
+     * The guard (TargetTable.kt): the table read from this module's APK and resolved against the
+     * classes [loader] sees, its rows of the groups [mine]. False, and no hook, when the table
+     * cannot be read.
+     */
+    private fun resolve(loader: ClassLoader, mine: (String) -> Boolean): Boolean {
+        val start = SystemClock.elapsedRealtime()
+        val rows = try {
+            ZipFile(moduleApplicationInfo.sourceDir).use { zip ->
+                val entry = zip.getEntry(TARGETS_ENTRY) ?: throw IOException("$TARGETS_ENTRY not in ${moduleApplicationInfo.sourceDir}")
+                parseTargetRows(zip.getInputStream(entry).bufferedReader().readText())
+            }
+        } catch (e: IOException) {
+            diag(Log.ERROR, "guard: no hooks, the table is unreadable", e)
+            return false
+        } catch (e: IllegalArgumentException) {
+            diag(Log.ERROR, "guard: no hooks, the table is unreadable", e)
+            return false
         }
-        after("$WIFI_VIEW.isIconVisible()Z", { loader.loadClass(WIFI_VIEW).getDeclaredMethod("isIconVisible") }) { chain, shown ->
-            radioIconShown(chain.thisObject as View, "wifi", shown as Boolean)
-        }
-        after("$MOBILE_VIEW.isIconVisible()Z", { loader.loadClass(MOBILE_VIEW).getDeclaredMethod("isIconVisible") }) { chain, shown ->
-            radioIconShown(chain.thisObject as View, "mobile", shown as Boolean)
-        }
-        var iconSlot: Method? = null
-        after("$ICON_VIEW.isIconVisible()Z + getSlot()", {
-            val cls = loader.loadClass(ICON_VIEW)
-            iconSlot = cls.getDeclaredMethod("getSlot")
-            cls.getDeclaredMethod("isIconVisible")
-        }) { chain, shown ->
-            val view = chain.thisObject as View
-            // Notification icons go through here too: the slot is read only in a dressed bar.
-            if (shown as Boolean && view.parent in dressedIcons) radioIconShown(view, iconSlot!!.invoke(view) as String?, true) else shown
-        }
-        after("$BATTERY_VIEW.onBatteryLevelChanged(IZ)V + mBatteryIconView", {
-            val cls = loader.loadClass(BATTERY_VIEW)
-            batteryIcon = cls.getField("mBatteryIconView")
-            cls.getDeclaredMethod("onBatteryLevelChanged", Int::class.java, Boolean::class.java)
-        }) { chain, result ->
-            result.also {
-                val view = chain.thisObject
-                if (view === statusBarBattery.get()) showBattery(view as View, chain.args[0] as Int, chain.args[1] as Boolean)
+        val resolution = resolveTargets(rows.filter { mine(it.group) }, LoaderMembers(loader))
+        targets = resolution
+        groups = GroupInstaller(resolution) { it.unhook() }
+        val off = resolution.groups.filter { resolution.off(it) != null }
+        diag(Log.INFO, "guard: build ${Build.DISPLAY} (${Build.VERSION.INCREMENTAL}), ${resolution.groups.size - off.size} of ${resolution.groups.size} groups whole, " +
+            "${SystemClock.elapsedRealtime() - start} ms${if (off.isEmpty()) "" else ", off: ${off.joinToString()}"}")
+        return true
+    }
+
+    /**
+     * Installs the hooks [block] puts in as one group: none when the table says a target of it is
+     * missing in this build, and none either, those already in undone, when anything fails while
+     * it installs them (a hook the table does not name, a target or member not found, a refusal of
+     * Vector). Each group off is counted and said, with why.
+     */
+    private fun group(name: String, block: () -> Unit) {
+        val groups = groups!!
+        // Not `installed -= groups.run…`: Kotlin reads `installed` before the block counts its hooks,
+        // which reset the count to 0, so that SystemUI's next onPackageReady hooked everything again.
+        val undone = groups.run(name) {
+            try {
+                block()
+            } catch (e: RuntimeException) {
+                fail("group $name: install failed", e)
+            } catch (e: ReflectiveOperationException) {
+                fail("group $name: install failed", e)
             }
         }
-        installStatusBar(loader)
-        installStatusIcons(loader, ::images, ::fail, ::after) { it in dressedIcons }
-        installVolume(loader)
-        installHearingWarnings(loader)
-        installPowerMenu(loader)
-        installShutdown(loader)
-        installScrim(loader)
-        installToasts(loader)
-        installSystemPalette(loader, ::fail, ::after, ::instead)
-        installSplash(loader)
-        installClipboard(loader)
-        installLock(loader)
-        installShade(loader, ::fail, ::after, ::instead, ::withArgs)
-        installShut(loader, ::after, ::instead, ::replace)
-        installHeadsUp(loader, ::after)
-        diag(Log.INFO, "hooks installed=$installed failed=$failed")
+        installed -= undone
+        groups.off[name]?.let { diag(Log.WARN, "group $name off: $it") }
     }
 
     /** What StatusBarLayout needs from Android once the bar is arranged. */
@@ -250,58 +309,31 @@ class SysuiModule : XposedModule() {
         after("$COMMAND_QUEUE.onSystemBarAttributesChanged(...)V + $BAR_BACKGROUND.mOverrideAlpha", { layout.barAttributesTarget(loader) }) { chain, result ->
             result.also { layout.onBarAttributes(chain.args[0] as Int, chain.args[6] as String?) }
         }
-        instead("$HEADS_UP_APPEARANCE.hide(View;I;Lambda)V", { layout.headsUpHideTarget(loader) }) { chain ->
-            layout.keptShown(chain.getArg(0) as View?)
-        }
-        after("$SURFACES_CALLBACKS.showTransient(IIZ)V + IWindowManager.hideTransientBars(I)V", { layout.transientTarget(loader) }) { chain, result ->
+        after("$TRANSIENT_CALLBACK.showTransient(IIZ)V + IWindowManager.hideTransientBars(I)V", { layout.transientTarget(loader) }) { chain, result ->
             result.also { layout.onTransient(chain.getArg(0) as Int, chain.getArg(1) as Int) }
         }
     }
 
     /**
-     * The 9900's volume overlay in place of Android's dialog: the show is replaced last, and only
-     * once the hooks that refresh and hide the overlay are in, so that it never shows without them.
-     * Any missing piece leaves Android's dialog as it is.
+     * The 9900's volume overlay in place of LineageOS's dialog (VolumeHud), Android's whenever the
+     * overlay cannot show. OS 7 has no panel of every stream's slider (volumes are set in Options,
+     * Sounds and Ringtones): the panel opens nowhere, neither from the broadcast of
+     * Settings.Panel.ACTION_VOLUME nor from the settings button of Android's dialog when it shows
+     * in the overlay's place (VolumePanelGlobalStateInteractor.setVisible(true) is the only way to
+     * it). Any missing piece leaves Android's dialog and panel as they are.
      */
     private fun installVolume(loader: ClassLoader) {
         val hud = try {
             VolumeHud(loader, ::images, ::fail)
         } catch (e: ReflectiveOperationException) {
-            fail("hook target missing: $VOLUME_DIALOG (volume HUD), Android's dialog kept", e)
+            fail("hook target missing: $VOLUME_LAUNCH (volume HUD), Android's dialog kept", e)
             return
         }
-        val refresh = after("$VOLUME_DIALOG.onStateChangedH(State)V", { hud.onStateChangedH }) { chain, result ->
-            result.also { hud.update(chain.thisObject!!) }
+        instead("$VOLUME_PANEL_STATE.setVisible(Z)V", { loader.loadClass(VOLUME_PANEL_STATE).getDeclaredMethod("setVisible", Boolean::class.java) }) { chain ->
+            (chain.getArg(0) as Boolean).also { if (it) Log.i(TAG, "volume: Android's panel not opened") }
         }
-        val hide = after("$VOLUME_DIALOG.dismissH(I)V", { hud.dismissH }) { _, result -> result.also { hud.hide() } }
-        if (!refresh || !hide) {
-            Log.w(TAG, "volume: Android's dialog kept")
-            return
-        }
-        // Before, not after: showing Android's dialog then hiding it would draw it for nothing.
-        if (instead("$VOLUME_DIALOG.$VOLUME_SHOW(VolumeDialogImpl;IZI)V", { hud.showH }) { chain -> hud.show(chain.getArg(0)) }) installVolumePanel(loader)
-    }
-
-    /**
-     * OS 7 has no panel of every stream's slider (volumes are set in Options, Sounds and Ringtones):
-     * the panel opens nowhere, neither from the settings button of Android's dialog nor from the
-     * broadcast of Settings.Panel.ACTION_VOLUME (VolumePanelFactory.create is the only way to it).
-     * Only once the overlay is in, so that a volume never loses its visual feedback: Android's
-     * dialog, when the overlay falls back to it, loses its settings button as well.
-     */
-    private fun installVolumePanel(loader: ClassLoader) {
-        instead("$VOLUME_PANEL_FACTORY.create()V", { loader.loadClass(VOLUME_PANEL_FACTORY).getDeclaredMethod("create") }) {
-            Log.i(TAG, "volume: Android's panel not opened")
-            true
-        }
-        val settings = try {
-            loader.loadClass(VOLUME_DIALOG).getField("mSettingsView")
-        } catch (e: ReflectiveOperationException) {
-            fail("hook target missing: $VOLUME_DIALOG.mSettingsView (settings button of the fallback dialog)", e)
-            return
-        }
-        after("$VOLUME_DIALOG.initSettingsH(I)V", { loader.loadClass(VOLUME_DIALOG).getDeclaredMethod("initSettingsH", Int::class.java) }) { chain, result ->
-            result.also { (settings.get(chain.thisObject) as View?)?.visibility = View.GONE }
+        replace("$VOLUME_LAUNCH.invoke(Object;Object)Object", { hud.invoke }) { chain ->
+            if (hud.onVisibility(chain.thisObject!!, chain.getArg(0))) Unit else null
         }
     }
 
@@ -313,8 +345,8 @@ class SysuiModule : XposedModule() {
             fail("hook target missing: $ACTIONS_DIALOG (power menu), Android's menu kept", e)
             return
         }
-        after("$ACTIONS_DIALOG.onCreate(Bundle)V", { screen.onCreate }) { chain, result ->
-            result.also { screen.dress(chain.thisObject as Dialog) }
+        after("$ACTIONS_DIALOG.onCreate(Dialog;Bundle)V", { screen.onCreate }) { chain, result ->
+            result.also { screen.dress(chain.thisObject!!, chain.getArg(0) as Dialog) }
         }
     }
 
@@ -326,11 +358,11 @@ class SysuiModule : XposedModule() {
             fail("hook target missing: $SAFE_VOLUME_DIALOG or $CSD_DIALOG (hearing warnings), Android's kept", e)
             return
         }
-        after("$SAFE_VOLUME_DIALOG.start()V", { warnings.safeVolumeStart }) { chain, result ->
-            result.also { warnings.dress(chain.thisObject as AlertDialog, HearingWarning.SAFE_VOLUME) }
+        after("$SAFE_VOLUME_DIALOG.onStart(Dialog)V", { warnings.safeVolumeStart }) { chain, result ->
+            result.also { warnings.dress(chain.getArg(0) as AlertDialog, HearingWarning.SAFE_VOLUME) }
         }
-        after("$CSD_DIALOG.start()V", { warnings.csdStart }) { chain, result ->
-            result.also { warnings.dress(chain.thisObject as AlertDialog, HearingWarning.CSD) }
+        after("$CSD_DIALOG.onStart(Dialog)V", { warnings.csdStart }) { chain, result ->
+            result.also { warnings.dress(chain.getArg(0) as AlertDialog, HearingWarning.CSD) }
         }
     }
 
@@ -342,29 +374,30 @@ class SysuiModule : XposedModule() {
             fail("hook target missing: $GLOBAL_ACTIONS_IMPL (shutdown screen), Android's kept", e)
             return
         }
-        instead("$GLOBAL_ACTIONS_IMPL.showShutdownUi(Z;String)V", { screen.showShutdownUi }) { chain ->
-            screen.show(chain.thisObject!!, chain.getArg(0) as Boolean, chain.getArg(1) as String?)
+        instead("$GLOBAL_ACTIONS_IMPL.showShutdownUi(Z;String;Z)V", { screen.showShutdownUi }) { chain ->
+            screen.show(chain.thisObject!!, chain.getArg(0) as Boolean, chain.getArg(1) as String?, chain.getArg(2) as Boolean)
         }
     }
 
     /**
      * The black under the quick settings. Android paints its scrims (behind the shade, behind
      * its notifications) in the theme's colorBackgroundFloating (mColors, #FAFAFA in the light
-     * theme) and tints some states with its surface (materialColorSurface, system_surface_light):
+     * theme) and tints some states with its surfaces (LineageOS 24: the shade panel's, the
+     * notifications' and the bouncer's, ScrimState.setShadePanelColor and its two siblings):
      * white through the middle of a pull of the shade and over the lock screen. OS 7 has no
      * notification list in the shade (ShadeHooks hides Android's in the unlocked shade, not the
      * locked one); the scrims are set to black again after each theme change.
      */
     private fun installScrim(loader: ClassLoader) {
-        var setSurface: Method? = null
+        var setSurfaces: List<Method> = emptyList()
         var states: Array<*>? = null
         var colors: Field? = null
         var setMain: Method? = null
         var setSecondary: Method? = null
         var setDarkText: Method? = null
-        after("$SCRIM_CONTROLLER.updateThemeColors()V + mColors, $SCRIM_STATE.setSurfaceColor(I)V", {
+        after("$SCRIM_CONTROLLER.updateThemeColors()V + mColors, $SCRIM_STATE.set{ShadePanel,NotificationScrim,BouncerSurface}Color(I)V", {
             val state = loader.loadClass(SCRIM_STATE)
-            setSurface = state.getMethod("setSurfaceColor", Int::class.javaPrimitiveType)
+            setSurfaces = listOf("setShadePanelColor", "setNotificationScrimColor", "setBouncerSurfaceColor").map { state.getMethod(it, Int::class.javaPrimitiveType) }
             states = state.enumConstants
             val controller = loader.loadClass(SCRIM_CONTROLLER)
             colors = controller.getField("mColors")
@@ -380,7 +413,7 @@ class SysuiModule : XposedModule() {
                 setMain!!.invoke(gradient, black)
                 setSecondary!!.invoke(gradient, black)
                 setDarkText!!.invoke(gradient, false)
-                states!!.forEach { setSurface!!.invoke(it, black) }
+                states!!.forEach { state -> setSurfaces.forEach { it.invoke(state, black) } }
             }
         }
     }
@@ -393,7 +426,7 @@ class SysuiModule : XposedModule() {
             fail("hook target missing: $SYSTEMUI_TOAST (toasts), Android's kept", e)
             return
         }
-        after("$TOAST_FACTORY.createToast(Context;CharSequence;String;II)SystemUIToast", { toasts.createToast }) { _, toast ->
+        after("$TOAST_FACTORY.createToast(Context;Context;CharSequence;String;II)SystemUIToast", { toasts.createToast }) { _, toast ->
             toast.also { toasts.dress(it!!) }
         }
     }
@@ -420,13 +453,13 @@ class SysuiModule : XposedModule() {
     }
 
     /**
-     * The 9900's password entry over Android's bouncer (Bouncer), four hooks, never its checks.
-     * After KeyguardPINView.onFinishInflate()V, KeyguardPasswordView.onFinishInflate()V and
-     * KeyguardSimPinPukMeView.onFinishInflate()V: the cover of OS 7 over the device's
-     * PIN or password and over MediaTek's view of the SIM's PIN and PUK (never the pattern); around
-     * KeyguardPinBasedInputView.onKeyDown(I;KeyEvent)Z: the key code of the number a Q25 letter key
-     * carries, Android handling it from there (the SIM's view only while covered). Then the face
-     * ([installLockFace]).
+     * The 9900's password entry over Android's bouncer (Bouncer), five hooks, never its checks.
+     * After KeyguardPINView.onFinishInflate()V, KeyguardPasswordView.onFinishInflate()V,
+     * KeyguardSimPinView.onFinishInflate()V and KeyguardSimPukView.onFinishInflate()V: the cover of
+     * OS 7 over the device's PIN or password and over the SIM's PIN and PUK (never a pattern: the 9900 had none);
+     * around KeyguardPinBasedInputView.onKeyDown(I;KeyEvent)Z: the key code of the number a Q25
+     * letter key carries, Android handling it from there (the SIM's views only while covered). The
+     * SIM's views are in this group: without the keys, the cover would hide their only pad.
      */
     private fun installLock(loader: ClassLoader) {
         val pin = "$KEYGUARD_PIN_VIEW.onFinishInflate()V"
@@ -439,42 +472,39 @@ class SysuiModule : XposedModule() {
             val view = chain.thisObject as ViewGroup
             result.also { onMain(password) { bouncer.dress(view, ::find) } }
         }
-        val sim = "$KEYGUARD_SIM_VIEW.onFinishInflate()V"
-        after(sim, { bouncer.simTarget(loader) }) { chain, result ->
-            val view = chain.thisObject as ViewGroup
-            result.also { onMain(sim) { bouncer.dress(view, ::find) } }
+        for (cls in listOf(KEYGUARD_SIM_PIN_VIEW, KEYGUARD_SIM_PUK_VIEW)) {
+            val sim = "$cls.onFinishInflate()V"
+            after(sim, { bouncer.simTarget(loader, cls) }) { chain, result ->
+                val view = chain.thisObject as ViewGroup
+                result.also { onMain(sim) { bouncer.dress(view, ::find) } }
+            }
         }
         withArgs("$KEYGUARD_PIN_BASED_VIEW.onKeyDown(I;KeyEvent)Z", { bouncer.pinKeyTarget(loader) }) { chain ->
             bouncer.pinKeyArgs(chain.thisObject!!, chain.getArg(0) as Int, chain.getArg(1) as KeyEvent?)
         }
-        installLockFace(loader)
-        installPlaceCall(loader, ::after)
     }
 
     /**
-     * The 9900's face of the lock screen (LockFace), ten hooks. After LockIconView.onFinishInflate()V
-     * and KeyguardBottomAreaView.onFinishInflate()V (the face, at the top of the bottom area); then,
-     * only with the face, instead of NotificationStackScrollLayout.dispatchDraw(Canvas)V and
-     * onDraw(Canvas)V (not drawn on the lock screen itself, Android's drawing everywhere else and
-     * whenever the face is not there), of its onInterceptTouchEvent(MotionEvent)Z and
-     * onTouchEvent(MotionEvent)Z (untouched where undrawn) and getChildAtRawPosition(FF) (no unseen
-     * row under a pull of the shade), of KeyguardStatusView.dispatchDraw(Canvas)V (Android's clock
-     * undrawn where the stack is), and after KeyguardIndicationTextView.setNextIndication()V (its
-     * text in a clear colour) and ScrimController.applyState()V (no darkening under the face nor
-     * under OS 7's entry). The keyguard bar is clipped from its own hook (onFinishInflate).
+     * The 9900's face of the lock screen (LockFace), nine hooks. After
+     * NotificationShadeWindowView.onAttachedToWindow()V (the face, right above keyguard_root_view);
+     * then, only with the face, instead of ConstraintLayout.dispatchDraw(Canvas)V (the keyguard's
+     * root undrawn on the lock screen itself: clock, date, indications, device entry icon), of
+     * NotificationStackScrollLayout.dispatchDraw(Canvas)V and onDraw(Canvas)V (not drawn on the lock
+     * screen itself, Android's drawing everywhere else and whenever the face is not there), of its
+     * onInterceptTouchEvent(MotionEvent)Z and onTouchEvent(MotionEvent)Z (untouched where undrawn)
+     * and getChildAtRawPosition(FF) (no unseen row under a pull of the shade), and after
+     * ScrimController.applyState$*()V (no darkening under the face nor under OS 7's entry). The
+     * keyguard bar is clipped from its own hook (onFinishInflate, group statusbar).
      */
     private fun installLockFace(loader: ClassLoader) {
-        val icon = "$LOCK_ICON_VIEW.onFinishInflate()V"
-        after(icon, { face.lockIconTarget(loader) }) { chain, result ->
-            val view = chain.thisObject as View
-            result.also { onMain(icon) { face.onLockIcon(view) } }
-        }
-        val area = "$KEYGUARD_BOTTOM_AREA.onFinishInflate()V"
-        val added = after(area, { face.bottomAreaTarget(loader) }) { chain, result ->
+        val window = "$SHADE_WINDOW_VIEW.onAttachedToWindow()V"
+        val added = after(window, { face.windowTarget(loader) }) { chain, result ->
             val view = chain.thisObject as ViewGroup
-            result.also { onMain(area) { face.addFace(view, ::find) } }
+            // Posted: the window's children are still being attached to it.
+            result.also { view.post { guarded(window, Unit) { face.addFace(view) } } }
         }
         if (!added) return
+        instead("$CONSTRAINT_LAYOUT.dispatchDraw(Canvas)V", { face.rootDrawTarget(loader) }) { chain -> face.skipRoot(chain.thisObject) }
         for (name in listOf("dispatchDraw", "onDraw")) {
             instead("$NOTIFICATION_STACK.$name(Canvas)V", { face.stackTarget(loader, name, Canvas::class.java) }) { chain ->
                 face.skipStack(chain.thisObject as ViewGroup, dispatch = name == "dispatchDraw")
@@ -493,11 +523,7 @@ class SysuiModule : XposedModule() {
         instead("$NOTIFICATION_STACK.getChildAtRawPosition(FF)ExpandableView", { face.stackTarget(loader, "getChildAtRawPosition", Float::class.javaPrimitiveType!!, Float::class.javaPrimitiveType!!) }) {
             face.noRowUnderFinger()
         }
-        instead("$KEYGUARD_STATUS_VIEW.dispatchDraw(Canvas)V", { face.statusViewDrawTarget(loader) }) { face.skipStatusView() }
-        after("$KEYGUARD_INDICATION_TEXT.setNextIndication()V", { face.indicationTarget(loader) }) { chain, result ->
-            result.also { face.hideIndication(chain.thisObject as TextView) }
-        }
-        after("$SCRIM_CONTROLLER.applyState()V + mState, mBehindAlpha, mNotificationsAlpha, mQsExpansion, mTransitionToFullShadeProgress", { face.scrimTarget(loader) }) { chain, result ->
+        after("$SCRIM_CONTROLLER.applyState$*()V + mState, mBehindAlpha, mNotificationsAlpha, mQsExpansion, mTransitionToFullShadeProgress", { face.scrimTarget(loader, targets!!.method(loader, SCRIM_CONTROLLER, "applyState$*")) }) { chain, result ->
             result.also { face.clearScrims(chain.thisObject!!) }
         }
     }
@@ -516,6 +542,18 @@ class SysuiModule : XposedModule() {
      * replaced, nothing is written to its data. Goes in on the contract ([bridgeAllowed]), not on
      * a fingerprint.
      */
+    /**
+     * Options' device password (PasswordScreen): no hook, a receiver registered once SystemUI's
+     * Application exists, which the main thread's next message finds (onPackageReady runs while
+     * the application is bound, before its onCreate).
+     */
+    private fun installPassword() = main.post {
+        guarded("password: receiver", Unit) {
+            val app = android.app.ActivityThread.currentApplication() ?: return@guarded fail("password: no Application, Options' password off")
+            password.register(app)
+        }
+    }
+
     private fun installMessagesBridge(loader: ClassLoader) {
         val service = try {
             Class.forName(MESSAGES_API_SERVICE, false, loader)
@@ -605,11 +643,22 @@ class SysuiModule : XposedModule() {
         if (changed == null) chain.proceed() else chain.proceed(changed)
     }
 
-    /** A missing target is counted, never thrown. */
+    /**
+     * A missing target is counted, never thrown. In SystemUI, the method must be one of the open
+     * group's hooks in the table, as resolved ([TargetResolution.hooks]): the code cannot hook what
+     * the table does not say, and the group goes off with it.
+     */
     private fun install(target: String, find: () -> Executable, hooker: Hooker): Boolean = try {
-        hook(find()).intercept(hooker)
-        installed++
-        true
+        val method = find()
+        val refused = groups?.refused(method.declaringClass.name, method.name, params(method.parameterTypes))
+        if (refused != null) {
+            fail("$refused ($target)")
+            false
+        } else {
+            groups.put { hook(method).intercept(hooker) }
+            installed++
+            true
+        }
     } catch (e: ReflectiveOperationException) {
         fail("hook target missing: $target", e)
         false
@@ -629,6 +678,8 @@ class SysuiModule : XposedModule() {
     }
 
     private fun fail(what: String, e: Throwable? = null) {
+        // While a group installs, on its thread (not a hook running elsewhere): the group goes off.
+        groups?.failed(what)
         val count = failed.incrementAndGet()
         diag(Log.ERROR, "$what (installed=$installed failed=$count)", e)
     }
@@ -654,16 +705,35 @@ class SysuiModule : XposedModule() {
     /** The status bar as the 9900's banner (StatusBarLayout). */
     private fun dress(bar: ViewGroup) {
         val images = images(bar.context) ?: return
-        val battery = find(bar, "battery") ?: return
+        val battery = androidBattery(bar, images) ?: return
         val banner = BannerView(bar.context, images, BannerKind.APP, ::fail)
-        if (!layout.arrange(bar, banner) { find(bar, it) }) return
+        if (!layout.arrange(bar, banner) { if (it == "battery") battery else find(bar, it) }) return
         find(bar, "statusIcons")?.let {
             dressedIcons[it as ViewParent] = bar.javaClass.simpleName
             it.requestLayout()
             Log.i(TAG, "blocked: ${RADIO_SLOTS.joinToString()} on statusIcons of ${bar.javaClass.simpleName}")
         }
         Log.i(TAG, "dressed ${bar.javaClass.simpleName}")
-        statusBarBattery = WeakReference(battery)
+    }
+
+    /**
+     * The bar's battery: Android 14's BatteryMeterView (@id/battery, BenOS), or, on LineageOS 24,
+     * the 9900's ([BatteryImage]) put at the end of system_icons, where Lineage adds its Compose
+     * battery (@id/battery_composable_view) after the inflation: that one is taken out each time
+     * it comes.
+     */
+    private fun androidBattery(bar: ViewGroup, images: Images): View? {
+        val id = { name: String -> bar.resources.getIdentifier(name, "id", SYSTEMUI) }
+        id("battery").takeIf { it != 0 }?.let { bar.findViewById<View>(it) }?.let { return it }
+        val icons = find(bar, "system_icons") as? ViewGroup ?: return null
+        val compose = id("battery_composable_view")
+        val drop = { v: View -> if (compose != 0 && v.id == compose) icons.post { (v.parent as? ViewGroup)?.removeView(v) } }
+        for (i in 0 until icons.childCount) drop(icons.getChildAt(i))
+        icons.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: View, child: View) = drop(child)
+            override fun onChildViewRemoved(parent: View, child: View) = Unit
+        })
+        return BatteryImage(bar.context, images, ::fail).also { icons.addView(it, ViewGroup.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)) }
     }
 
     private fun find(root: View, id: String): View? {
@@ -672,25 +742,15 @@ class SysuiModule : XposedModule() {
             ?: null.also { fail("view target missing: @id/$id in ${root.javaClass.name}") }
     }
 
-    /** The 9900's battery (batteryImage), on power with its plug; [charging] is Android's "plugged in". */
-    private fun showBattery(view: View, level: Int, charging: Boolean) {
-        val icon = batteryIcon!!.get(view) as ImageView
-        val drawable = Indicator((images ?: return)[batteryImage(level, charging)])
-        icon.setImageDrawable(drawable)
-        // BatteryMeterView sizes the icon for Android's own battery (scaleBatteryMeterViews).
-        val lp = icon.layoutParams as ViewGroup.MarginLayoutParams
-        if (lp.width != drawable.intrinsicWidth || lp.height != drawable.intrinsicHeight || lp.bottomMargin != 0) {
-            lp.width = drawable.intrinsicWidth
-            lp.height = drawable.intrinsicHeight
-            lp.setMargins(0, 0, 0, 0)
-            icon.layoutParams = lp
-        }
-    }
-
-    // Simplification: read once on SystemUI's main thread, at the first inflation (a few ms for this
-    // small APK); a background load if it ever shows in a trace.
+    // Simplification: the module's resources opened once on SystemUI's main thread, at the first
+    // inflation (a few ms for this small APK); the images themselves decode on core/theme's thread.
     private fun images(context: Context): Images? = images ?: try {
-        Images(context.packageManager.getResourcesForApplication(moduleApplicationInfo)).also { images = it }
+        // In OS 7's language, core/ui's strings included, while SystemUI and what stays
+        // Android's in it speak the phone's. Only the locales are overridden: the rest (density,
+        // night mode, font scale) follows SystemUI's configuration, its changes included.
+        val os7 = Configuration().apply { setLocales(LocaleList(OS7_LOCALE)) }
+        val res = context.packageManager.getResourcesForApplication(moduleApplicationInfo, os7)
+        Images(res, context) { fail("theme image missing: $it, drawn empty") }.also { images = it }
     } catch (e: PackageManager.NameNotFoundException) {
         fail("module resources unreadable", e)
         null

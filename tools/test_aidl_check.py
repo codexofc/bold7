@@ -2,7 +2,7 @@
 import re
 import unittest
 
-from aidl_check import Interface, Method, compare, parse_aidl, parse_dexdump
+from aidl_check import Interface, Method, best, compare, decode_switch_data, parse_aidl, parse_dexdump
 
 OVERVIEW_AIDL = """/*
  * Copyright (C) 2017 The Android Open Source Project
@@ -152,6 +152,106 @@ Class #550            -
   source_file_idx   : 13057 (IRecentTasks.java)
 """
 
+# The same, as R8 leaves it in Lineage's Launcher3 (dexdump -d): no DESCRIPTOR field, no
+# TRANSACTION_* constants; the Proxy writes the descriptor and loads the code itself.
+DEXDUMP_R8 = """Class #5577            -
+  Class descriptor  : 'Lcom/android/wm/shell/shared/IShellTransitions;'
+  Access flags      : 0x0601 (PUBLIC INTERFACE ABSTRACT)
+  Static fields     -
+  Instance fields   -
+  Direct methods    -
+  Virtual methods   -
+    #0              : (in Lcom/android/wm/shell/shared/IShellTransitions;)
+      name          : 'getOverviewOverlayContainer'
+      type          : '(I)Landroid/view/SurfaceControl;'
+      access        : 0x0401 (PUBLIC ABSTRACT)
+      code          : (none)
+
+    #1              : (in Lcom/android/wm/shell/shared/IShellTransitions;)
+      name          : 'registerRemote'
+      type          : '(Landroid/window/RemoteTransition;)V'
+      access        : 0x0401 (PUBLIC ABSTRACT)
+      code          : (none)
+
+Class #5578            -
+  Class descriptor  : 'Lcom/android/wm/shell/shared/IShellTransitions$Stub$Proxy;'
+  Access flags      : 0x0011 (PUBLIC FINAL)
+  Static fields     -
+  Instance fields   -
+  Direct methods    -
+  Virtual methods   -
+    #2              : (in Lcom/android/wm/shell/shared/IShellTransitions$Stub$Proxy;)
+      name          : 'getOverviewOverlayContainer'
+      type          : '(I)Landroid/view/SurfaceControl;'
+      access        : 0x0001 (PUBLIC)
+      code          -
+38c1c0: 1a02 2976                              |000c: const-string v2, "com.android.wm.shell.shared.IShellTransitions" // string@7629
+38c1c4: 6e20 b806 2000                         |000e: invoke-virtual {v0, v2}, Landroid/os/Parcel;.writeInterfaceToken:(Ljava/lang/String;)V // method@06b8
+38c1ca: 6e20 b606 4000                         |0011: invoke-virtual {v0, v4}, Landroid/os/Parcel;.writeInt:(I)V // method@06b6
+38c1d4: 1304 0900                              |0016: const/16 v4, #int 9 // #9
+38c1d8: 1202                                   |0018: const/4 v2, #int 0 // #0
+38c1da: 7252 7e06 4310                         |0019: invoke-interface {v3, v4, v0, v1, v2}, Landroid/os/IBinder;.transact:(ILandroid/os/Parcel;Landroid/os/Parcel;I)Z // method@067e
+38c1e0: 6e10 a306 0100                         |001c: invoke-virtual {v1}, Landroid/os/Parcel;.readException:()V // method@06a3
+
+    #3              : (in Lcom/android/wm/shell/shared/IShellTransitions$Stub$Proxy;)
+      name          : 'registerRemote'
+      type          : '(Landroid/window/RemoteTransition;)V'
+      access        : 0x0001 (PUBLIC)
+      code          -
+38c2c0: 1a01 2976                              |0008: const-string v1, "com.android.wm.shell.shared.IShellTransitions" // string@7629
+38c2c4: 6e20 b806 1000                         |000a: invoke-virtual {v0, v1}, Landroid/os/Parcel;.writeInterfaceToken:(Ljava/lang/String;)V // method@06b8
+38c2d4: 1214                                   |0016: const/4 v4, #int 1 // #1
+38c2d6: 1221                                   |0017: const/4 v1, #int 2 // #2
+38c2da: 7254 7e06 4310                         |0019: invoke-interface {v3, v1, v0, v2, v4}, Landroid/os/IBinder;.transact:(ILandroid/os/Parcel;Landroid/os/Parcel;I)Z // method@067e
+
+  source_file_idx   : 8361 (IShellTransitions.java)
+"""
+
+# A Stub alone (Lineage's Launcher3 implements ILauncherProxy, SystemUI's R8 inlined its Proxy):
+# the codes are the keys of onTransact's switch, its payload decoded by decode_switch_data; a
+# case that writes no reply is oneway.
+DEXDUMP_STUB = """Class #5575            -
+  Class descriptor  : 'Lx/IFoo;'
+  Access flags      : 0x0601 (PUBLIC INTERFACE ABSTRACT)
+  Virtual methods   -
+    #0              : (in Lx/IFoo;)
+      name          : 'ping'
+      type          : '(I)V'
+      access        : 0x0401 (PUBLIC ABSTRACT)
+    #1              : (in Lx/IFoo;)
+      name          : 'toggle'
+      type          : '()V'
+      access        : 0x0401 (PUBLIC ABSTRACT)
+    #2              : (in Lx/IFoo;)
+      name          : 'ask'
+      type          : '()I'
+      access        : 0x0401 (PUBLIC ABSTRACT)
+
+Class #5576            -
+  Class descriptor  : 'Lx/IFoo$Stub;'
+  Access flags      : 0x0401 (PUBLIC ABSTRACT)
+  Virtual methods   -
+    #1              : (in Lx/IFoo$Stub;)
+      name          : 'onTransact'
+      type          : '(ILandroid/os/Parcel;Landroid/os/Parcel;I)Z'
+      access        : 0x0001 (PUBLIC)
+      code          -
+37f37c: 1a01 1176                              |0008: const-string v1, "x.IFoo" // string@7611
+37f380: 6e20 9b06 1400                         |000a: invoke-virtual {v4, v1}, Landroid/os/Parcel;.enforceInterface:(Ljava/lang/String;)V // method@069b
+37f386: 2b03 a101 0000                         |000d: packed-switch v3, 00000030 // +00000023
+37f38c: 6f56 2f06 3254                         |0010: invoke-super {v2, v3, v4, v5, v6}, Landroid/os/Binder;.onTransact:(ILandroid/os/Parcel;Landroid/os/Parcel;I)Z // method@062f
+37f392: 0f02                                   |0013: return v2
+37f394: 6e10 a506 0400                         |0015: invoke-virtual {v4}, Landroid/os/Parcel;.readInt:()I // method@06a5
+37f3b4: 7230 a0a4 3205                         |0018: invoke-interface {v2, v3}, Lx/IFoo;.ping:(I)V // method@a4a0
+37f3ba: 2900 8601                              |001b: goto/16 002d // +0012
+37f3bc: 7210 aea4 0200                         |001d: invoke-interface {v2}, Lx/IFoo;.ask:()I // method@a4ae
+37f3c0: 6e10 a506 0500                         |0020: invoke-virtual {v5}, Landroid/os/Parcel;.writeNoException:()V // method@06a5
+37f3c4: 2900 8601                              |0023: goto/16 002d // +000a
+37f3c6: 7210 aea4 0200                         |0025: invoke-interface {v2}, Lx/IFoo;.toggle:()V // method@a4ae
+37f3cc: 0f00                                   |002d: return v0
+37f3ce: 0001 0400 0700 0000 0800 0000 1000 ... |0030: switch-data 7:8 8:3 9:16 10:24
+"""
+
 
 class ParseAidlTest(unittest.TestCase):
     def test_explicit_ids_are_offset_by_first_call_transaction(self):
@@ -231,6 +331,46 @@ class ParseDexdumpTest(unittest.TestCase):
             "com.android.wm.shell.recents.IRecentTasks.registerRecentTasksListener: "
             "oneway unknown on device (no Stub$Proxy)"
         ])
+
+    def test_r8_codes_and_descriptor_come_from_the_proxy_code(self):
+        fq = "com.android.wm.shell.shared.IShellTransitions"
+        self.assertEqual(parse_dexdump(DEXDUMP_R8.splitlines(), {fq}), {fq: Interface(fq, {
+            "getOverviewOverlayContainer": Method(9, ("I",), "Landroid/view/SurfaceControl;", False),
+            "registerRemote": Method(2, ("Landroid/window/RemoteTransition;",), "V", True),
+        })})
+
+    def test_best_prefers_the_apk_that_holds_the_proxy(self):
+        fq = "com.android.wm.shell.shared.IShellTransitions"
+        with_proxy = parse_dexdump(DEXDUMP_R8.splitlines(), {fq})[fq]
+        stub_only = Interface(None, {m: Method(None, x.params, x.ret, None) for m, x in with_proxy.methods.items()})
+        self.assertEqual(best([stub_only, with_proxy]), with_proxy)
+        self.assertEqual(best([with_proxy, stub_only]), with_proxy)
+        self.assertIsNone(best([]))
+
+    def test_stub_alone_codes_come_from_the_switch_and_oneway_from_the_reply(self):
+        self.assertEqual(parse_dexdump(DEXDUMP_STUB.splitlines(), {"x.IFoo"}), {"x.IFoo": Interface("x.IFoo", {
+            "ping": Method(7, ("I",), "V", True),
+            "ask": Method(9, (), "I", False),
+            "toggle": Method(10, (), "V", True),
+        })})
+
+    def test_switch_payloads_are_decoded_from_the_dex(self):
+        dex = bytes(0x20) + bytes.fromhex("0001 0200 0700 0000 0800 0000 1000 0000".replace(" ", "")) \
+            + bytes.fromhex("0002 0200 0700 0000 6600 0000 0800 0000 1000 0000".replace(" ", ""))
+        line = "000020: 0001 0200 0700 0000 0800 0000 1000 ... |0030: packed-switch-data (8 units)\n"
+        self.assertEqual(decode_switch_data(line, dex), "000020: |0030: switch-data 7:8 8:16\n")
+        line = "000030: 0002 0200 0700 0000 6600 0000 0800 ... |0040: sparse-switch-data (10 units)\n"
+        self.assertEqual(decode_switch_data(line, dex), "000030: |0040: switch-data 7:8 102:16\n")
+        self.assertEqual(decode_switch_data("|0000: nop\n", dex), "|0000: nop\n")
+
+    def test_small_stub_compares_the_code_instead_of_a_switch(self):
+        dump = DEXDUMP_STUB.replace(
+            "|000d: packed-switch v3, 00000030 // +00000023",
+            "|000c: const/4 v0, #int 7 // #7\n|000d: if-eq v3, v0, 0015 // +0008")
+        dump = re.sub(r"\n.*switch-data.*", "", dump)
+        found = parse_dexdump(dump.splitlines(), {"x.IFoo"})["x.IFoo"]
+        self.assertEqual(found.methods["ping"], Method(7, ("I",), "V", True))
+        self.assertIsNone(found.methods["ask"].code)
 
     def test_absent_interface_is_absent(self):
         self.assertEqual(parse_dexdump(DEXDUMP.splitlines(), {"a.b.IMissing"}), {})

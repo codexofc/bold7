@@ -33,7 +33,7 @@ class RealFirmwareTest {
             val rt = Runtime.getRuntime()
             val start = System.nanoTime()
             var peak = 0L
-            Extractor(table, soundTable).extract(input, to) { _, _ -> peak = maxOf(peak, rt.totalMemory() - rt.freeMemory()) }
+            Extractor(table, soundTable, File(root, "apps/saisie/src/main/assets/dictionary")).extract(input, to) { _, _ -> peak = maxOf(peak, rt.totalMemory() - rt.freeMemory()) }
             println("${input.name}: %.1f s, heap peak seen %d MB".format((System.nanoTime() - start) / 1e9, peak shr 20))
             return true
         }
@@ -53,7 +53,8 @@ class RealFirmwareTest {
     private fun assertTreeIsTheReference(tree: File, name: String) {
         val sums = File(root, "assets-private/$name/$name.sha256").readLines()
             .associate { it.substring(66) to it.substring(0, 64) }
-        assertEquals(sums.keys.toSortedSet(), files(tree))
+        // ling/ and help/: Typing's lists and the help, which tools/extract-bbos7.py does not write.
+        assertEquals(sums.keys.toSortedSet(), files(tree).filterNot { it.startsWith("ling/") || it.startsWith("help/") }.toSortedSet())
         val wrong = sums.filter { (path, sum) -> sha(File(tree, path)) != sum }.keys
         assertTrue(wrong.isEmpty(), "different bytes: ${wrong.take(10)}")
     }
@@ -74,7 +75,7 @@ class RealFirmwareTest {
     /** The files of assets-gen/ the ported blocks write, by path prefix. */
     private val blocks = listOf("launcher/res/drawable-nodpi/", "android/", "permissioncontroller/", "sysui/res/drawable-nodpi/banner_", "sysui/res/drawable-nodpi/lock_", "sysui/res/drawable-nodpi/vol_", "sysui/res/drawable-nodpi/shutdown_") +
         listOf("ui", "essai", "messages", "phone", "clock", "calendar", "contacts", "calculator", "memopad", "tasks", "pictures").map { "$it/res/drawable-nodpi/" } +
-        listOf("module/system/fonts/BBAlpha", "module/system/fonts-os7/", "sounds/", "wallpapers/")
+        listOf("module/system/fonts/BBAlpha", "module/system/fonts-os7/", "sounds/", "wallpapers/", "help/")
 
     /** Cut from captures of the simulator, not from the firmware: not ported yet. */
     private val fromCaptures = setOf("clock/res/drawable-nodpi/clk_alarm_add.png", "calendar/res/drawable-nodpi/cal_allday.png")
@@ -98,6 +99,80 @@ class RealFirmwareTest {
         }
     }
 
+    /**
+     * The 1,173 pages of the help (Assets.help, docs/YK.md): each a whole HTML document whose
+     * title is the one searchContent.txt gives its page, and all of them the bytes RIM's own decoder
+     * gave, run on the same pages (digest of every page, name then bytes, in name order).
+     */
+    @Test
+    fun helpIsDecoded() {
+        assumeTrue("no OS Loader in assets-private/firmware", ran)
+        val help = File(out, "gen/help")
+        val pages = help.listFiles { f -> f.name.endsWith(".html") }!!.sortedBy { it.name }
+        assertEquals(1173, pages.size)
+        val titles = File(help, "searchContent.txt").readLines().filter { '|' in it }
+            .associate { it.substringBefore('|') to it.split('|')[1] }
+        val md = MessageDigest.getInstance("SHA-256")
+        for (p in pages) {
+            val html = p.readText()
+            assertTrue(html.startsWith("<!DOCTYPE html") && html.trimEnd().endsWith("</html>"), p.name)
+            assertBalanced(html, p.name)
+            if (p.name != "index.html") assertEquals(titles[p.name], unescape(Regex("<title>(.*?)</title>", RegexOption.DOT_MATCHES_ALL).find(html)!!.groupValues[1].trim()), p.name)
+            md.update((p.name + "\n").toByteArray())
+            md.update(p.readBytes())
+        }
+        assertEquals("ccd7b11ddaeb8962750cdec92c91ae5e351dbd3ebf4cd71779897a598a12c4c9", md.digest().joinToString("") { "%02x".format(it) })
+        assertTrue(File(help, "style.css").isFile && File(help, "theme/cat_help_getting_started.png").isFile)
+    }
+
+    private fun unescape(s: String) = s.replace("&lt;", "<").replace("&gt;", ">").replace("&#34;", "\"").replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&")
+
+    /** Every element closed in order, HTML's empty ones (meta, link, br, img…) aside. */
+    private fun assertBalanced(html: String, name: String) {
+        val empty = setOf("meta", "link", "br", "img", "hr", "input", "col", "area", "base", "param", "wbr")
+        val open = ArrayDeque<String>()
+        for (m in Regex("<(/?)([A-Za-z][A-Za-z0-9]*)[^>]*?(/?)>").findAll(html.replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), ""))) {
+            val tag = m.groupValues[2].lowercase()
+            when {
+                m.groupValues[1] == "/" -> assertEquals(tag, open.removeLastOrNull(), "$name: </$tag>")
+                m.groupValues[3] != "/" && tag !in empty -> open.addLast(tag)
+            }
+        }
+        assertTrue(open.isEmpty(), "$name: unclosed $open")
+    }
+
+    /** OS 7's part of Typing, the same bytes as tools/import-assets.sh saisie writes (Assets.saisie). */
+    @Test
+    fun saisieIsImportAssets() {
+        assumeTrue("no OS Loader in assets-private/firmware", ran)
+        for (p in listOf("saisie/assets/os7/substitution/en.tsv", "saisie/assets/os7/dictionary/fr.tsv")) {
+            val ref = File(root, "assets-gen/$p")
+            assumeTrue("no $ref: tools/import-assets.sh saisie", ref.isFile)
+            assertTrue(File(out, "gen/$p").readBytes().contentEquals(ref.readBytes()), p)
+        }
+    }
+
+    /**
+     * Every image the development build reads by name (assets-gen/<bloc>/res/, to which each module's
+     * tests hold the names its code asks for) is one the extraction makes, or one in git
+     * (src/main/res/drawable* of a module), which the public APK carries: the public install draws no
+     * image empty. Drawn for Bold7 (D) means in git.
+     */
+    @Test
+    fun everyImageIsExtractedOrInGit() {
+        assumeTrue("no OS Loader in assets-private/firmware", ran)
+        val gen = File(out, "gen")
+        val inGit = listOf("apps", "core", "system", "tools").flatMap { d ->
+            File(root, d).walkTopDown().onEnter { it.name != "build" }
+                .filter { it.isFile && it.parentFile.name.startsWith("drawable") && it.parentFile.parentFile.path.endsWith("src/main/res") }
+                .map { it.name }.toList()
+        }.toSet()
+        val read = File(root, "assets-gen").listFiles { f -> File(f, "res").isDirectory }.orEmpty()
+            .flatMap { b -> files(File(b, "res")).map { "${b.name}/res/$it" } }
+        assertTrue(read.isNotEmpty())
+        assertEquals(emptyList(), read.filterNot { File(gen, it).isFile || File(it).name in inGit })
+    }
+
     /** The sounds the module lays, each its firmware source unchanged (Assets.sons). */
     @Test
     fun moduleSoundsAreTheSources() {
@@ -111,13 +186,16 @@ class RealFirmwareTest {
         }
     }
 
-    /** The simulator is a second source: every block finds what it reads there, but the YouTube icon. */
+    /**
+     * The simulator is a second source: every block finds what it reads there, but the YouTube icon
+     * and the help, whose edition there grows its grammar page by page (docs/YK.md, section 7).
+     */
     @Test
     fun simulatorGivesEveryBlock() {
         assumeTrue("no simulator in assets-private/firmware", simRan)
         val a = files(File(out, "gen"))
         val b = files(File(simOut, "gen"))
-        assertEquals(a - "launcher/res/drawable-nodpi/bbos7_youtube.png", b)
+        assertEquals(a.filterNot { it.startsWith("help/") }.toSet() - "launcher/res/drawable-nodpi/bbos7_youtube.png", b.toSet())
         val differ = b.filter { !File(out, "gen/$it").readBytes().contentEquals(File(simOut, "gen/$it").readBytes()) }
         println("simulator gen: ${b.size} files, ${differ.size} different from the loader's: $differ")
     }

@@ -9,9 +9,10 @@
 -dontwarn android.app.ITaskStackListener
 -dontwarn android.app.TaskStackListener
 -dontwarn android.app.WindowConfiguration
--dontwarn android.view.IRecentsAnimationController
--dontwarn android.view.IRecentsAnimationRunner
--dontwarn android.view.IRecentsAnimationRunner$Stub
+-dontwarn android.app.contextualsearch.ContextualSearchConfig
+-dontwarn android.os.IRemoteCallback
+-dontwarn android.os.IRemoteCallback$Stub
+-dontwarn android.view.InsetsState
 -dontwarn android.view.RemoteAnimationTarget
 -dontwarn android.window.IRemoteTransition
 -dontwarn android.window.IRemoteTransition$Stub
@@ -23,6 +24,7 @@
 -dontwarn android.window.TransitionInfo
 -dontwarn android.window.TransitionInfo$Change
 -dontwarn android.window.TransitionInfo$Root
+-dontwarn android.window.WindowAnimationState
 -dontwarn android.window.WindowContainerTransaction
 -dontwarn com.android.internal.app.LocalePicker
 
@@ -34,4 +36,6 @@
     public void onTaskRemoved(...);
     public void startAnimation(...);
     public void mergeAnimation(...);
+    public void takeOverAnimation(...);
+    public void onTransitionConsumed(...);
 }

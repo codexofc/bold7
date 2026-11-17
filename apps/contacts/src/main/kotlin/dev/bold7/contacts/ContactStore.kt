@@ -1,6 +1,8 @@
 package dev.bold7.contacts
 
 import android.graphics.Bitmap
+import dev.bold7.showcase.CallType
+import dev.bold7.showcase.Channel
 import dev.bold7.showcase.Showcase
 import dev.bold7.showcase.isAvatar
 import dev.bold7.showcase.pick
@@ -13,6 +15,9 @@ interface ContactStore {
     fun card(id: Long): Card?
 
     fun stored(id: Long): List<Stored>
+
+    /** The card's recent calls and texts, newest first; null when they cannot be read (the box is then hidden). */
+    fun activity(card: Card): List<Recent>?
 
     /** The contact's id, null when refused. */
     fun save(id: Long?, changes: List<Change>): Long?
@@ -39,7 +44,21 @@ private class ShowcaseContacts(private val picture: (String) -> Bitmap?) : Conta
     override fun card(id: Long): Card? {
         val p = Showcase.people.firstOrNull { it.id == id } ?: return null
         val company = listOf(p.jobTitle, p.company).filter { it.isNotEmpty() }.joinToString(", ").takeIf { p.company.isNotEmpty() }.orEmpty()
-        return Card(id, p.name, company, details(p).map { (key, label, value, dataId) -> Detail(kindOf(key), label, value, dataId) }, p.groups, p.photo)
+        return Card(id, p.name, company, details(p).map { (key, label, value, dataId) -> Detail(kindOf(key), label, value, dataId) }, p.photo)
+    }
+
+    override fun activity(card: Card): List<Recent> {
+        val now = System.currentTimeMillis()
+        val calls = Showcase.calls.filter { it.person == card.id }.map {
+            Recent(when (it.type) {
+                CallType.PLACED -> ActivityKind.CALL_OUT
+                CallType.MISSED -> ActivityKind.CALL_MISSED
+                CallType.RECEIVED -> ActivityKind.CALL_IN
+            }, now - it.minutesAgo * 60_000L)
+        }
+        val texts = Showcase.threads.filter { it.channel == Channel.TEXT && card.id in it.members }
+            .flatMap { t -> t.messages.map { Recent(if (it.out) ActivityKind.TEXT_OUT else ActivityKind.TEXT_IN, now - it.minutesAgo * 60_000L) } }
+        return recentActivity(calls + texts)
     }
 
     override fun stored(id: Long): List<Stored> {

@@ -59,7 +59,8 @@ fun sorted(pictures: List<Picture>, sort: Sort): List<Picture> = pictures.sorted
  * Library "0 Items"; on the 9900 it is the pictures folder of the device and of the card).
  */
 fun categories(all: List<Picture>, sort: Sort, cameraTitle: String, libraryTitle: String): List<Category> {
-    val folders = all.filterNot(::isCamera).groupBy { it.bucketId }.values
+    // A folder MediaStore gives no name (the storage's root) is no row of its own: its pictures are in Picture Library.
+    val folders = all.filterNot(::isCamera).filter { it.bucket.isNotBlank() }.groupBy { it.bucketId }.values
         .map { Category(Source.Folder(it.first().bucketId), it.first().bucket, sorted(it, sort)) }
         .sortedWith(compareBy<Category> { it.title.lowercase() }.thenBy { (it.source as Source.Folder).bucketId })
     return listOf(

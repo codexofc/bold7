@@ -67,15 +67,17 @@ class FramesModel(
 
     /**
      * Brings [taskId] back to the front, its window grown by [animation] if any; [done] is called
-     * on [io] once the system has answered, whatever it said. A task the system refused (gone
+     * on [io] once the system has answered, with whether it started the task. A task the system refused (gone
      * meanwhile) is synced away.
      */
-    fun open(taskId: Int, animation: OpeningAnimation? = null, done: () -> Unit = {}) {
+    fun open(taskId: Int, animation: OpeningAnimation? = null, done: (opened: Boolean) -> Unit = {}) {
         scope.launch(work) {
+            var opened = false
             try {
-                if (!tasks.open(taskId, animation)) requestSync()
+                opened = tasks.open(taskId, animation)
+                if (!opened) requestSync()
             } finally {
-                done()
+                done(opened)
             }
         }
     }

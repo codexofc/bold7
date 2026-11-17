@@ -16,15 +16,16 @@ import dev.bold7.ui.mnemonic
 import java.lang.reflect.Method
 
 /**
- * OS 7's dialog over Android's power menu (GlobalActionsDialogLite.ActionsDialogLite): the 9900
+ * OS 7's dialog over Android's power menu (GlobalActionsDialogLite.ActionsDialogLiteDelegate): the 9900
  * powered off at once when its key was held (manual p. 301, B), and asked Full Power Off or Turn
  * Off only with Auto On/Off set; Bold7 always asks, with Android's power off, restart and
  * emergency behind the buttons (D). The dialog is core/ui's own (DialogView, sim-19, sim-47),
  * its images read from this module's resources. Android keeps the dialog, its window, its
  * dismissal (back, screen off, system dialogs closed), the list of actions and every rule behind
  * it (keyguard, provisioning, user restrictions, trust revoked on the keyguard): the dialog only
- * shows some of Android's actions and runs them through Android's own adapter
- * (MyAdapter.onClickItem: dismiss, then the action's onPress). It never adds one.
+ * shows some of Android's actions and runs them as Android's adapter does on a click (dismiss,
+ * then the action's onPress: MyAdapter.onClickItem, which R8 folded into its click lambdas on
+ * LineageOS 24). It never adds one.
  */
 internal class PowerMenuScreen(
     loader: ClassLoader,
@@ -33,16 +34,16 @@ internal class PowerMenuScreen(
     /** Told while the dialog's window is up: the status bar stays as it was under it (barKept). */
     private val shown: (Boolean) -> Unit,
 ) {
-    val onCreate: Method = loader.loadClass(ACTIONS_DIALOG).getDeclaredMethod("onCreate", android.os.Bundle::class.java)
+    val onCreate: Method = loader.loadClass(ACTIONS_DIALOG).getDeclaredMethod("onCreate", Dialog::class.java, android.os.Bundle::class.java)
     private val adapters = listOf("mAdapter", "mOverflowAdapter", "mPowerOptionsAdapter").map { loader.loadClass(ACTIONS_DIALOG).getField(it) }
-    private val onClickItem = loader.loadClass(ACTIONS_ADAPTER).getMethod("onClickItem", Int::class.java)
+    private val onPress = loader.loadClass(POWER_ACTION).getMethod("onPress")
 
-    /** After Android's onCreate: our dialog over Android's menu, which stays underneath, hidden. */
-    fun dress(dialog: Dialog) {
+    /** After Android's onCreate of [delegate]'s [dialog]: our dialog over Android's menu, which stays underneath, hidden. */
+    fun dress(delegate: Any, dialog: Dialog) {
         val images = images(dialog.context) ?: return
         val offered = LinkedHashMap<PowerAction, Pair<BaseAdapter, Any>>()
         for (field in adapters) {
-            val adapter = field.get(dialog) as BaseAdapter
+            val adapter = field.get(delegate) as BaseAdapter
             for (i in 0 until adapter.count) {
                 val item = adapter.getItem(i)
                 powerAction(item.javaClass.name)?.let { offered.putIfAbsent(it, adapter to item) }
@@ -50,7 +51,7 @@ internal class PowerMenuScreen(
         }
         val buttons = powerButtons(offered.keys)
         val labels = buttons.map { images.text(label(it)) }
-        val view = DialogView(images.context(dialog.context), images.text(R.string.power_question), labels, DialogIcon.QUESTION)
+        val view = DialogView(images.context, images.text(R.string.power_question), labels, DialogIcon.QUESTION)
         view.focused = powerFocus(buttons)
         val content = dialog.findViewById<ViewGroup>(android.R.id.content)
         val stock = (0 until content.childCount).map(content::getChildAt)
@@ -61,7 +62,7 @@ internal class PowerMenuScreen(
 
         fun choose(i: Int) {
             val action = buttons[i].action ?: return dialog.dismiss()
-            runAction(offered, action, restoreAndroid)
+            runAction(dialog, offered, action, restoreAndroid)
         }
 
         view.isFocusable = true
@@ -100,7 +101,7 @@ internal class PowerMenuScreen(
     }
 
     /** Android's own path for the action, found again by identity: the lists may have changed. */
-    private fun runAction(offered: Map<PowerAction, Pair<BaseAdapter, Any>>, action: PowerAction, restoreAndroid: () -> Unit) {
+    private fun runAction(dialog: Dialog, offered: Map<PowerAction, Pair<BaseAdapter, Any>>, action: PowerAction, restoreAndroid: () -> Unit) {
         try {
             val (adapter, item) = offered.getValue(action)
             val index = (0 until adapter.count).firstOrNull { adapter.getItem(it) === item }
@@ -110,7 +111,10 @@ internal class PowerMenuScreen(
                 restoreAndroid()
                 return
             }
-            onClickItem.invoke(adapter, index)
+            // Simplification: AOSP's click also turns the dialog's exit animation off before dismissing
+            // (disableAllCurrentDialogsExitAnimations); without it the dialog fades as on Back.
+            dialog.dismiss()
+            onPress.invoke(item)
         } catch (e: ReflectiveOperationException) {
             fail("power menu: $action failed, Android's menu back", e)
             restoreAndroid()

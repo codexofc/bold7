@@ -14,12 +14,15 @@ class OneLineTest {
     // sim-141 (the call log, no call), sim-18 (ringing), sim-109 (in a call): the Phone's screens
     // all have the one-line banner; the Calendar its own, without the network's name nor the
     // battery (sim-220); Contacts, MemoPad, Tasks and Pictures their title bar alone (sim-178,
-    // sim-254, sim-267, sim-344), Calculator nothing (sim-249); Messages has the two-line one
-    // (sim-43), and so does every other app.
+    // sim-254, sim-267, sim-344), Calculator and the Camera nothing (sim-249, sim-365); Messages
+    // has the two-line one (sim-43), and so does every other app.
     @Test fun eachAppHasThe9900sBar() {
         assertEquals(BarKind.ONE_LINE, barKind("dev.bold7.phone"))
         assertEquals(BarKind.PLAIN_LINE, barKind("dev.bold7.calendar"))
         for (app in listOf("contacts", "memopad", "tasks", "pictures", "calculator")) assertEquals(BarKind.NONE, barKind("dev.bold7.$app"), app)
+        assertEquals(BarKind.NONE, barKind("dev.bold7.camera.benos"))
+        assertEquals(BarKind.NONE, barKind("com.light.lightcamera"))
+        assertEquals(BarKind.NONE, barKind("org.lineageos.aperture"))
         assertEquals(BarKind.TWO_LINES, barKind("dev.bold7.messages"))
         assertEquals(BarKind.TWO_LINES, barKind("com.google.android.apps.messaging"))
         assertEquals(BarKind.TWO_LINES, barKind("com.android.systemui"))

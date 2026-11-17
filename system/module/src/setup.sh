@@ -2,7 +2,7 @@
 # Bold7: what tools/install.sh and tools/uninstall.sh did from the Mac, done on the phone by the
 # module itself. POSIX sh: KernelSU runs it with its busybox.
 #
-#   sh setup.sh check <moddir>     customize.sh: a Q25 under BenOS, no metamodule, nothing of the BB10
+#   sh setup.sh check <moddir>     customize.sh: a Q25 under LineageOS 24, no metamodule, nothing of the BB10
 #                                  build, no removal still being finished, the stock keylayout the
 #                                  module's copy was made from. Reads only; fails saying why.
 #   sh setup.sh save <moddir>      customize.sh: the values Bold7 changes, saved once in $S
@@ -20,9 +20,13 @@
 #                      nothing set); never set again, so a later choice of the user stands
 #   acces.fait         permissions, app-ops and accesses given for this install (install deletes it)
 #   vector.installe    Vector installed by Bold7, removed with it (uninstall.sh)
+#   camera.installe    Camera installed by Bold7, updated by each install and uninstalled by restore
 # Items, and the Mac script whose rules they keep: silence (tools/silence.sh), touches
-# (tools/touches.sh), sons (tools/sons.sh), trackpad (tools/trackpad.sh), dialer (tools/dialer.sh),
-# home (the HOME role, as dialer), saisie (select_saisie of tools/install.sh). restore gives a value
+# (tools/touches.sh), sons (tools/sons.sh), dialer (tools/dialer.sh), home (the HOME role, as
+# dialer), saisie (select_saisie of tools/install.sh), densite (the screen density, as touches),
+# prive (Android's privacy indicators, off: OS 7 has no microphone, camera or location pill), langue
+# (PermissionController's own language, British English: its request dialog speaks as Bold7 does).
+# restore gives a value
 # back only while it is still the one Bold7 set; a broken save is kept, its value left as it is.
 # Google Messages' consent is never set here: it stays the user's gesture.
 #
@@ -31,11 +35,12 @@ TOOLS=${TOOLS:-/system/bin}
 ADB=${ADB_DIR:-/data/adb}
 S=${STATE:-$ADB/bold7-state}
 KSUD=${KSUD:-$ADB/ksud}
+SU=${SU:-/system/bin/su}
 RESETPROP=${RESETPROP:-$ADB/ksu/bin/resetprop}
 ROOT=${ROOT:-}
 USER_DE=${USER_DE:-/data/user_de/0}
 MODE=${TRACKPAD_MODE:-/proc/q20_switch_key_mouse}
-KL=${KL:-/system/usr/keylayout/Q25_keyboard.kl}
+KL=${KL:-/vendor/usr/keylayout/Q25_keyboard.kl}
 MAX_WAIT=${MAX_WAIT:-900} PAUSE=${PAUSE:-1}
 VECTOR=$ADB/modules/zygisk_vector
 WRAPPER=$ADB/boot-completed.d/bold7-retour.sh
@@ -54,41 +59,110 @@ PICTURES=dev.bold7.pictures
 SAISIE=dev.bold7.saisie
 SAISIE_IME=$SAISIE/.SaisieService
 SYSUI=dev.bold7.sysui
+# Camera: Bold7's fork of BenOS Camera (GPL-3.0, NOTICE), not one of Bold7's own apps: installed
+# only when it is missing or Bold7's (camera.installe), so that one the user installed stays theirs.
+CAMERA=dev.bold7.camera.benos
 # The ordinary apps, in install order: Messages after the Hub and the Phone, which declare the
 # signature permissions it asks (READ_HUB, CALL_PROMPT).
-APPS="$HUB $PHONE $MESSAGES $SAISIE $CLOCK $CALENDAR $CONTACTS dev.bold7.calculator dev.bold7.flashlight dev.bold7.memopad $TASKS $PICTURES $SYSUI"
+APPS="$HUB $PHONE $MESSAGES $SAISIE $CLOCK $CALENDAR $CONTACTS dev.bold7.calculator dev.bold7.flashlight dev.bold7.memopad $TASKS $PICTURES dev.bold7.help $SYSUI"
 GM=com.google.android.apps.messaging
-GOOGLE_DIALER=com.google.android.dialer
+# LineageOS 24's own Phone, home and input method: what a role or the input method goes back to.
+STOCK_DIALER=com.android.dialer
 LAUNCHER3=com.android.launcher3
-BBKB=com.blackberry.keyboard/com.blackberry.inputmethod.core.BlackBerryIME
-# The Q25's PermissionController receiver that exempts a hard restricted permission (READ_SMS,
-# READ_CALL_LOG); tools/install.sh, grant_permissions.
-EXEMPT=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.service.ExemptRestrictedPermission
+LATIN=com.android.inputmethod.latin/.LatinIME
+# PermissionController's receiver that exempts a hard restricted permission (READ_SMS,
+# READ_CALL_LOG); not exported, root sends to it. tools/install.sh, grant_permissions.
+EXEMPT=com.android.permissioncontroller/com.android.permissioncontroller.permission.service.ExemptRestrictedPermission
 LAUNCHER_PERMISSIONS="READ_CONTACTS READ_SMS READ_CALL_LOG READ_CALENDAR BLUETOOTH_CONNECT ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION"
-ITEMS="silence touches sons trackpad dialer home saisie"
+ITEMS="silence touches sons dialer home saisie densite prive langue"
+# PermissionController, whose strings no overlay can reach (none is overlayable): its app language,
+# as Bold7's apps take theirs, so that its request dialog asks in English.
+PC=com.android.permissioncontroller
+OS7_LOCALE=en-GB
+# device_config flags of the privacy namespace that SystemUI reads for its microphone, camera and
+# location pill and dot (PrivacyConfig, LocationIndicatorsController): false hides them all.
+PRIVE="camera_mic_icons_enabled location_indicators_enabled"
 SILENCE="global:charging_sounds_enabled secure:charging_vibration_enabled system:lockscreen_sounds_enabled system:sound_effects_enabled system:accelerometer_rotation secure:clipboard_show_access_notifications"
 SONS="ringtone notification_sound alarm_alert"
 A=/product/media/audio
 PROBE=$A/ringtones/Spirit.m4a
-SERVICE=tech.shroyer.q25trackpadcustomizer/tech.shroyer.q25trackpadcustomizer.AppSwitchService
+# BenOS's density, which LineageOS 24 lowers to 193: at 208 one pixel of the 9900 is one pixel of the
+# Q25, and every layout, capture and measure of Bold7 was made at 208.
+DENSITY=208
 
 say() { echo "$*"; "$TOOLS/log" -p i -t Bold7 "$*" 2>/dev/null; }
 die() { say "! $*"; exit 1; }
 gp() { "$TOOLS/getprop" "$1"; }
-get() { "$TOOLS/settings" get "$1" "$2" 2>/dev/null; }
+# Android's shell tools (cmd, settings, pm...) hand their three file descriptors to system_server,
+# which may not use a file of /data/adb (SELinux, adb_data_file): the call then fails, printing
+# "cmd: Failure calling service settings: Failed transaction (2147483646)" on its output (seen on the
+# Q25 when a loop read a save on stdin, or when the log was the tool's stderr). So nothing here
+# reads stdin, the loops read their file on fd 3, and every tool's output goes to /dev/null or a pipe.
+exec </dev/null
+ASK_TRIES=${ASK_TRIES:-30}
+# ask <tool> <arg>...: what the tool prints. A failure (non-zero exit, "cmd: ...", "Failure",
+# "Exception") is never a value: asked again, $PAUSE apart, ASK_TRIES times in all, then a non-zero
+# exit with nothing printed.
+ask() {
+    local t out i
+    t=$1
+    shift
+    i=1
+    while :; do
+        if out=$("$TOOLS/$t" "$@" 2>/dev/null); then
+            case $out in cmd:* | *Failure* | *Exception*) ;; *) printf '%s\n' "$out"; return 0 ;; esac
+        fi
+        [ "$i" -lt "$ASK_TRIES" ] || return 1
+        i=$((i + 1))
+        sleep "$PAUSE"
+    done
+}
+get() { ask settings get "$1" "$2"; }
+# unread <what>: a value that could not be read; AGAIN tells restore to come back at the next boot.
+unread() { say "! $1 could not be read (the settings service did not answer): left as it is, tried again at the next boot"; AGAIN=1; return 1; }
 # put <namespace> <key> <value>: an empty value or null deletes; read back.
 put() {
+    local now
     if [ -z "$3" ] || [ "$3" = null ]; then
         "$TOOLS/settings" delete "$1" "$2" >/dev/null 2>&1
-        [ "$(get "$1" "$2")" = null ] && return 0
+        now=$(get "$1" "$2") || { unread "$2"; return 1; }
+        [ "$now" = null ] && return 0
     else
-        "$TOOLS/settings" put "$1" "$2" "$3" >/dev/null 2>&1
-        [ "$(get "$1" "$2")" = "$3" ] && return 0
+        case " $SONS " in
+        # Android 17's SettingsProvider checks a sound's media URI against the calling app
+        # (isValidMediaUri) and refuses root, which has none: as the shell's uid, by KernelSU's su.
+        *" $2 "*) V=$3 "$SU" 2000 -c "\"$TOOLS/settings\" put $1 $2 \"\$V\"" >/dev/null 2>&1 ;;
+        *) "$TOOLS/settings" put "$1" "$2" "$3" >/dev/null 2>&1 ;;
+        esac
+        now=$(get "$1" "$2") || { unread "$2"; return 1; }
+        [ "$now" = "$3" ] && return 0
     fi
-    say "! $2 did not take the value '$3' (now $(get "$1" "$2"))"
+    say "! $2 did not take the value '$3' (now $now)"
     return 1
 }
 num() { [ "$1" = null ] && return 0; case $1 in '' | *[!0-9]*) return 1 ;; esac; }
+bool() { case $1 in true | false | null) return 0 ;; esac; return 1; }
+# A flag of the privacy namespace (null when unset); written by root only (the shell is refused).
+dc_get() { ask device_config get privacy "$1"; }
+# locales: PermissionController's app languages, as `cmd locale` prints them ("... are [en-GB]"),
+# empty for the phone's own; a failure when the line is not that one.
+locales() {
+    local out
+    out=$(ask cmd locale get-app-locales $PC --user 0) || return 1
+    case $out in *" are ["*"]") ;; *) return 1 ;; esac
+    out=${out##*\[}
+    echo "${out%]}"
+}
+# set_locales <tags>: empty for the phone's own; read back.
+set_locales() {
+    if [ -n "$1" ]; then "$TOOLS/cmd" locale set-app-locales $PC --user 0 --locales "$1"; else "$TOOLS/cmd" locale set-app-locales $PC --user 0; fi >/dev/null 2>&1
+    [ "$(locales)" = "$1" ]
+}
+tags() { echo "$1" | grep -qE '^[A-Za-z0-9,-]*$'; }
+dc_put() {
+    if [ "$2" = null ]; then "$TOOLS/device_config" delete privacy "$1"; else "$TOOLS/device_config" put privacy "$1" "$2"; fi >/dev/null 2>&1
+    [ "$(dc_get "$1")" = "$2" ]
+}
 pkg_name() { echo "$1" | grep -qE '^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$'; }
 pkg_ok() { case $("$TOOLS/pm" path "$1" 2>/dev/null) in package:*) return 0 ;; esac; return 1; }
 lines() { grep -c . "$1"; }
@@ -115,7 +189,7 @@ wait_ce() {
 }
 
 # --- roles ---------------------------------------------------------------------------------------
-holder() { "$TOOLS/cmd" role get-role-holders "android.app.role.$1" 2>/dev/null; }
+holder() { ask cmd role get-role-holders "android.app.role.$1"; }
 # give <role> <package>: right after boot the role service can time out (TimeoutException):
 # asked again for a minute, then read back.
 give() {
@@ -128,8 +202,9 @@ give() {
         [ $n -lt 12 ] || break
         sleep $((PAUSE * 5))
     done
-    [ "$(holder "$1")" = "$2" ] && { say "  $1 given to $2"; return 0; }
-    say "! $1 is held by '$(holder "$1")', not $2"
+    out=$(holder "$1") || { unread "the holder of $1"; return 1; }
+    [ "$out" = "$2" ] && { say "  $1 given to $2"; return 0; }
+    say "! $1 is held by '$out', not $2"
     return 1
 }
 
@@ -173,45 +248,45 @@ personal() {
 sound_value() { case $1 in null | content://media/*) return 0 ;; esac; return 1; }
 scan() { "$TOOLS/content" call --uri content://media --method scan_volume --arg internal >/dev/null 2>&1; }
 
-# --- trackpad (tools/trackpad.sh) ----------------------------------------------------------------
-has_service() { case ":$1:" in *":$SERVICE:"*) return 0 ;; esac; return 1; }
-without_service() {
-    local out old x
-    out= old=$IFS
-    IFS=:
-    for x in $1; do [ "$x" = "$SERVICE" ] || out=${out:+$out:}$x; done
-    IFS=$old
-    echo "$out"
-}
-
 # --- check ---------------------------------------------------------------------------------------
 do_check() {
-    local d id
+    local d id v
     d=$(gp ro.product.device)
-    [ "$d" = Q25 ] || die "this phone is not a Zinwa Q25 (ro.product.device=$d): Bold7 is made for it alone. Nothing changed."
+    [ "$d" = Q25 ] || die "Bold7 is made for the Zinwa Q25 only, and this phone is a '$d'."
+    # LineageOS 24 official (the build of its device tree for the Q25), whatever its weekly build.
+    # BenOS, which Bold7 first ran on, is no longer one: its own SystemUI, keyboard app and Android 14.
     id=$(gp ro.build.display.id)
-    case $id in BenOS*) ;; *) die "this Q25 does not run BenOS (ro.build.display.id=$id): Bold7 is made for BenOS. Nothing changed." ;; esac
-    say "- Zinwa Q25 under $id (ro.benos_timestamp=$(gp ro.benos_timestamp))"
-    [ ! -e "$ADB/metamodule" ] || die "a metamodule is installed ($ADB/metamodule): Bold7 mounts its files itself, remove the metamodule first. Nothing changed."
-    [ ! -e "$WRAPPER" ] || die "the removal of Bold7 is not finished: unlock the phone, wait a minute, then install again. Nothing changed."
+    v=$(gp ro.lineage.build.version)
+    case $id in BenOS*) die "Bold7 now needs LineageOS 24 on your Q25, and this one runs BenOS ($id). Install LineageOS 24, then install Bold7 again." ;; esac
+    [ "$(gp ro.lineage.device)" = Q25 ] && case $v in 24.*) ;; *) false ;; esac ||
+        die "Bold7 needs LineageOS 24 on your Q25, and this one runs '$id'${v:+ (LineageOS $v)}. Install LineageOS 24, then install Bold7 again."
+    v=$(gp ro.lineage.version)
+    [ ! -e "$ADB/metamodule" ] || die "A metamodule is installed ($ADB/metamodule), and Bold7 places its files itself. Remove that module in Modules, restart, then install Bold7 again."
+    [ ! -e "$WRAPPER" ] || die "Bold7 is still finishing its removal. Unlock your phone, wait a minute, then install Bold7 again."
     if [ -e "$ADB/modules/cascade" ] || [ -e "$ADB/modules_update/cascade" ] || "$TOOLS/pm" list packages -u dev.cascade 2>/dev/null | grep -q .; then
-        die "the BB10 build (cascade) is still on the phone: remove it with the tools/uninstall.sh of its tag bb10-final, then reboot. Nothing changed."
+        die "The BB10 build of this project (cascade) is still installed. Remove it first (tools/uninstall.sh of its tag bb10-final), restart, then install Bold7 again."
     fi
-    # The module's Q25_keyboard.kl is the stock one with End as ENDCALL: over another
-    # stock file it would hide what changed.
+    # The module's Q25_keyboard.kl (over /product/usr/keylayout, which Android searches before
+    # /vendor/usr/keylayout) is the stock one with End as ENDCALL: over another stock file it would
+    # hide what changed. Readable by root only.
     [ "$(sed 's/^key 172   ENDCALL$/key 172   HOME/' "$1/layer/product/usr/keylayout/Q25_keyboard.kl")" = "$(cat "$KL" 2>/dev/null)" ] ||
-        die "$KL is not the one the End key of Bold7 was made from: this BenOS version is not supported yet. Nothing changed."
+        die "This build of LineageOS ($v) is not supported yet: its keyboard file is not the one Bold7 knows. Wait for a Bold7 update."
+    # One line: customize.sh shows it after "Checking your phone...". The build's id for the log only.
+    "$TOOLS/log" -p i -t Bold7 "install on LineageOS $v, $id" 2>/dev/null
+    echo "OK, Zinwa Q25 on LineageOS $v"
 }
 
 # --- save ----------------------------------------------------------------------------------------
 # refuse <item> <why>: nothing saved, so nothing will be set nor given back.
 refuse() { rm -f "$S/$1-avant.txt.new"; touch "$S/$1.fait"; say "  $1: $2: left as it is"; }
+# unsaved <item> <what>: unreadable, so neither saved nor refused: nothing set for this install.
+unsaved() { rm -f "$S/$1-avant.txt.new"; say "! $1: $2 could not be read (the settings service did not answer): not saved, left as it is"; }
 keep() { mv -f "$S/$1-avant.txt.new" "$S/$1-avant.txt"; say "  $1: saved"; }
 save_silence() {
     local k v
     : >"$S/silence-avant.txt.new"
     for k in $SILENCE; do
-        v=$(get "${k%%:*}" "${k#*:}")
+        v=$(get "${k%%:*}" "${k#*:}") || { unsaved silence "${k#*:}"; return; }
         num "$v" || { refuse silence "${k#*:}=$v is not a value that could be written back"; return; }
         [ "$v" = 0 ] || echo "${k#*:} $v" >>"$S/silence-avant.txt.new"
     done
@@ -219,7 +294,7 @@ save_silence() {
 }
 save_touches() {
     local v
-    v=$(get system end_button_behavior)
+    v=$(get system end_button_behavior) || { unsaved touches end_button_behavior; return; }
     num "$v" || { refuse touches "end_button_behavior=$v is not a value that could be written back"; return; }
     [ "$v" != 1 ] || { refuse touches "end_button_behavior is 1 already"; return; }
     echo "$v" >"$S/touches-avant.txt.new"
@@ -229,7 +304,7 @@ save_sons() {
     local k v f
     : >"$S/sons-avant.txt.new"
     for k in $SONS; do
-        v=$(get system $k)
+        v=$(get system $k) || { unsaved sons $k; return; }
         sound_value "$v" || { refuse sons "$k=$v is not a value that could be written back"; return; }
         f=$(file_of "$v")
         if [ -n "$f" ] && [ -e "$1/layer$f" ]; then refuse sons "$k already plays $f, a sound of Bold7"; return; fi
@@ -237,17 +312,10 @@ save_sons() {
     done
     keep sons
 }
-save_trackpad() {
-    local v
-    v=$(get secure enabled_accessibility_services)
-    has_service "$v" || { refuse trackpad "Q25TrackpadCustomizer's service is off already"; return; }
-    echo "$v" >"$S/trackpad-avant.txt.new"
-    keep trackpad
-}
 # save_role <item> <role> <our package>
 save_role() {
     local v
-    v=$(holder $2)
+    v=$(holder $2) || { unsaved $1 "the holder of $2"; return; }
     pkg_name "$v" || { refuse $1 "$2 is held by '$v', no holder to give it back to"; return; }
     [ "$v" != $3 ] || { refuse $1 "$3 holds $2 already"; return; }
     echo "$v" >"$S/$1-avant.txt.new"
@@ -257,11 +325,40 @@ save_dialer() { save_role dialer DIALER $PHONE; }
 save_home() { save_role home HOME $L; }
 save_saisie() {
     local ime list
-    ime=$(get secure default_input_method)
-    list=$(get secure enabled_input_methods)
+    ime=$(get secure default_input_method) || { unsaved saisie default_input_method; return; }
+    list=$(get secure enabled_input_methods) || { unsaved saisie enabled_input_methods; return; }
     case "$ime $list" in *$SAISIE*) refuse saisie "Typing is selected or enabled already"; return ;; esac
     printf 'default_input_method=%s\nenabled_input_methods=%s\n' "$ime" "$list" >"$S/saisie-avant.txt.new"
     keep saisie
+}
+# The density Android was forced to, null when none (display_density_forced).
+save_densite() {
+    local v
+    v=$(get secure display_density_forced) || { unsaved densite display_density_forced; return; }
+    [ -n "$v" ] || v=null
+    num "$v" || { refuse densite "display_density_forced=$v is not a value that could be written back"; return; }
+    [ "$v" != $DENSITY ] || { refuse densite "the density is $DENSITY already"; return; }
+    echo "$v" >"$S/densite-avant.txt.new"
+    keep densite
+}
+save_prive() {
+    local k v
+    : >"$S/prive-avant.txt.new"
+    for k in $PRIVE; do
+        v=$(dc_get $k) || { unsaved prive $k; return; }
+        bool "$v" || { refuse prive "$k=$v is not a value that could be written back"; return; }
+        echo "$k $v" >>"$S/prive-avant.txt.new"
+    done
+    keep prive
+}
+save_langue() {
+    local v
+    pkg_ok $PC || { refuse langue "$PC is not installed"; return; }
+    v=$(locales) || { unsaved langue "$PC's language"; return; }
+    tags "$v" || { refuse langue "$PC's language '$v' is not one that could be written back"; return; }
+    [ "$v" != $OS7_LOCALE ] || { refuse langue "$PC speaks $OS7_LOCALE already"; return; }
+    echo "$v" >"$S/langue-avant.txt.new"
+    keep langue
 }
 do_save() {
     local i
@@ -273,16 +370,29 @@ do_save() {
 }
 
 # --- install -------------------------------------------------------------------------------------
+# drop_launcher_update: a launcher of /data/app that updates the priv-app of the module hides it (an
+# `adb install -r`, or a copy left in /data that Android takes for an update once the priv-app is
+# mounted, older than it, as seen on the Q25: 135 images of the overlay not put): removed by
+# pm uninstall-system-updates, which keeps the app's data. False when there is a launcher in /data
+# that is not a system app (nothing done); true otherwise. pm exits 1 even when it prints Success (Q25).
+drop_launcher_update() {
+    local out
+    case $("$TOOLS/pm" path $L 2>/dev/null) in package:/data/*) ;; *) return 0 ;; esac
+    "$TOOLS/pm" list packages -s $L 2>/dev/null | grep -qx "package:$L" || return 1
+    out=$("$TOOLS/pm" uninstall-system-updates $L 2>&1)
+    case $out in *Success*) say "- Removed the update of $L in /data, over its priv-app" ;; *) say "! Could not remove the update of $L: $out" ;; esac
+    return 0
+}
 do_install() {
     local out rc p
     mkdir -p "$S" && chmod 700 "$S"
-    # An `adb install -r` of the launcher lives in /data/app and, at the same versionCode, would hide
-    # the priv-app of the module. pm exits 1 even when it prints Success (Q25).
-    case $("$TOOLS/pm" path $L 2>/dev/null) in package:/data/*)
-        out=$("$TOOLS/pm" uninstall-system-updates $L 2>&1)
-        case $out in *Success*) say "- Removed the update of $L installed over its priv-app" ;; *) say "! Could not remove the update of $L: $out" ;; esac
-        ;;
-    esac
+    # A launcher in /data that is not a system app (the priv-app not mounted yet, its copy left by
+    # an earlier install): pm uninstall-system-updates fails on it (NullPointerException on the Q25).
+    # It is left as it is, and apply removes it as an update at the first boot, once the priv-app is
+    # there. Never uninstalled: its data are the user's.
+    if ! drop_launcher_update; then
+        say "- $L is installed as an ordinary app: it becomes an update of the priv-app at the next boot, which then removes it"
+    fi
     # Vector (LSPosed's fork, GPL-3.0): installed or not marked for removal, it stays as it is.
     # Installed by ksud from this module's own folder: the nested installer empties /dev/tmp, ours
     # too (measured on the Q25), so nothing after it may count on $TMPDIR.
@@ -297,11 +407,29 @@ do_install() {
         echo "$out" | sed 's/^/  | /'
         if [ $rc = 0 ]; then touch "$S/vector.installe"; else say "! Vector not installed (ksud $rc): SystemUI keeps Android's look"; fi
     fi
+    # Vector runs in the processes Zygisk loads it into: NeoZygisk (zygisksu, ZygiskNext's id too)
+    # on LineageOS 24, which Bold7 does not install. Without one, SystemUI keeps Android's look.
+    [ -d "$ADB/modules/zygisksu" ] || [ -d "$ADB/modules/rezygisk" ] ||
+        say "! No Zygisk module (NeoZygisk): install it in KernelSU, or SystemUI keeps Android's look"
+    # Vector's installer deletes our working folder ($TMPDIR): Android 17's cmd, which pm is, aborts
+    # in getcwd before it opens the APK (seen on the Q25 under LineageOS 24).
+    cd / || return
     for p in $APPS; do
         if [ ! -f "$1/apps/$p.apk" ]; then say "! $p is not in this zip"; continue; fi
         out=$("$TOOLS/pm" install -r "$1/apps/$p.apk" 2>&1)
         case $out in *Success*) say "- $p installed" ;; *) say "! $p not installed: $out" ;; esac
     done
+    if [ ! -f "$1/apps/$CAMERA.apk" ]; then
+        say "! $CAMERA is not in this zip"
+    elif pkg_ok $CAMERA && [ ! -e "$S/camera.installe" ]; then
+        say "- $CAMERA installed already, not by Bold7: left as it is"
+    else
+        out=$("$TOOLS/pm" install -r "$1/apps/$CAMERA.apk" 2>&1)
+        case $out in
+        *Success*) touch "$S/camera.installe"; say "- $CAMERA installed" ;;
+        *) say "! $CAMERA not installed: $out" ;;
+        esac
+    fi
     rm -rf "$1/apps" "$1/vector"
     # A new install: the apps' access is given again at the next boot.
     rm -f "$S/acces.fait"
@@ -321,19 +449,13 @@ set_sons() {
     for k in $SONS; do [ -n "$(uri_of "$(target $k)")" ] || { scan; break; }; done
     r=0
     for k in $SONS; do
-        cur=$(get system $k)
+        cur=$(get system $k) || { unread $k; r=1; continue; }
         if personal "$cur" "$(file_of "$cur")"; then say "  $k kept: it plays $cur, a choice of the user's"; continue; fi
         u=$(uri_of "$(target $k)")
         if [ -z "$u" ]; then say "! $(target $k) is not in MediaStore"; r=1; continue; fi
         put system $k "$u" || r=1
     done
     return $r
-}
-set_trackpad() {
-    local v
-    v=$(get secure enabled_accessibility_services)
-    has_service "$v" || return 0
-    put secure enabled_accessibility_services "$(without_service "$v")"
 }
 set_dialer() { pkg_ok $PHONE || { say "! $PHONE is not installed"; return 1; }; give DIALER $PHONE; }
 set_home() {
@@ -350,22 +472,39 @@ set_saisie() {
     [ "$(get secure default_input_method)" = "$SAISIE_IME" ] || { say "! Typing not selected"; return 1; }
 }
 
+# By wm, which writes display_density_forced itself and resizes the display at once.
+set_densite() {
+    local v
+    "$TOOLS/wm" density $DENSITY >/dev/null 2>&1
+    v=$(get secure display_density_forced) || { unread display_density_forced; return 1; }
+    [ "$v" = $DENSITY ] || { say "! the density did not take $DENSITY (now $v)"; return 1; }
+}
+
+set_prive() {
+    local k r
+    r=0
+    for k in $PRIVE; do dc_put $k false || { say "! $k did not take false"; r=1; }; done
+    return $r
+}
+
+set_langue() { set_locales $OS7_LOCALE || { say "! $PC did not take $OS7_LOCALE"; return 1; }; }
+
 # grant <package> <permission>...: those of the runtime permissions (short names) the package
-# requests, READ_SMS and READ_CALL_LOG exempted first, each read back (tools/install.sh).
+# requests, READ_SMS, READ_CALL_LOG and WRITE_CALL_LOG exempted first, each read back (tools/install.sh).
 grant() {
     local p x dump wanted missing
     p=$1
     shift
     pkg_ok $p || return 0
-    dump=$("$TOOLS/dumpsys" package $p)
+    dump=$("$TOOLS/dumpsys" package $p 2>/dev/null)
     wanted=
     for x in "$@"; do echo "$dump" | grep -qE "^ +android\.permission\.$x\$" && wanted="$wanted $x"; done
     [ -n "$wanted" ] || return 0
     for x in $wanted; do
-        case $x in READ_SMS | READ_CALL_LOG) "$TOOLS/am" broadcast -n $EXEMPT --es package $p --es permission android.permission.$x >/dev/null 2>&1 ;; esac
+        case $x in READ_SMS | READ_CALL_LOG | WRITE_CALL_LOG) "$TOOLS/am" broadcast -n $EXEMPT --es package $p --es permission android.permission.$x >/dev/null 2>&1 ;; esac
         "$TOOLS/pm" grant $p android.permission.$x >/dev/null 2>&1
     done
-    dump=$("$TOOLS/dumpsys" package $p)
+    dump=$("$TOOLS/dumpsys" package $p 2>/dev/null)
     missing=
     for x in $wanted; do echo "$dump" | grep -q "android\.permission\.$x: granted=true" || missing="$missing $x"; done
     [ -z "$missing" ] || { say "! $p: not granted:$missing"; return 1; }
@@ -437,10 +576,10 @@ do_access() {
     if pkg_ok $MESSAGES; then
         grant $MESSAGES READ_SMS READ_CONTACTS READ_MEDIA_IMAGES READ_MEDIA_VIDEO READ_MEDIA_AUDIO || r=1
         "$TOOLS/pm" grant $MESSAGES $GM.EXTERNAL_MESSAGING_API >/dev/null 2>&1
-        "$TOOLS/dumpsys" package $MESSAGES | grep -q "$GM.EXTERNAL_MESSAGING_API: granted=true" ||
+        "$TOOLS/dumpsys" package $MESSAGES 2>/dev/null | grep -q "$GM.EXTERNAL_MESSAGING_API: granted=true" ||
             { say "! $MESSAGES: $GM.EXTERNAL_MESSAGING_API not granted (Google Messages missing?)"; r=1; }
     fi
-    grant $PHONE CALL_PHONE READ_CALL_LOG READ_CONTACTS READ_PHONE_NUMBERS READ_PHONE_STATE POST_NOTIFICATIONS || r=1
+    grant $PHONE CALL_PHONE READ_CALL_LOG WRITE_CALL_LOG READ_CONTACTS READ_PHONE_NUMBERS READ_PHONE_STATE POST_NOTIFICATIONS || r=1
     appop $PHONE USE_FULL_SCREEN_INTENT || r=1
     grant $CLOCK POST_NOTIFICATIONS || r=1
     appop $CLOCK USE_FULL_SCREEN_INTENT || r=1
@@ -449,14 +588,24 @@ do_access() {
     appop $CALENDAR SYSTEM_ALERT_WINDOW || r=1
     grant $TASKS POST_NOTIFICATIONS || r=1
     appop $TASKS SYSTEM_ALERT_WINDOW || r=1
-    grant $CONTACTS READ_CONTACTS WRITE_CONTACTS CALL_PHONE || r=1
+    grant $CONTACTS READ_CONTACTS WRITE_CONTACTS CALL_PHONE READ_CALL_LOG READ_SMS || r=1
     grant $PICTURES READ_MEDIA_IMAGES READ_CONTACTS WRITE_CONTACTS || r=1
     appop $PICTURES MANAGE_MEDIA || r=1
+    grant $CAMERA CAMERA RECORD_AUDIO READ_MEDIA_IMAGES READ_MEDIA_VIDEO || r=1
+    # Bold7/icons (the user's icons) and the search's files: LineageOS 24 leaves it refused to a priv-app.
+    appop $L MANAGE_EXTERNAL_STORAGE || r=1
     scope || r=1
     return $r
 }
+# The overlay carrying the extracted images (fabricated, owned by the launcher): called at each boot
+# by apply, before anything else, once the system is up. Quick when nothing changed (overlays.sh);
+# its .frro is deleted by uninstall.sh. Non-zero counts as a step not done.
+overlays() { [ -d "${IMAGES:-/product/media/bold7}" ] || return 0; sh "$1/overlays.sh" apply "$1"; }
+
 do_apply() {
     local todo fails i
+    drop_launcher_update || say "! $L is installed as an ordinary app, not over the priv-app of the module: left as it is"
+    overlays "$1" || say "! overlays: not done, tried again at the next boot"
     todo=
     for i in $ITEMS; do [ -e "$S/$i-avant.txt" ] && [ ! -e "$S/$i.fait" ] && todo="$todo $i"; done
     [ -n "$todo" ] || [ ! -e "$S/acces.fait" ] || return 0
@@ -484,20 +633,21 @@ do_apply() {
 # --- restore -------------------------------------------------------------------------------------
 broken() { say "! $1: not the save Bold7 writes, kept, nothing changed"; return 1; }
 back_silence() {
-    local f r key v extra k ns
+    local f r key v extra k ns cur
     f=$S/silence-avant.txt
     [ -e "$f" ] || return 0
-    while read -r key v extra; do
+    while read -r key v extra <&3; do
         [ -n "$key" ] || continue
         case " $SILENCE " in *":$key "*) ;; *) broken "$f"; return 1 ;; esac
         [ -z "$extra" ] && num "${v:-x}" || { broken "$f"; return 1; }
-    done <"$f"
+    done 3<"$f"
     r=0
-    while read -r key v; do
+    while read -r key v <&3; do
         [ -n "$key" ] || continue
         for k in $SILENCE; do [ "${k#*:}" = "$key" ] && ns=${k%%:*}; done
-        if [ "$(get $ns $key)" = 0 ]; then put $ns $key "$v" && say "  $key back to $v" || r=1; else say "  $key kept: $(get $ns $key), chosen later"; fi
-    done <"$f"
+        cur=$(get $ns $key) || { unread $key; r=1; continue; }
+        if [ "$cur" = 0 ]; then put $ns $key "$v" && say "  $key back to $v" || r=1; else say "  $key kept: $cur, chosen later"; fi
+    done 3<"$f"
     [ $r = 1 ] || rm -f "$f"
     return $r
 }
@@ -507,7 +657,7 @@ back_touches() {
     [ -e "$f" ] || return 0
     v=$(cat "$f")
     [ "$(lines "$f")" = 1 ] && num "$v" || { broken "$f"; return 1; }
-    cur=$(get system end_button_behavior)
+    cur=$(get system end_button_behavior) || { unread end_button_behavior; return 1; }
     if [ "$cur" = 1 ]; then put system end_button_behavior "$v" || return 1; say "  end_button_behavior back to $v"; else say "  end_button_behavior kept: $cur, chosen later"; fi
     rm -f "$f"
 }
@@ -520,9 +670,9 @@ back_sons() {
     if [ -e "$f" ]; then
         [ "$(lines "$f")" = 3 ] || { broken "$f"; return 1; }
         for k in $SONS; do [ "$(grep -c "^$k$TAB" "$f")" = 1 ] || { broken "$f"; return 1; }; done
-        while IFS=$TAB read -r k v; do sound_value "$v" || { broken "$f"; return 1; }; done <"$f"
-        while IFS=$TAB read -r k v; do
-            cur=$(get system $k)
+        while IFS=$TAB read -r k v <&3; do sound_value "$v" || { broken "$f"; return 1; }; done 3<"$f"
+        while IFS=$TAB read -r k v <&3; do
+            cur=$(get system $k) || { unread $k; r=1; continue; }
             fl=$(file_of "$cur")
             gone=
             case $cur in content://media/*) [ -n "$fl" ] && [ -e "$ROOT$fl" ] || gone=1 ;; esac
@@ -531,14 +681,14 @@ back_sons() {
             else
                 say "  $k kept: $cur, chosen later"
             fi
-        done <"$f"
+        done 3<"$f"
     fi
     if [ ! -e "$ROOT$PROBE" ] && rows internal _id "_data='$PROBE'" | grep -q '^Row:'; then
         scan
         say "  MediaStore rescanned: the sounds of Bold7 are no longer listed"
     fi
     for k in $SONS; do
-        cur=$(get system $k)
+        cur=$(get system $k) || { unread $k; r=1; continue; }
         case $cur in content://media/*)
             fl=$(file_of "$cur")
             [ -n "$fl" ] && [ -e "$ROOT$fl" ] || { say "! $k=$cur plays nothing any more: choose another sound in Android's Settings"; r=1; }
@@ -548,30 +698,12 @@ back_sons() {
     [ $r = 1 ] || rm -f "$f"
     return $r
 }
-back_trackpad() {
-    local f saved cur w
-    # bold7-trackpad left with the module; the driver back in arrow mode should a stop have left it raw.
+# bold7-trackpad left with the module; the driver back in arrow mode should a stop have left it raw.
+back_mode() {
     if [ -e "$MODE" ] && [ "$(cat "$MODE")" != 1 ]; then
         echo 1 >"$MODE"
         say "  trackpad back in arrow mode"
     fi
-    f=$S/trackpad-avant.txt
-    [ -e "$f" ] || return 0
-    saved=$(cat "$f")
-    [ "$(lines "$f")" = 1 ] && has_service "$saved" || { broken "$f"; return 1; }
-    cur=$(get secure enabled_accessibility_services)
-    w=$(without_service "$saved")
-    if [ "$cur" = "$w" ] || { [ "$cur" = null ] && [ -z "$w" ]; }; then
-        put secure enabled_accessibility_services "$saved" || return 1
-        say "  Q25TrackpadCustomizer's service back on"
-    elif has_service "$cur"; then
-        say "  Q25TrackpadCustomizer's service on already"
-    else
-        [ "$cur" = null ] && cur=
-        put secure enabled_accessibility_services "${cur:+$cur:}$SERVICE" || return 1
-        say "  Q25TrackpadCustomizer's service added to a list changed later"
-    fi
-    rm -f "$f"
 }
 # back_role <item> <role> <our package> <fallback>: without a save, the role goes to the fallback
 # while ours holds it. With one, it goes back to the saved holder (the fallback if that one is gone)
@@ -580,7 +712,7 @@ back_trackpad() {
 back_role() {
     local f cur saved
     f=$S/$1-avant.txt
-    cur=$(holder $2)
+    cur=$(holder $2) || { unread "the holder of $2"; return 1; }
     if [ ! -e "$f" ]; then
         [ "$cur" != $3 ] || give $2 $4
         return
@@ -595,35 +727,70 @@ back_role() {
     fi
     rm -f "$f"
 }
-back_dialer() { back_role dialer DIALER $PHONE $GOOGLE_DIALER; }
+back_dialer() { back_role dialer DIALER $PHONE $STOCK_DIALER; }
 back_home() { back_role home HOME $L $LAUNCHER3; }
 # Typing: bold7_saisie deleted, then the input method saved, unless the user chose another one than
-# Typing and BBKB (which Android puts in Typing's place at each boot, before the storage opens).
+# Typing and LatinIME (which Android puts in Typing's place at each boot, before the storage opens).
 back_saisie() {
     local f cur ime list
     "$TOOLS/settings" delete global bold7_saisie >/dev/null 2>&1
     f=$S/saisie-avant.txt
-    cur=$(get secure default_input_method)
+    cur=$(get secure default_input_method) || { unread default_input_method; return 1; }
     if [ ! -e "$f" ]; then
-        [ "$cur" != "$SAISIE_IME" ] || { "$TOOLS/ime" set $BBKB >/dev/null 2>&1; say "  input method $BBKB"; }
+        [ "$cur" != "$SAISIE_IME" ] || { "$TOOLS/ime" set $LATIN >/dev/null 2>&1; say "  input method $LATIN"; }
         return 0
     fi
     ime=$(sed -n 's/^default_input_method=//p' "$f")
     list=$(sed -n 's/^enabled_input_methods=//p' "$f")
     if [ "$(lines "$f")" != 2 ] || [ -z "$ime" ] || [ "$ime" = null ]; then
         broken "$f"
-        [ "$cur" != "$SAISIE_IME" ] || "$TOOLS/ime" set $BBKB >/dev/null 2>&1
+        [ "$cur" != "$SAISIE_IME" ] || "$TOOLS/ime" set $LATIN >/dev/null 2>&1
         return 1
     fi
     case $cur in
-    "$SAISIE_IME" | "$BBKB" | null | '')
+    "$SAISIE_IME" | "$LATIN" | null | '')
         [ "$list" = null ] || [ -z "$list" ] || put secure enabled_input_methods "$list" || return 1
         "$TOOLS/ime" set "$ime" >/dev/null 2>&1
-        [ "$(get secure default_input_method)" = "$ime" ] || { say "! input method not back to $ime"; return 1; }
+        cur=$(get secure default_input_method) || { unread default_input_method; return 1; }
+        [ "$cur" = "$ime" ] || { say "! input method not back to $ime"; return 1; }
         say "  input method back to $ime"
         ;;
     *) say "  input method kept: $cur, chosen later" ;;
     esac
+    rm -f "$f"
+}
+# The density goes back while it is still Bold7's: by wm, to the saved one, or to none (reset).
+back_densite() {
+    local f v cur
+    f=$S/densite-avant.txt
+    [ -e "$f" ] || return 0
+    v=$(cat "$f")
+    [ "$(lines "$f")" = 1 ] && num "$v" || { broken "$f"; return 1; }
+    cur=$(get secure display_density_forced) || { unread display_density_forced; return 1; }
+    if [ "$cur" = $DENSITY ]; then
+        if [ "$v" = null ]; then "$TOOLS/wm" density reset >/dev/null 2>&1; else "$TOOLS/wm" density "$v" >/dev/null 2>&1; fi
+        cur=$(get secure display_density_forced) || { unread display_density_forced; return 1; }
+        # A reset leaves the setting empty.
+        [ "$cur" = "$v" ] || { [ "$v" = null ] && [ -z "$cur" ]; } || { say "! the density did not go back to $v (now $cur)"; return 1; }
+        say "  density back to $v"
+    else
+        say "  density kept: $cur, chosen later"
+    fi
+    rm -f "$f"
+}
+back_langue() {
+    local f v cur
+    f=$S/langue-avant.txt
+    [ -e "$f" ] || return 0
+    v=$(cat "$f")
+    [ "$(lines "$f")" -le 1 ] && tags "$v" || { broken "$f"; return 1; }
+    cur=$(locales) || { unread "$PC's language"; return 1; }
+    if [ "$cur" = $OS7_LOCALE ]; then
+        set_locales "$v" || { say "! $PC's language did not go back to '$v'"; return 1; }
+        say "  $PC's language back to '$v'"
+    else
+        say "  $PC's language kept: '$cur', chosen later"
+    fi
     rm -f "$f"
 }
 # The Clock's alarm leaves with it, said; an alarm volume a ring cut short left is given back.
@@ -658,26 +825,46 @@ palette() {
     local a g o
     a=$("$TOOLS/cmd" overlay lookup android android:color/system_accent1_600 2>/dev/null)
     g=$("$TOOLS/cmd" overlay lookup android android:color/system_neutral1_900 2>/dev/null)
-    case "$a $g" in "#ff088eef #ff1e2125" | "#ff0092cc #ff282828") ;; *) return 0 ;; esac
+    # LineageOS 24 answers "@<id> -> #<value>": the public color points to its _light or _dark.
+    case "${a##* } ${g##* }" in "#ff088eef #ff1e2125" | "#ff0092cc #ff282828") ;; *) return 0 ;; esac
     for o in neutral accent dynamic; do "$TOOLS/cmd" overlay disable com.android.systemui:$o >/dev/null 2>&1; done
     say "  SystemUI's palette overlays disabled"
 }
 uninstall_apps() {
     local r p
     r=0
-    for p in $MESSAGES $APPS $L; do
+    for p in $MESSAGES $APPS $CAMERA $L; do
         pkg_ok $p || continue
         case $p in
+        "$CAMERA") [ -e "$S/camera.installe" ] || continue ;;
         "$HUB")
             "$TOOLS/cmd" notification disallow_listener $HUB_LISTENER >/dev/null 2>&1
             "$TOOLS/dumpsys" deviceidle whitelist -$HUB >/dev/null 2>&1
             ;;
         # Only an update left in /data: never the priv-app of a module still there.
-        "$L") case $("$TOOLS/pm" path $L) in package:/data/*) ;; *) continue ;; esac ;;
+        "$L") case $("$TOOLS/pm" path $L 2>/dev/null) in package:/data/*) ;; *) continue ;; esac ;;
         esac
         "$TOOLS/pm" uninstall $p >/dev/null 2>&1
         if pkg_ok $p; then say "! could not uninstall $p"; r=1; else say "  $p uninstalled"; fi
     done
+    return $r
+}
+back_prive() {
+    local f k v cur r
+    f=$S/prive-avant.txt
+    [ -e "$f" ] || return 0
+    [ "$(lines "$f")" = 2 ] || { broken "$f"; return 1; }
+    while read -r k v <&3; do
+        case " $PRIVE " in *" $k "*) ;; *) broken "$f"; return 1 ;; esac
+        bool "$v" || { broken "$f"; return 1; }
+    done 3<"$f"
+    r=0
+    while read -r k v <&3; do
+        cur=$(dc_get $k) || { unread $k; return 1; }
+        if [ "$cur" != false ]; then say "  $k kept: $cur, chosen later"; continue; fi
+        if dc_put $k "$v"; then say "  $k back to $v"; else say "! $k did not go back to $v"; r=1; fi
+    done 3<"$f"
+    [ $r = 0 ] && rm -f "$f"
     return $r
 }
 do_restore() {
@@ -689,6 +876,7 @@ do_restore() {
         back_$i || r=1
         rm -f "$S/$i.fait"
     done
+    back_mode
     clock
     dnd || r=1
     "$TOOLS/settings" list global 2>/dev/null | sed -n 's/^\(bold7_[A-Za-z0-9_]*\)=.*/\1/p' | while read -r k; do
@@ -698,8 +886,14 @@ do_restore() {
     uninstall_apps || r=1
     [ "$(holder DIALER)" != $PHONE ] || { say "! DIALER still held by $PHONE"; r=1; }
     [ "$(holder HOME)" != $L ] || { say "! HOME still held by $L"; r=1; }
+    # A value that could not be read is given back at the next boot: this script, its copy and
+    # the saves stay.
+    if [ -n "$AGAIN" ]; then
+        say "! Bold7 removed, but some values could not be read: given back at the next boot"
+        return 1
+    fi
     rm -f "$WRAPPER"
-    rm -f "$S/acces.fait" "$S/vector.installe" "$S/setup.sh"
+    rm -f "$S/acces.fait" "$S/vector.installe" "$S/camera.installe" "$S/setup.sh"
     if [ $r = 0 ]; then
         rm -rf "$S"
         say "Bold7 removed: everything given back"

@@ -76,7 +76,7 @@ close_consent() {
 }
 
 # restart_messages: Google Messages stopped then opened again, so that its main process starts with
-# the bridge (Vector hooks a process when it starts), then the home: the way spike S-rcs took, the
+# the bridge (Vector hooks a process when it starts), then the home: the way the first study of the bridge took, the
 # app stopped for the second the two commands take.
 restart_messages() {
   sh "am force-stop $GM" >/dev/null

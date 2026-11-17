@@ -9,14 +9,15 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class StatusIconsTest {
-    // Android's slots on the Q25: config_statusBarIcons of its framework-res.apk (sha256 a0bf9cca…,
-    // aapt2 dump), the order StatusBarIconList follows, as dumpsys shows it for SystemUI.
+    // Android's slots on the Q25: config_statusBarIcons of LineageOS 24's framework-res.apk
+    // (sha256 ca5e5894…, aapt2 dump), the order StatusBarIconList follows. Against Android 14:
+    // connected_display, satellite and stacked_mobile added, cast and screen_record after zen, wifi after mobile.
     private val q25Slots = listOf(
         "no_calling", "call_strength", "alarm_clock", "rotate", "headset", "data_saver", "ime", "sync_failing",
-        "sync_active", "nfc", "tty", "speakerphone", "cdma_eri", "data_connection", "phone_evdo_signal", "phone_signal",
-        "secure", "managed_profile", "cast", "screen_record", "vpn", "bluetooth", "camera", "microphone",
-        "location", "mute", "volume", "zen", "ethernet", "wifi", "hotspot", "mobile",
-        "airplane", "battery", "sensors_off",
+        "sync_active", "nfc", "tty", "speakerphone", "cdma_eri", "data_connection", "phone_evdo_signal",
+        "phone_signal", "secure", "managed_profile", "connected_display", "vpn", "bluetooth", "camera",
+        "microphone", "location", "mute", "volume", "zen", "screen_record", "cast", "ethernet", "satellite",
+        "hotspot", "stacked_mobile", "mobile", "wifi", "airplane", "battery", "sensors_off",
     )
 
     // Sources of each pair in docs/BBOS7-VISUEL.md §18, "Status indicators".
@@ -77,11 +78,14 @@ class StatusIconsTest {
     // Notification icons go through StatusBarIconView too, their slot being the notification's key.
     @Test fun notificationKeysAreNoSlot() = assertNull(statusIconImage("0|com.android.alarm|1|null|10123"))
 
-    // A name without its drawable would throw in SystemUI's process (counted, Android's icon kept).
+    // A name without its drawable is drawn empty (counted, Android's icon kept): the theme's images in
+    // assets-gen, ours (status_*, D) in git, where the public APK has them too.
     @Test fun everyStatusIconImageIsThere() = assertEquals(
         emptyList(),
-        (STATUS_ICON_IMAGES.values + SLOT_STATES.values.flatMap { it.toList() })
-            .filterNot { File("../../assets-gen/sysui/res/drawable-nodpi/$it.png").exists() },
+        (STATUS_ICON_IMAGES.values + SLOT_STATES.values.flatMap { it.toList() }).filterNot {
+            if (it.startsWith("status_")) File("src/main/res/drawable-nodpi/$it.png").exists()
+            else File("../../assets-gen/sysui/res/drawable-nodpi/$it.png").exists()
+        },
     )
 
     /** config_statusBarIcons of the framework overlay, which sets the order of Android's icons. */

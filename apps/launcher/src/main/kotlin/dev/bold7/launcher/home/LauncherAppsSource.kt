@@ -6,7 +6,9 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Environment
 import android.os.Handler
 import android.os.Process
 import android.os.SystemClock
@@ -16,15 +18,28 @@ import android.util.Log
 import dev.bold7.design.Dimens
 import dev.bold7.icons.AppTable
 import dev.bold7.icons.CALENDAR_ICON
+import dev.bold7.icons.IconSource
 import dev.bold7.icons.IconTemplate
+import dev.bold7.icons.Stamp
 import dev.bold7.icons.TEMPLATE_MASK
 import dev.bold7.icons.TEMPLATE_OVERLAY
 import dev.bold7.icons.TEMPLATE_UNDERLAY
+import dev.bold7.icons.USER_ICON_DIR
+import dev.bold7.icons.UserIconFile
+import dev.bold7.icons.changedPackages
 import dev.bold7.icons.downscaleSteps
 import dev.bold7.icons.drawBbos7Icon
+import dev.bold7.icons.iconSource
+import dev.bold7.icons.indicatorBitmap
 import dev.bold7.icons.neutralTile
 import dev.bold7.icons.parseAppTableOrEmpty
 import dev.bold7.icons.parseIconTableOrEmpty
+import dev.bold7.icons.sampleSize
+import dev.bold7.icons.shownAsIs
+import dev.bold7.icons.userIconListing
+import dev.bold7.ui.themeBitmap
+import dev.bold7.ui.themeImage
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 // No work profile on the Q25, the apps of the main user only.
@@ -121,6 +136,7 @@ class LauncherAppsSource(private val context: Context, private val callbacks: Ha
     }
 
     override fun watch(onChange: (String, Boolean) -> Unit) {
+        this.onChange = onChange
         launcherApps.registerCallback(object : LauncherApps.Callback() {
             override fun onPackageAdded(packageName: String, user: UserHandle) = changed(packageName, user)
             override fun onPackageChanged(packageName: String, user: UserHandle) = changed(packageName, user)
@@ -143,13 +159,78 @@ class LauncherAppsSource(private val context: Context, private val callbacks: Ha
                 icons.keys.removeIf { it.packageName == packageName }
                 calendars.removeIf { it.packageName == packageName }
                 androidNames.keys.removeIf { it.packageName == packageName }
+                indicators.remove(packageName)
+                notifying.remove(packageName)
                 onChange(packageName, removed)
             }
         }, callbacks)
     }
 
+    /** The home's change callback ([watch]), for the user's icons that change. */
+    @Volatile private var onChange: ((String, Boolean) -> Unit)? = null
+
+    /** The user's icons by package (core/icons UserIcons.kt), listed by the first draw, again by [refreshUserIcons]. */
+    @Volatile private var userIcons: Map<String, Stamp>? = null
+
+    private val userIconDir get() = File(Environment.getExternalStorageDirectory(), USER_ICON_DIR)
+
+    /** The folder's icons: none if it does not exist or cannot be read. On the apps' thread. */
+    private fun listUserIcons(): Map<String, Stamp> =
+        userIconListing(userIconDir.listFiles().orEmpty().filter { it.isFile }.map { UserIconFile(it.name, it.length(), it.lastModified()) })
+
+    /**
+     * Lists the folder again, off the main thread, and draws again the icon of each app whose file
+     * appeared, changed or went: called each time the home comes back (onStart), no polling and no
+     * watch of the shared storage.
+     */
+    fun refreshUserIcons() {
+        callbacks.post {
+            val before = userIcons ?: return@post // nothing drawn yet: the first listing reads the folder
+            val after = listUserIcons()
+            userIcons = after
+            for (pkg in changedPackages(before, after)) {
+                icons.keys.removeIf { it.packageName == pkg }
+                onChange?.invoke(pkg, false)
+            }
+        }
+    }
+
     /** [app]'s icon, from the table or generated, drawn when it was listed; the only call for the main thread. */
     fun icon(app: App): Bitmap? = icons[app]
+
+    /**
+     * The icon of [packageName]'s first activity, as [icon]; the notifications list's app headers, main thread too.
+     * Before the first listing, or for an app without a launcher activity, the one [drawIndicator] drew.
+     */
+    fun iconOf(packageName: String): Bitmap? =
+        icons.entries.firstOrNull { it.key.packageName == packageName && it.key.shortcutId == null }?.value ?: notifying[packageName]
+
+    /**
+     * [packageName]'s indicator (indicatorBitmap of core/icons: its BBOS 7 icon at 29 px in a
+     * counter's 33x29 frame), once [drawIndicator] has drawn it; null before, or for a package
+     * gone: the strip's "?" bubble then. The main thread's call.
+     */
+    fun indicator(packageName: String): Bitmap? = indicators[packageName]
+
+    /**
+     * Draws [packageName]'s indicator if it is not yet: the grid's icon of its first launcher
+     * activity, else the table's icon of the package, else its application icon made BBOS 7, as
+     * the grid would. Io only. Nothing for a package Android does not know.
+     */
+    fun drawIndicator(packageName: String) {
+        if (indicators.containsKey(packageName)) return
+        val icon = iconOf(packageName) ?: try {
+            iconOf(packageName, "") { context.packageManager.getApplicationIcon(packageName) }.also { notifying.putIfAbsent(packageName, it) }
+        } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+            return
+        }
+        indicators.putIfAbsent(packageName, indicatorBitmap(icon))
+    }
+
+    // One small icon per app that has an indicator (about 4 KB each), and the grid's size of those
+    // drawn without a listing (the list's headers), dropped with the app's icons.
+    private val indicators = ConcurrentHashMap<String, Bitmap>()
+    private val notifying = ConcurrentHashMap<String, Bitmap>()
 
     /** True if [app]'s icon is the table calendar, over which the home writes the day; main thread too. */
     fun showsDay(app: App): Boolean = app in calendars
@@ -187,10 +268,42 @@ class LauncherAppsSource(private val context: Context, private val callbacks: Ha
 
     /**
      * [Dimens.ICON] px: the activity's table icon, else its own [original] made BBOS 7 by the chain
-     * of core/icons (a white glyph, the adaptive icon recomposed, a legacy icon in the template).
+     * of core/icons (in its own colours, in the template or as its own shape, lit by the theme).
      */
-    private fun iconOf(packageName: String, className: String, original: () -> Drawable): Bitmap =
-        table.iconFor(packageName, className)?.let { name -> decoded[name] ?: decode(name)?.also { decoded[name] = it } } ?: generate(packageName, original)
+    private fun iconOf(packageName: String, className: String, original: () -> Drawable): Bitmap {
+        val tableIcon = table.iconFor(packageName, className)
+        val listing = userIcons ?: listUserIcons().also { userIcons = it }
+        return when (iconSource(inTable = tableIcon != null, userIcon = packageName in listing)) {
+            IconSource.TABLE -> decoded[tableIcon!!] ?: decode(tableIcon)?.also { decoded[tableIcon] = it }
+            IconSource.USER -> userIcon(packageName)
+            IconSource.GENERATED -> null
+        } ?: generate(packageName, original)
+    }
+
+    /**
+     * The user's own `<package>.png`, 92x92 as it is, any other size through the generated
+     * icon's OS 7 rendering; null (the generated icon) if it cannot be decoded.
+     */
+    private fun userIcon(packageName: String): Bitmap? {
+        val file = File(userIconDir, "$packageName.png").path
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file, bounds)
+        val png = BitmapFactory.decodeFile(file, BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight) })
+        if (png == null) {
+            Log.w(TAG, "icon $packageName: $file unreadable, generated instead")
+            return null
+        }
+        if (shownAsIs(png.width, png.height)) {
+            Log.i(TAG, "icon $packageName: USER, as it is")
+            return png
+        }
+        return try {
+            drawBbos7Icon(BitmapDrawable(context.resources, png), Dimens.ICON, template).also { Log.i(TAG, "icon $packageName: USER, ${it.stage}") }.bitmap
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "icon $packageName: $file undrawable, generated instead", e)
+            null
+        }
+    }
 
     /**
      * Once per app and process, on io; logged so the chain's choice per app can be read on the
@@ -212,17 +325,15 @@ class LauncherAppsSource(private val context: Context, private val callbacks: Ha
     /** The theme's shortcut template (Tile.kt), decoded once; the build checks its three drawables are there. */
     private val template by lazy { IconTemplate(raw(TEMPLATE_UNDERLAY), raw(TEMPLATE_MASK), raw(TEMPLATE_OVERLAY)) }
 
-    @Suppress("DiscouragedApi")
-    private fun raw(name: String): Bitmap =
-        BitmapFactory.decodeResource(context.resources, context.resources.getIdentifier(name, "drawable", context.packageName))
+    private fun raw(name: String): Bitmap = themeBitmap(context, name)
 
-    /** Null sends the app to the generated icon, never to its own; never seen, the build checks every name of the table. */
+    /**
+     * Null sends the app to the generated icon, never to its own: an image the extracted firmware
+     * lacks (the development build checks every name of the table).
+     */
     private fun decode(name: String): Bitmap? {
-        val res = context.resources
-        // Resources named by the table, from assets-private (build.gradle.kts): no R field for them.
-        @Suppress("DiscouragedApi")
-        val id = res.getIdentifier(name, "drawable", context.packageName)
-        val png = if (id != 0) BitmapFactory.decodeResource(res, id) else null
+        // The reader's empty image is not a BitmapDrawable.
+        val png = (themeImage(context, name) as? BitmapDrawable)?.bitmap
         if (png == null) {
             Log.w(TAG, "no drawable $name: the app gets the generated icon")
             return null

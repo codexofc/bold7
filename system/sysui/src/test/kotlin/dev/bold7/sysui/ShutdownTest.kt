@@ -13,19 +13,27 @@ class ShutdownTest {
     // Full Power Off and Restart of the power key's dialog (PowerManager reasons "userrequested" or
     // none): OS 7's screen, which keeps Android's words for a screen reader.
     @Test fun powerOffAndRestartGetOs7sScreen() {
-        assertEquals("shutdown_progress", shutdownScreenText(isReboot = false, reason = null))
-        assertEquals("shutdown_progress", shutdownScreenText(isReboot = false, reason = "userrequested"))
-        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = null))
-        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = "userrequested"))
-        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = ""))
+        assertEquals("shutdown_progress", shutdownScreenText(isReboot = false, reason = null, custom = false))
+        assertEquals("shutdown_progress", shutdownScreenText(isReboot = false, reason = "userrequested", custom = false))
+        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = null, custom = false))
+        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = "userrequested", custom = false))
+        assertEquals("reboot_to_reset_message", shutdownScreenText(isReboot = true, reason = "", custom = false))
     }
 
     // A restart into recovery (factory reset, Android's update) tells what it is doing: Android's.
     @Test fun recoveryKeepsAndroidsScreen() {
-        assertNull(shutdownScreenText(isReboot = true, reason = "recovery"))
-        assertNull(shutdownScreenText(isReboot = true, reason = "recovery-update"))
-        assertNull(shutdownScreenText(isReboot = true, reason = "recovery-update,quiescent"))
-        assertNull(shutdownScreenText(isReboot = false, reason = "recovery"))
+        assertNull(shutdownScreenText(isReboot = true, reason = "recovery", custom = false))
+        assertNull(shutdownScreenText(isReboot = true, reason = "recovery-update", custom = false))
+        assertNull(shutdownScreenText(isReboot = true, reason = "recovery-update,quiescent", custom = false))
+        assertNull(shutdownScreenText(isReboot = false, reason = "recovery", custom = false))
+    }
+
+    // LineageOS's advanced restart (into the bootloader, the recovery, fastbootd: rebootCustom)
+    // says where it goes: Android's screen, whatever the reason.
+    @Test fun lineagesCustomRestartKeepsAndroidsScreen() {
+        assertNull(shutdownScreenText(isReboot = true, reason = "bootloader", custom = true))
+        assertNull(shutdownScreenText(isReboot = true, reason = null, custom = true))
+        assertNull(shutdownScreenText(isReboot = false, reason = "userrequested", custom = true))
     }
 
     // The words are the framework's own strings on the Q25 (framework.jar, compiled in).

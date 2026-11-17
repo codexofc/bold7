@@ -30,12 +30,11 @@ class PictureActs(private val activity: Activity, private val done: (deleted: Bo
     /** Delete: "Delete <name>?", Cancel focused (sim-199, C, as MemoPad's and Contacts'), then MediaStore's request without Android's dialog. */
     fun delete(p: Picture) {
         if (locked()) return
-        if (p.id < 0) return say(R.string.not_deleted)
         Bold7Dialog(
             activity, activity.getString(R.string.delete_question, p.name),
             listOf(activity.getString(R.string.act_delete), activity.getString(R.string.cancel)),
             DialogIcon.QUESTION, focused = 1,
-            onButton = { b -> if (b == 0) request(p) },
+            onButton = { b -> if (b == 0 && p.id >= 0) request(p) }, // made-up pictures (showcase, demo): asked, nothing deleted
         ).show()
     }
 
@@ -48,7 +47,8 @@ class PictureActs(private val activity: Activity, private val done: (deleted: Bo
     }
 
     fun setWallpaper(p: Picture) {
-        if (locked() || p.id < 0) return
+        if (locked()) return
+        if (p.id < 0) return say(R.string.wallpaper_set) // made-up picture: reported, nothing written
         graph.io.post {
             val ok = writeWallpaper(activity, p)
             graph.main.post { say(if (ok) R.string.wallpaper_set else R.string.wallpaper_not_set) }

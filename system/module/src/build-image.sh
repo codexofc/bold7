@@ -33,6 +33,10 @@ mkdir -p "$MNT" && mount -t ext4 -o loop,rw,noatime "$NEW" "$MNT" || fail "loop 
 cp -a "$SRC"/. "$MNT"/ || fail "copy (image too small?)"
 chown -R 0:0 "$MNT" && chmod -R u=rwX,go=rX "$MNT" || fail "owner or mode"
 /system/bin/chcon -R u:object_r:system_file:s0 "$MNT" || fail "label"
+# font_fallback.xml keeps the stock file's own type, which system_server reads.
+if [ -f "$MNT/system/etc/font_fallback.xml" ]; then
+    /system/bin/chcon u:object_r:system_font_fallback_file:s0 "$MNT/system/etc/font_fallback.xml" || fail "label of font_fallback.xml"
+fi
 # /system_ext/overlay and the overlays already in it are vendor_overlay_file on this ROM.
 if [ -d "$MNT/system_ext/overlay" ]; then
     /system/bin/chcon -R u:object_r:vendor_overlay_file:s0 "$MNT/system_ext/overlay" || fail "label of system_ext/overlay"

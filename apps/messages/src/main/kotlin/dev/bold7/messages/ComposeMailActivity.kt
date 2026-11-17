@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -46,6 +45,7 @@ import dev.bold7.ui.fillPaint
 import dev.bold7.ui.slate
 import dev.bold7.ui.status
 import dev.bold7.ui.themeImage
+import dev.bold7.ui.themeBitmap
 
 /**
  * Compose Email (sim-46, sim-47, C; guide 7.1 p. 90-93, B): full screen, a grey band
@@ -190,9 +190,9 @@ class ComposeMailActivity : Activity() {
             val list = g.mail.accounts()?.list.orEmpty()
             val people = emailContacts(this)
             val kept = draftId?.let(g.drafts::get)
-            val images = mapOf(ComposeAct.SEND to R.drawable.msg_sm_chat_send, ComposeAct.SAVE_DRAFT to R.drawable.msg_sm_save_draft)
-                .mapValues { BitmapFactory.decodeResource(resources, it.value) }
-            val send = BitmapFactory.decodeResource(resources, R.drawable.msg_send_email)
+            val images = mapOf(ComposeAct.SEND to "msg_sm_chat_send", ComposeAct.SAVE_DRAFT to "msg_sm_save_draft")
+                .mapValues { themeBitmap(applicationContext, it.value) }
+            val send = themeBitmap(applicationContext, "msg_send_email")
             runOnUiThread {
                 glyphs.putAll(images)
                 sendButton.glyph = send

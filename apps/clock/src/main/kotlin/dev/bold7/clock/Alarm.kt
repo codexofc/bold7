@@ -51,12 +51,23 @@ enum class ClockFace { ANALOGUE, DIGITAL, FLIP, LCD }
  */
 data class TimerOptions(val tone: String = TIMER_TONE, val volume: Int = 8, val vibrate: Boolean = false)
 
+/** Clock Options > When Charging (sim-417, C: Do Nothing, Display Clock, Enter Bedside Mode, in that order). */
+enum class WhenCharging { NOTHING, CLOCK, BEDSIDE }
+
 /**
  * What the Clock shows (Clock Options): its [face]; a second time zone, [homeZone] (Home Time Zone,
- * sim-170; guide p. 201), null for the phone's own, which shows nothing more; and Bedside Mode's
- * Dim Screen [dim] (sim-172, checked by default).
+ * sim-170; guide p. 201), null for the phone's own, which shows nothing more; what the charger
+ * opens, [charging] (When Charging, sim-170: Display Clock), and whether pulling it out closes the
+ * Clock again, [dismiss] (Dismiss Clock Automatically, checked: sim-170, sim-413); and Bedside
+ * Mode's Dim Screen [dim] (sim-172, checked by default).
  */
-data class DisplayOptions(val face: ClockFace = ClockFace.ANALOGUE, val homeZone: String? = null, val dim: Boolean = true)
+data class DisplayOptions(
+    val face: ClockFace = ClockFace.ANALOGUE,
+    val homeZone: String? = null,
+    val dim: Boolean = true,
+    val charging: WhenCharging = WhenCharging.CLOCK,
+    val dismiss: Boolean = true,
+)
 
 /** What the Clock keeps (device protected storage, readable before the first unlock). */
 data class ClockSettings(
@@ -72,6 +83,7 @@ data class ClockSettings(
         "vibrate" to "${options.vibrate}",
         "timer_tone" to timer.tone, "timer_volume" to "${timer.volume}", "timer_vibrate" to "${timer.vibrate}",
         "face" to display.face.name, "home_zone" to (display.homeZone ?: ""), "dim" to "${display.dim}",
+        "when_charging" to display.charging.name, "dismiss_clock" to "${display.dismiss}",
     )
 
     companion object {
@@ -99,6 +111,8 @@ data class ClockSettings(
                     get("face")?.let { f -> ClockFace.entries.find { it.name == f } } ?: d.display.face,
                     get("home_zone")?.takeIf { z -> z.isNotEmpty() && runCatching { ZoneId.of(z) }.isSuccess },
                     get("dim")?.toBooleanStrictOrNull() ?: d.display.dim,
+                    get("when_charging")?.let { c -> WhenCharging.entries.find { it.name == c } } ?: d.display.charging,
+                    get("dismiss_clock")?.toBooleanStrictOrNull() ?: d.display.dismiss,
                 ),
             )
         }

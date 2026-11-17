@@ -11,9 +11,8 @@ import dev.bold7.launcher.profiles.Profile
 /** A frame of a theme strip (net_rim_*-iconsWxH.png): its column and its row, in frames. */
 data class Frame(val column: Int, val row: Int = 0)
 
-/** The battery's frame, by the rule SystemUI's bar shares (Strips, core/design). */
-fun batteryFrame(percent: Int, charging: Boolean): Frame =
-    Frame(Strips.batteryColumn(percent), if (charging) Strips.BATTERY_PLUGGED_ROW else 0)
+/** The battery's frame for BatteryManager's [status], by the rule SystemUI's bar shares (Strips, core/design). */
+fun batteryFrame(percent: Int, status: Int): Frame = Frame(Strips.batteryColumn(percent), Strips.batteryRow(status, percent))
 
 /** The signal's frame, by the rule SystemUI's bar shares (Strips, core/design). */
 fun signalFrame(level: Int, inService: Boolean, radioOff: Boolean): Frame = Frame(Strips.signalColumn(level, inService, radioOff))
@@ -41,8 +40,12 @@ fun coverage(type: NetworkType): String = when (type) {
     NetworkType.NR -> "5G"
 }
 
-/** A count and its icon, a frame of net_rim_Ribbon_UnreadCount-icons33x29.png (A, sim-03: "2" and the missed call). */
-data class Indicator(val frame: Int, val count: Int) {
+/**
+ * A count and its icon, a frame of net_rim_Ribbon_UnreadCount-icons33x29.png (A, sim-03: "2" and
+ * the missed call); for another [app], that app's own small icon in the frame's place
+ * (indicatorBitmap of core/icons), the strip's "?" bubble while it has none.
+ */
+data class Indicator(val frame: Int, val count: Int, val app: String? = null) {
     /** Its frame of the strip, made once with it: the banner draws it without allocating. */
     val strip = Frame(frame)
 }
@@ -51,17 +54,21 @@ const val UNREAD_EMAIL = 0
 const val UNREAD_CALENDAR = 4
 const val UNREAD_SMS = 6
 
-/** The strip's speech bubble with a "?": the header of another app in the list of notifications (D, by eye). */
+/** The strip's speech bubble with a "?": another app's icon when it has none (D, by eye). */
 const val UNREAD_OTHER = 7
 const val UNREAD_MISSED_CALL = 14
 
-/** The row's counts, in this order (D): email, texts, missed calls, invitations (unreadByKind counts nothing else). */
-fun indicators(counts: Map<ItemKind, Int>): List<Indicator> = listOf(
+/**
+ * The row's counts, in this order (D): email, texts, missed calls, invitations (unreadByKind),
+ * then each other app's ([apps], unreadByApp's order: the newest first).
+ */
+fun indicators(counts: Map<ItemKind, Int>, apps: Map<String, Int> = emptyMap()): List<Indicator> = listOf(
     ItemKind.EMAIL to UNREAD_EMAIL,
     ItemKind.SMS to UNREAD_SMS,
     ItemKind.MISSED_CALL to UNREAD_MISSED_CALL,
     ItemKind.INVITATION to UNREAD_CALENDAR,
-).mapNotNull { (kind, frame) -> counts[kind]?.takeIf { it > 0 }?.let { Indicator(frame, it) } }
+).mapNotNull { (kind, frame) -> counts[kind]?.takeIf { it > 0 }?.let { Indicator(frame, it) } } +
+    apps.mapNotNull { (app, n) -> n.takeIf { it > 0 }?.let { Indicator(UNREAD_OTHER, it, app) } }
 
 /** Everything the banner and its indicator row show, worked out off the drawing (BannerSource). */
 data class BannerState(
@@ -70,7 +77,9 @@ data class BannerState(
     val date: String = "",
     val network: String = "",
     val coverage: String = "",
-    val battery: Frame = batteryFrame(-1, charging = false),
+    val battery: Frame = batteryFrame(-1, status = 0),
+    /** Charging under 100 %: the bolt animates over the battery (ChargingBolt, core/design). */
+    val charging: Boolean = false,
     val signal: Frame = Frame(1),
     val wifi: Frame? = null,
     val profile: Frame = Frame(0),

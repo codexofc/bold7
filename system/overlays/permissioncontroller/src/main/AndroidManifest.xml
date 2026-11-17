@@ -1,11 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Static, as the other RROs. Unlike SystemUI and BBKB, PermissionController declares
+    <!-- Static, as the other RROs. Unlike SystemUI and Settings, PermissionController declares
          <overlayable>: idmap2 maps only the resources of the group named here, and only for an
          overlay whose partition is in its policies (odm|oem|product|system|vendor; /system_ext
-         counts as system). Google's own GooglePermissionControllerOverlay (/product/overlay)
-         targets the same group. Its signature plays no part. -->
+         counts as system). On LineageOS 24 the package is AOSP's com.android.permissioncontroller
+         (com.android.permission APEX, versionName "33 system image"), not Google's: Lineage's own
+         PermissionControllerOverlay (/product/overlay) targets the same package. Its signature plays no part. -->
     <overlay
-        android:targetPackage="com.google.android.permissioncontroller"
+        android:targetPackage="com.android.permissioncontroller"
         android:targetName="PermissionControllerStyles"
         android:isStatic="true"
         android:priority="999" />

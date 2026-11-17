@@ -26,12 +26,16 @@ sealed interface TypingEffect {
 
     /** Application Shortcuts: the app of [letter]. */
     data class Open(val letter: Char) : TypingEffect
+
+    /** Application Shortcuts: H opens Help, which has no icon (sim-288 then sim-440, C). */
+    data object Help : TypingEffect
 }
 
 fun type(state: Typing, mode: LaunchByTyping, event: TypingEvent): Pair<Typing, TypingEffect?> = when (event) {
     is TypingEvent.Down -> when {
         // The search is open: the field takes the keys, the letters are only kept.
         state.searching -> state.copy(text = state.text + event.char) to null
+        mode == LaunchByTyping.APPLICATION_SHORTCUTS && event.char.lowercaseChar() == 'h' -> state to TypingEffect.Help
         mode == LaunchByTyping.APPLICATION_SHORTCUTS -> state to TypingEffect.Open(event.char)
         else -> Typing(text = state.text + event.char, searching = true).let { it to TypingEffect.Search(it.text) }
     }

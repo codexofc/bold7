@@ -9,6 +9,8 @@ import android.os.Looper
 import android.os.Process
 import android.util.LruCache
 import dev.bold7.platform.enableStrictModeIfDebuggable
+import dev.bold7.platform.speakOs7Language
+import dev.bold7.showcase.showcaseOn
 import java.util.concurrent.Executors
 
 class PicturesApp : Application() {
@@ -16,6 +18,7 @@ class PicturesApp : Application() {
 
     override fun onCreate() {
         enableStrictModeIfDebuggable()
+        speakOs7Language()
         super.onCreate()
     }
 }
@@ -23,7 +26,7 @@ class PicturesApp : Application() {
 val Context.graph: PicturesGraph get() = (applicationContext as PicturesApp).graph
 
 /** The objects of Pictures' process, built by hand (docs/ARCHITECTURE.md §5). */
-class PicturesGraph(app: Application) {
+class PicturesGraph(private val app: Application) {
     val main = Handler(Looper.getMainLooper())
 
     /** MediaStore's reads and the actions' writes: never the main thread. */
@@ -42,6 +45,6 @@ class PicturesGraph(app: Application) {
     /** The made-up pictures of `--ei rows N`, when the app was opened so (tools/perf.sh); null otherwise. */
     @Volatile var demo: List<Picture>? = null
 
-    /** Every picture: the made-up ones, or MediaStore's. Off the main thread. */
-    fun all(): List<Picture> = demo ?: store.all()
+    /** Every picture: the made-up ones, the showcase's (bold7_showcase, MediaStore never read) or MediaStore's. Off the main thread. */
+    fun all(): List<Picture> = demo ?: if (showcaseOn(app)) Store.showcase(System.currentTimeMillis()) else store.all()
 }

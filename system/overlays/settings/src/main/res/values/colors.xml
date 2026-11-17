@@ -18,23 +18,53 @@
     <!-- The error of a dialog: OS 7's red, not Google's #D93025. -->
     <color name="settingslib_dialog_colorError">#ffba2121</color>
 
-    <!-- The home page's category icons sit on a coloured disc, a different hue per category: OS 7 has
-         no such hues, so one #212429, the colour of its menus, under the white glyph (D). -->
+    <!-- The home page's category icons sit on a coloured disc, a different hue per category, the
+         glyph in a darker shade of it: OS 7 has no such hues, so one #212429, the colour of its
+         menus, under a white glyph (D). Each category's own pair, not the hues it names
+         (homepage_blue_bg...), which Lineage also qualifies with -night. -->
     <color name="homepage_about_background">#ff212429</color>
     <color name="homepage_accessibility_background">#ff212429</color>
     <color name="homepage_accounts_background">#ff212429</color>
-    <color name="homepage_app_and_notification_background">#ff212429</color>
+    <color name="homepage_apps_background">#ff212429</color>
     <color name="homepage_battery_background">#ff212429</color>
     <color name="homepage_connected_device_background">#ff212429</color>
+    <color name="homepage_device_background">#ff212429</color>
     <color name="homepage_display_background">#ff212429</color>
     <color name="homepage_generic_icon_background">#ff212429</color>
+    <color name="homepage_hub_mode_background">#ff212429</color>
     <color name="homepage_location_background">#ff212429</color>
+    <color name="homepage_modes_background">#ff212429</color>
     <color name="homepage_network_background">#ff212429</color>
+    <color name="homepage_notification_background">#ff212429</color>
+    <color name="homepage_safety_background">#ff212429</color>
     <color name="homepage_security_background">#ff212429</color>
     <color name="homepage_sound_background">#ff212429</color>
     <color name="homepage_storage_background">#ff212429</color>
+    <color name="homepage_supervision_background">#ff212429</color>
     <color name="homepage_support_background">#ff212429</color>
     <color name="homepage_system_background">#ff212429</color>
+    <color name="homepage_wallpaper_background">#ff212429</color>
+    <color name="homepage_about_foreground">#ffffffff</color>
+    <color name="homepage_accessibility_foreground">#ffffffff</color>
+    <color name="homepage_accounts_foreground">#ffffffff</color>
+    <color name="homepage_apps_foreground">#ffffffff</color>
+    <color name="homepage_battery_foreground">#ffffffff</color>
+    <color name="homepage_connected_device_foreground">#ffffffff</color>
+    <color name="homepage_device_foreground">#ffffffff</color>
+    <color name="homepage_display_foreground">#ffffffff</color>
+    <color name="homepage_hub_mode_foreground">#ffffffff</color>
+    <color name="homepage_location_foreground">#ffffffff</color>
+    <color name="homepage_modes_foreground">#ffffffff</color>
+    <color name="homepage_network_foreground">#ffffffff</color>
+    <color name="homepage_notification_foreground">#ffffffff</color>
+    <color name="homepage_safety_foreground">#ffffffff</color>
+    <color name="homepage_security_foreground">#ffffffff</color>
+    <color name="homepage_sound_foreground">#ffffffff</color>
+    <color name="homepage_storage_foreground">#ffffffff</color>
+    <color name="homepage_supervision_foreground">#ffffffff</color>
+    <color name="homepage_support_foreground">#ffffffff</color>
+    <color name="homepage_system_foreground">#ffffffff</color>
+    <color name="homepage_wallpaper_foreground">#ffffffff</color>
     <color name="preference_fallback_accent_color">#ff088eef</color>
 
     <!-- The thumb colours of MtkSettings' own copy of the Material switch, and a card's dark face. -->

@@ -1,42 +1,67 @@
 package dev.bold7.launcher.home
 
 import android.content.Context
-import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.NinePatch
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.NinePatchDrawable
 import android.view.MotionEvent
 import android.view.View
+import dev.bold7.design.ChargingBolt
 import dev.bold7.design.HomeBanner
 import android.view.ViewConfiguration
 import dev.bold7.design.HomeColors
 import dev.bold7.design.HomeDimens
 import dev.bold7.design.TextToken
 import dev.bold7.design.Typography
-import dev.bold7.launcher.R
+import dev.bold7.ui.BoltTicker
 import dev.bold7.ui.fit
+import dev.bold7.ui.themeBitmap
+import dev.bold7.ui.themeImage
 import dev.bold7.ui.typeface
 
 /** The banner's images of the theme (home_*.png, A), decoded on io. */
-internal class BannerImages(private val res: Resources) {
-    private fun decode(id: Int): Bitmap = BitmapFactory.decodeResource(res, id)
-    val background = decode(R.drawable.home_banner_background)
-    val backgroundFocus = decode(R.drawable.home_banner_background_focus)
-    val divider = decode(R.drawable.home_banner_divider)
-    val row = decode(R.drawable.home_indicator_bar_background)
-    val battery = decode(R.drawable.home_net_rim_indicator_batterylevel_icons50x25)
-    val signal = decode(R.drawable.home_net_rim_ribbon_signallevel_icons49x19)
-    val wifi = decode(R.drawable.home_net_rim_ribbon_wlansignallevel_icons30x24)
-    val profile = decode(R.drawable.home_net_rim_ribbon_profile_icons43x43)
-    val unread = decode(R.drawable.home_net_rim_ribbon_unreadcount_icons33x29)
-    val search = decode(R.drawable.home_banner_search_button)
-    val alarm = decode(R.drawable.home_net_rim_alarm_indicator_icons21x21)
+internal class BannerImages(context: Context) {
+    private val decode = { name: String -> themeBitmap(context, name) }
+    val background = decode("home_banner_background")
+    val backgroundFocus = decode("home_banner_background_focus")
+    val divider = decode("home_banner_divider")
+    val row = decode("home_indicator_bar_background")
+    val battery = decode("home_net_rim_indicator_batterylevel_icons50x25")
+    val signal = decode("home_net_rim_ribbon_signallevel_icons49x19")
+    val wifi = decode("home_net_rim_ribbon_wlansignallevel_icons30x24")
+    val profile = decode("home_net_rim_ribbon_profile_icons43x43")
+    val unread = decode("home_net_rim_ribbon_unreadcount_icons33x29")
+    val search = decode("home_banner_search_button")
+    val alarm = decode("home_net_rim_alarm_indicator_icons21x21")
+    /** lightning_bolt_01 to _05 (18x29), the charging bolt fading in; [0] stands for _00, empty. */
+    val bolt: List<Bitmap?> = listOf(null) + (1..5).map { decode("home_lightning_bolt_0$it") }
     /** The home's one trackpad focus but the banner's: the speaker, the notifications, the magnifier, the tab, an icon. */
-    val focus = decode(R.drawable.home_focus).let { NinePatch(it, it.ninePatchChunk).apply { paint = Paint(Paint.FILTER_BITMAP_FLAG) } }
+    val focus = FocusPatch(themeImage(context, "home_focus"))
+}
+
+/**
+ * The theme's 9-patch [image] drawn as a NinePatch with a filtering paint and no anti-aliasing,
+ * what the home drew before its images were read by name. Bounds set at each draw: main thread only.
+ */
+internal class FocusPatch(private val image: Drawable) {
+    init {
+        (image as? NinePatchDrawable)?.paint?.set(Paint(Paint.FILTER_BITMAP_FLAG))
+    }
+
+    fun draw(canvas: Canvas, dst: Rect) {
+        image.bounds = dst
+        image.draw(canvas)
+    }
+
+    // Every caller passes whole pixels.
+    fun draw(canvas: Canvas, dst: RectF) {
+        image.setBounds(dst.left.toInt(), dst.top.toInt(), dst.right.toInt(), dst.bottom.toInt())
+        image.draw(canvas)
+    }
 }
 
 /**
@@ -47,14 +72,31 @@ internal class BannerImages(private val res: Resources) {
  */
 internal class BannerView(context: Context, private val onTap: (BannerFocus) -> Unit, private val onPull: () -> Unit) : View(context) {
     private var images: BannerImages? = null
+
+    /** Another app's indicator (LauncherAppsSource.indicator), drawn in a counter's frame; null: the strip's "?". */
+    var indicatorIcon: (String) -> Bitmap? = { null }
+
     var state = BannerState()
         set(value) {
             if (field != value) {
                 field = value
                 refit()
                 invalidate()
+                bolt.charging = value.charging
             }
         }
+
+    private val bolt = BoltTicker(this)
+
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        bolt.visible(isVisible)
+    }
+
+    override fun onScreenStateChanged(screenState: Int) {
+        super.onScreenStateChanged(screenState)
+        bolt.screen(screenState)
+    }
 
     // The texts cut to their room (BannerRoom, fit of core/ui): worked out when the state or the
     // width changes, never in a frame.
@@ -119,6 +161,7 @@ internal class BannerView(context: Context, private val onTap: (BannerFocus) -> 
         // The banner (sim-03, C): battery top left, date under it, network and time centred, coverage
         // and signal top right, Wi-Fi under them.
         frame(canvas, img.battery, 50, 25, s.battery, BATTERY_X, BATTERY_Y)
+        img.bolt[bolt.image]?.let { canvas.drawBitmap(it, BOLT_X, BOLT_Y, bitmap) }
         if (s.alarm) canvas.drawBitmap(img.alarm, HomeBanner.ALARM_X.toFloat(), HomeBanner.ALARM_Y.toFloat(), bitmap)
         canvas.drawText(date, DATE_X, DATE_BASELINE, datePaint)
         canvas.drawText(network, w / 2f, NETWORK_BASELINE, networkPaint)
@@ -146,7 +189,8 @@ internal class BannerView(context: Context, private val onTap: (BannerFocus) -> 
             val n = digits(i.count)
             canvas.drawText(n, x, (rowTop + COUNT_BASELINE).toFloat(), countPaint)
             x += countPaint.measureText(n) + COUNT_GAP
-            frame(canvas, img.unread, 33, 29, i.strip, x.toInt(), rowTop + UNREAD_Y)
+            val own = i.app?.let(indicatorIcon)
+            if (own != null) canvas.drawBitmap(own, x, (rowTop + UNREAD_Y).toFloat(), bitmap) else frame(canvas, img.unread, 33, 29, i.strip, x.toInt(), rowTop + UNREAD_Y)
             x += 33 + INDICATOR_GAP
         }
     }
@@ -175,7 +219,7 @@ internal class BannerView(context: Context, private val onTap: (BannerFocus) -> 
         canvas.drawBitmap(strip, src, dst, bitmap)
     }
 
-    private fun under(canvas: Canvas, image: NinePatch, l: Float, t: Float, r: Float, b: Float) {
+    private fun under(canvas: Canvas, image: FocusPatch, l: Float, t: Float, r: Float, b: Float) {
         dstF.set(l, t, r, b)
         image.draw(canvas, dstF)
     }
@@ -215,6 +259,8 @@ internal class BannerView(context: Context, private val onTap: (BannerFocus) -> 
     private companion object {
         const val BATTERY_X = HomeBanner.BATTERY_X
         const val BATTERY_Y = HomeBanner.BATTERY_Y
+        const val BOLT_X = (BATTERY_X + ChargingBolt.X).toFloat()
+        const val BOLT_Y = (BATTERY_Y + ChargingBolt.Y).toFloat()
         const val DATE_X = HomeBanner.DATE_X.toFloat()
         const val DATE_BASELINE = HomeBanner.DATE_BASELINE.toFloat()
         const val NETWORK_BASELINE = HomeBanner.NETWORK_BASELINE.toFloat()

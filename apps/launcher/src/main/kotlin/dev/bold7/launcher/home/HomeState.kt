@@ -31,8 +31,15 @@ const val SHORTCUT = "#shortcut:"
 
 val App.shortcutId: String? get() = if (className.startsWith(SHORTCUT)) className.substring(SHORTCUT.length) else null
 
-/** A BBOS 7 folder: apps only, none at all allowed (sim-16, C). */
-data class Folder(val name: String, val apps: List<App>) : Tile
+/**
+ * A BBOS 7 folder: apps only, none at all allowed (sim-16, C), and its [icon], the place of its
+ * image in the chooser of Add Folder and Edit Folder (sim-474: 0 the theme's folder.png, n its
+ * foldernn.png of _bs1, F).
+ */
+data class Folder(val name: String, val apps: List<App>, val icon: Int = 0) : Tile
+
+/** The chooser's icons: folder.png, then folder01.png to folder20.png (sim-474, sim-475, C). */
+const val FOLDER_ICONS = 21
 
 /**
  * The tray's views, in the loop the trackpad and a swipe go round (sim-02, sim-11 to sim-14, C):
@@ -41,9 +48,18 @@ data class Folder(val name: String, val apps: List<App>) : Tile
 enum class Panel {
     FREQUENT, ALL, FAVOURITES, MEDIA, DOWNLOADS;
 
-    /** The view [step] places further round the loop. */
-    fun next(step: Int): Panel = entries[(ordinal + step).mod(entries.size)]
+    /** The view [step] places further round the loop of the views not [hidden] (Manage Panels); All never hides. */
+    fun next(step: Int, hidden: Set<Panel> = emptySet()): Panel {
+        val loop = entries.filter { it == this || it == ALL || it !in hidden }
+        return loop[(loop.indexOf(this) + step).mod(loop.size)]
+    }
 }
+
+/**
+ * What Home Screen Preferences shows and sets of the home (sim-284, sim-287, C): the folders of
+ * All, the one an app downloaded goes to ([downloads], null for Home) and the views Manage Panels hides.
+ */
+data class HomeChoices(val folders: List<String>, val downloads: String?, val hiddenPanels: Set<Panel>)
 
 /** Frequent shows the apps opened last, newest first, up to three rows of the 9900 (D). */
 const val FREQUENT_MAX = 18
@@ -77,7 +93,14 @@ data class HomeState(
     val beforeMove: SavedHome? = null,
     /** The folder open over All (sim-16), by its place in [layout]. */
     val openFolder: Int? = null,
+    /** Downloads Folder (guide 7.1 p. 23, B): the folder of All an app installed goes to, by name; null for Home. */
+    val downloadsFolder: String? = null,
+    /** The views Manage Panels hides (guide 7.1 p. 23, B); never All (D). */
+    val hiddenPanels: Set<Panel> = emptySet(),
 ) {
+    /** What Home Screen Preferences shows. */
+    val choices: HomeChoices get() = HomeChoices(layout.mapNotNull { (it as? Folder)?.name }, downloadsFolder, hiddenPanels)
+
     private val byComponent = apps.associateBy { it.component }
 
     private val visible = apps.filterNot(hiding::hides)
@@ -169,16 +192,20 @@ sealed interface HomeEvent {
     /** The click: the icon stays where it is. */
     data object EndMove : HomeEvent
 
-    /** Add Folder (the home's menu): an empty folder at the end of All, named [name], numbered if taken (D). */
-    data class AddFolder(val name: String) : HomeEvent
+    /**
+     * Add Folder (the home's menu): an empty folder with [icon], named [name], numbered if taken
+     * (D), in the place of the icon at [at] of All, which it pushes on (sim-479, C), or at the end
+     * of All (no icon focused, a folder open).
+     */
+    data class AddFolder(val name: String, val icon: Int = 0, val at: Int? = null) : HomeEvent
 
     /** The folder at [index] of All opened (a click, Open Folder). */
     data class OpenFolder(val index: Int) : HomeEvent
 
     data object CloseFolder : HomeEvent
 
-    /** The open folder named [name] (Edit Folder); an empty name changes nothing. */
-    data class RenameFolder(val name: String) : HomeEvent
+    /** Edit Folder (sim-481): the folder at [index] of All named [name], with [icon]; an empty name changes nothing. */
+    data class EditFolder(val index: Int, val name: String, val icon: Int) : HomeEvent
 
     /**
      * Move to Folder: the app at [index] of what is shown into the folder at [target] of the
@@ -188,6 +215,9 @@ sealed interface HomeEvent {
 
     /** Delete Folder: its apps take its place in All, in its order (D). */
     data class DeleteFolder(val index: Int) : HomeEvent
+
+    /** Home Screen Preferences saved: Downloads Folder ([downloads], null for Home) and the views Manage Panels hides. */
+    data class Preferences(val downloads: String?, val hiddenPanels: Set<Panel>) : HomeEvent
 }
 
 /** The views whose order is the user's: All, and Favourites (D); the others are worked out. */
@@ -201,6 +231,8 @@ fun reduce(state: HomeState, event: HomeEvent): HomeState = when (event) {
             layout = layout,
             favourites = event.saved.favourites,
             frequent = event.saved.frequent,
+            downloadsFolder = event.saved.downloads,
+            hiddenPanels = event.saved.hiddenPanels - Panel.ALL,
             loaded = true,
             appsVersion = state.appsVersion + 1,
             hiding = event.hiding,
@@ -219,7 +251,7 @@ fun reduce(state: HomeState, event: HomeEvent): HomeState = when (event) {
             packageChanged(if (state.moving != null) state.cancelMove() else state, event)
         }
     }
-    is HomeEvent.ShowPanel -> if (state.moving != null) state else state.copy(panel = event.panel, openFolder = null)
+    is HomeEvent.ShowPanel -> if (state.moving != null || event.panel in state.hiddenPanels) state else state.copy(panel = event.panel, openFolder = null)
     is HomeEvent.Expand -> state.copy(expanded = event.expanded)
     HomeEvent.HomeKey -> state.cancelMove().copy(expanded = false, showAll = false, openFolder = null)
     HomeEvent.Back -> when {
@@ -239,22 +271,48 @@ fun reduce(state: HomeState, event: HomeEvent): HomeState = when (event) {
         if (state.panel.arranged() && state.tileAt(event.index) != null) state.copy(moving = event.index, beforeMove = SavedHome(state.layout, state.favourites)) else state
     is HomeEvent.MoveTo -> state.moving?.let { from -> moveTo(state, from, event.index) } ?: state
     HomeEvent.EndMove -> state.copy(moving = null, beforeMove = null)
-    is HomeEvent.AddFolder -> state.copy(layout = state.layout + Folder(newFolderName(state.layout, event.name), emptyList()))
+    is HomeEvent.AddFolder -> {
+        val folder = Folder(newFolderName(state.layout, event.name), emptyList(), event.icon)
+        val place = event.at?.takeIf { state.openFolder == null && state.panel == Panel.ALL }?.let(state::placeOf)
+        state.copy(layout = if (place == null) state.layout + folder else state.layout.toMutableList().apply { add(place, folder) })
+    }
     is HomeEvent.OpenFolder ->
         // Opened, it takes the raised tray (sim-16; D lowered).
         if (state.panel == Panel.ALL && state.openFolder == null && state.tileAt(event.index) is Folder) state.copy(openFolder = state.placeOf(event.index), expanded = true) else state
     HomeEvent.CloseFolder -> state.copy(openFolder = null)
-    is HomeEvent.RenameFolder -> {
-        val at = state.openFolder
+    is HomeEvent.EditFolder -> {
+        val at = state.placeOf(event.index)
         val saved = at?.let { state.layout[it] as? Folder }
         val name = folderName(event.name)
-        if (saved == null || name.isEmpty()) state else state.copy(layout = state.layout.replaced(at, saved.copy(name = name)))
+        if (saved == null || name.isEmpty()) {
+            state
+        } else {
+            state.copy(
+                layout = state.layout.replaced(at, saved.copy(name = name, icon = event.icon)),
+                downloadsFolder = if (state.downloadsFolder == saved.name) name else state.downloadsFolder,
+            )
+        }
     }
     is HomeEvent.MoveToFolder -> movedToFolder(state, event.index, event.target) ?: state
     is HomeEvent.DeleteFolder -> {
         val at = state.placeOf(event.index)
         val folder = at?.let { state.layout[it] as? Folder }
-        if (folder == null) state else state.copy(layout = state.layout.subList(0, at) + folder.apps + state.layout.subList(at + 1, state.layout.size))
+        if (folder == null) {
+            state
+        } else {
+            state.copy(
+                layout = state.layout.subList(0, at) + folder.apps + state.layout.subList(at + 1, state.layout.size),
+                downloadsFolder = state.downloadsFolder.takeUnless { it == folder.name },
+            )
+        }
+    }
+    is HomeEvent.Preferences -> {
+        val hidden = event.hiddenPanels - Panel.ALL
+        state.copy(
+            downloadsFolder = event.downloads?.takeIf { name -> state.layout.any { it is Folder && it.name == name } },
+            hiddenPanels = hidden,
+            panel = if (state.panel in hidden) Panel.ALL else state.panel,
+        )
     }
 }
 
@@ -292,7 +350,7 @@ private fun packageChanged(state: HomeState, event: HomeEvent.PackageChanged): H
     // A hidden app of the layout keeps its place; one it does not know yet is placed only
     // when shown again (HidingChanged), at the end.
     val kept = if (event.removed) removed(state.layout, pkg) else state.layout
-    val layout = placed(kept, apps, state.hiding::hides)
+    val layout = placed(kept, apps, state.hiding::hides, state.downloadsFolder)
     val gone = { c: String -> event.removed && c.substringBefore('/') == pkg }
     return state.copy(
         apps = apps,

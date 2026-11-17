@@ -97,7 +97,7 @@ class EditActivity : Activity() {
                 addView(caption())
                 addView(title, LinearLayout.LayoutParams(0, wrap, 1f))
             }), FrameLayout.LayoutParams(match, TITLE_HEIGHT).apply { rightMargin = BUTTON_WIDTH + GAP })
-            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, R.drawable.mem_save), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, TITLE_HEIGHT, Gravity.END))
+            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, "mem_save"), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, TITLE_HEIGHT, Gravity.END))
         }
         // No status bar of Android's: the 9900 shows its title bar alone (sim-254).
         window.hideStatusBar()

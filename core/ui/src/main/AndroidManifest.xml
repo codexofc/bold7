@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Merged into every app that links core/ui.
+         enableOnBackInvokedCallback false: from target 36 Android sends Back to the predictive
+         back's callbacks only, onBackPressed and KEYCODE_BACK no longer reach the app; OS 7's
+         Back and Escape are read as keys everywhere (WindowOnBackInvokedDispatcher of Android 17
+         still honours the application's false). BarsProvider: Bars.kt. -->
+    <application android:enableOnBackInvokedCallback="false">
+        <provider
+            android:name="dev.bold7.ui.BarsProvider"
+            android:authorities="${applicationId}.bold7.bars"
+            android:exported="false" />
+    </application>
+</manifest>

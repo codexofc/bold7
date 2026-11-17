@@ -21,7 +21,7 @@ import java.util.Locale
 // thread from the Hub's store: the views only draw these strings. Pure. Logic taken from the
 // launcher's hub/HubLines.kt and the filters of feat/p3-hub-filtres.
 
-/** The phone's zone, language and clock, read with the items. */
+/** The phone's zone and clock, read with the items, and the names of days and months (OS7_NAMES on the phone). */
 data class InboxFormat(val zone: ZoneId, val locale: Locale, val clock24: Boolean)
 
 /** What the Hub's store holds, read at once, and the apps whose notifications repeat it (withoutEchoes). */

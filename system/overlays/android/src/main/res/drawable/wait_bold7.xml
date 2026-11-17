@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OS 7's wait indicator, the green ring under "Web Suggestions from Bing" while universal search
+     waits (sim-111, C): the twelve 27x27 frames of net_rim_progress.png of the theme's _bs1 part (A),
+     cut by tools/import-assets.sh dialogues (bold7_wait_00 to _11) and put on these framework hosts
+     by the fabricated overlay (ImageOverlays.HOSTS). Each frame at its own size in the middle of the
+     view, never stretched: ProgressBar gives an AnimationDrawable its whole bounds.
+     100 ms a frame: no source gives the ring's pace; it is the pace of the firmware's other wait
+     animation, osicon_hourglass.gif (twelve frames of 100 ms, A), so D.
+     Reached from the ProgressBar styles of values/widgets.xml, never from a framework drawable the
+     zygote preloads (progress_medium_material and the others are): a preloaded drawable keeps the
+     images it had in the zygote, before the fabricated overlay. -->
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android" android:oneshot="false">
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_audio_away" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_audio_busy" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_audio_online" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_video_away" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_video_busy" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/presence_video_online" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/zoom_plate" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/dialog_frame" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/editbox_dropdown_light_frame" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/stat_sys_vp_phone_call" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/stat_sys_vp_phone_call_on_hold" /></layer-list>
+    </item>
+    <item android:duration="100">
+        <layer-list><item android:gravity="center" android:drawable="@android:drawable/ic_menu_upload_you_tube" /></layer-list>
+    </item>
+</animation-list>

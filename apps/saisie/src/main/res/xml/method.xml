@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- French and British English (the simulator's English). No
-     settings activity. Labels left to Android, which names each subtype after its locale. -->
+     settings activity. Labels left to Android, which names each subtype after its locale.
+     The physical keyboard hint: since Android 14, Android lays a layout of its own over the
+     keyboard after the subtype (fr-FR gives AZERTY to every app). An undetermined language
+     matches none of its layouts, so none is laid over the Q25's own map (KeyboardLayoutManager,
+     getMatchingLayoutForProvidedLanguageTag). The subtype ids keep each subtype's identity
+     whatever its attributes; Android caches its layout choice by that identity. -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android">
     <subtype
+        android:subtypeId="0x0b070001"
         android:imeSubtypeLocale="fr_FR"
         android:languageTag="fr-FR"
         android:imeSubtypeMode="keyboard"
+        android:physicalKeyboardHintLanguageTag="und-Latn"
+        android:physicalKeyboardHintLayoutType="qwerty"
         android:isAsciiCapable="true"
         android:isAuxiliary="false" />
     <subtype
+        android:subtypeId="0x0b070002"
         android:imeSubtypeLocale="en_GB"
         android:languageTag="en-GB"
         android:imeSubtypeMode="keyboard"
+        android:physicalKeyboardHintLanguageTag="und-Latn"
+        android:physicalKeyboardHintLayoutType="qwerty"
         android:isAsciiCapable="true"
         android:isAuxiliary="false" />
 </input-method>

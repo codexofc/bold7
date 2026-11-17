@@ -1,7 +1,7 @@
 package dev.bold7.saisie
 
 /**
- * A word list (AOSP and OS 7 merged, assets-private/saisie) in one sorted block: the words end to
+ * A word list (AOSP's, with OS 7's part laid over it) in one sorted block: the words end to
  * end in one String, their starts and their frequencies (0 to 255) in two arrays, about 4 MB for
  * the French list's 200 000 words. Built once, off the main thread; read by binary search.
  */

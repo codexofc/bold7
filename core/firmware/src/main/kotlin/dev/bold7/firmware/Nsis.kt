@@ -127,6 +127,9 @@ internal class SimulatorUnpacker : Unpacker {
                 writeCod(e.name, Nsis.read(f, nsis, e, Cabinet.MAX_FILE), tree)
                 progress((i + 1f) / cods.size)
             }
+            nsis.files.firstOrNull { it.name == BootScreen.SIMULATOR_DLL }?.let { e ->
+                BootScreen.logoOrNull(Nsis.read(f, nsis, e, Cabinet.MAX_FILE))?.let { put(work, BootScreen.LOGO, Png.encode(it)) }
+            }
         }
     }
 }

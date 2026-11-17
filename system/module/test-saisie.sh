@@ -20,8 +20,14 @@ l=\$(head -n 1 $T/steps); [ -n "\$l" ] || exit 1
 sed -i 1d $T/steps; eval "\$l"
 EOF
 # settings get global bold7_saisie / secure default_input_method; ime enable|set ID (set fails
-# while setfail counts down); pm path prints a path when installed exists.
+# while setfail counts down); pm path prints a path when installed exists. Like system_server under
+# SELinux, settings fails when one of its file descriptors is a file of the phone (the log, a save),
+# and while sfail counts down: "cmd: Failure calling service settings: Failed transaction" on its output.
 adb shell "cat > $T/settings" <<EOF
+n=\$(cat $T/sfail 2>/dev/null || echo 0)
+if [ -f /proc/\$\$/fd/0 ] || [ -f /proc/\$\$/fd/1 ] || [ -f /proc/\$\$/fd/2 ] || [ \$n -gt 0 ]; then
+  echo \$((n - 1)) > $T/sfail; echo 'cmd: Failure calling service settings: Failed transaction (2147483646)'; exit 255
+fi
 case \$3 in bold7_saisie) cat $T/flag ;; default_input_method) cat $T/default ;; esac
 EOF
 adb shell "cat > $T/ime" <<EOF
@@ -33,9 +39,12 @@ EOF
 adb shell "echo '[ -e $T/installed ] && echo package:/data/app/base.apk; true' > $T/pm; echo 'exit 0' > $T/log; echo 'cat $T/ce' > $T/getprop; chmod 755 $T/resetprop $T/settings $T/ime $T/pm $T/log $T/getprop"
 # $1: ce at start; $2: bold7_saisie; $3: installed or not; $4: ime set failures before it takes;
 # then the steps, one per argument. Prints the exit code, the ime calls and the default at the end.
+# SFAIL: settings failures before it answers; OUT: where the script's output goes (setup.sh apply
+# gives it bold7.log, a file).
+SFAIL=0 OUT=/dev/null
 run() {
   local ce=$1 flag=$2 inst=$3 fail=$4; shift 4
-  printf '%s\n' "$@" | adb shell "rm -f $T/waits $T/calls $T/installed; cat > $T/steps; echo '$ce' > $T/ce; echo '$flag' > $T/flag; echo $fail > $T/setfail; echo com.blackberry.keyboard/com.blackberry.inputmethod.core.BlackBerryIME > $T/default; [ '$inst' = yes ] && touch $T/installed; PATH=$T:\$PATH GETPROP=$T/getprop RESETPROP=$T/resetprop SETTINGS=$T/settings IME=$T/ime PM=$T/pm MAX_WAIT=3 TRIES=3 RETRY_SLEEP=0 sh $T/saisie-start.sh $T >/dev/null 2>&1; echo \$?; cat $T/calls 2>/dev/null || true; cut -d/ -f1 $T/default" | tr -d '\r' | tr '\n' ' '
+  printf '%s\n' "$@" | adb shell "rm -f $T/waits $T/calls $T/installed; cat > $T/steps; echo '$ce' > $T/ce; echo '$flag' > $T/flag; echo $fail > $T/setfail; echo $SFAIL > $T/sfail; echo com.blackberry.keyboard/com.blackberry.inputmethod.core.BlackBerryIME > $T/default; [ '$inst' = yes ] && touch $T/installed; PATH=$T:\$PATH GETPROP=$T/getprop RESETPROP=$T/resetprop SETTINGS=$T/settings IME=$T/ime PM=$T/pm MAX_WAIT=3 TRIES=3 RETRY_SLEEP=0 ASK_TRIES=4 sh $T/saisie-start.sh $T </dev/null >>$OUT 2>&1; echo \$?; cat $T/calls 2>/dev/null || true; cut -d/ -f1 $T/default" | tr -d '\r' | tr '\n' ' '
 }
 expect() { [ "$2" = "$3" ] && echo "ok   $1" || { echo "FAIL $1: got '$2', expected '$3'"; adb shell "rm -rf $T"; exit 1; }; }
 B=com.blackberry.keyboard S=dev.bold7.saisie
@@ -46,8 +55,15 @@ expect "switch off: nothing done"                   "$(run true null yes 0)" "0 
 expect "switch deleted then 0: nothing done"        "$(run true 0 yes 0)" "0 $B "
 expect "not installed: nothing done"                "$(run true 1 no 0)" "0 $B "
 expect "storage never opens: given up"              "$(run false 1 yes 0)" "0 $B "
-expect "selection taken at the third try"           "$(run true 1 yes 2)" "0 enable set set set $S "
-expect "selection never taken: fails"               "$(run true 1 yes 9)" "1 enable set set set $B "
+expect "selection taken at the third try"           "$(run true 1 yes 2)" "0 enable set enable set enable set $S "
+expect "selection never taken: fails"               "$(run true 1 yes 9)" "1 enable set enable set enable set $B "
+OUT=$T/apply.log
+expect "output to a file (setup.sh apply): selected" "$(run true 1 yes 0)" "0 enable set $S "
+OUT=/dev/null SFAIL=3
+expect "settings fails 3 times, then answers"       "$(run true 1 yes 0)" "0 enable set $S "
+SFAIL=9
+expect "settings never answers: not selected, fails" "$(run true 1 yes 0)" "1 $B "
+SFAIL=0
 expect "no module folder: nothing done"             "$(adb shell "PATH=$T:\$PATH GETPROP=$T/getprop IME=$T/ime sh $T/saisie-start.sh $T/none >/dev/null 2>&1; echo \$?; [ -e $T/none ] && echo created || true" | tr -d '\r' | tr '\n' ' ')" "2 "
-expect "each end in the module log"                 "$(adb shell "grep -c 'saisie:' $T/bold7.log" | tr -d '\r')" "8"
+expect "each end in the module log"                 "$(adb shell "grep -c 'saisie:' $T/bold7.log" | tr -d '\r')" "11"
 adb shell "rm -rf $T"

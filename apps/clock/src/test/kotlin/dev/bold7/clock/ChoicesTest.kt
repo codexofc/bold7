@@ -46,11 +46,35 @@ class ChoicesTest {
         assertEquals(s, choose(OptionRow.TIMER_FACE, s, 0))
     }
 
-    @Test fun dimScreenIsTheOnlyCheckBox() {
+    @Test fun dimScreenAndDismissClockAutomaticallyAreTheCheckBoxes() {
         val s = toggle(OptionRow.DIM, ClockSettings())
         assertEquals(false, s.display.dim)
         assertEquals(true, toggle(OptionRow.DIM, s).display.dim)
         assertEquals(s, toggle(OptionRow.TONE, s))
+        // sim-170: Dismiss Clock Automatically, checked.
+        assertTrue(checked(OptionRow.DISMISS, ClockSettings()))
+        assertEquals(false, toggle(OptionRow.DISMISS, ClockSettings()).display.dismiss)
+    }
+
+    @Test fun whenChargingIsSim417sListAndDisplaysTheClockByDefault() {
+        // sim-417: Do Nothing, Display Clock, Enter Bedside Mode; sim-170: Display Clock.
+        assertEquals(listOf("Do Nothing", "Display Clock", "Enter Bedside Mode") to 1, choices(OptionRow.WHEN_CHARGING, ClockSettings()))
+        assertEquals(WhenCharging.BEDSIDE, choose(OptionRow.WHEN_CHARGING, ClockSettings(), 2).display.charging)
+        assertEquals(WhenCharging.NOTHING, choose(OptionRow.WHEN_CHARGING, ClockSettings(), 0).display.charging)
+    }
+
+    @Test fun eachChoiceOfWhenChargingLeavesOneDoorOpenToTheCharger() {
+        // The launcher opens whichever alias is enabled; Do Nothing leaves none.
+        assertEquals(mapOf(WhenCharging.NOTHING to null, WhenCharging.CLOCK to CHARGING_CLOCK, WhenCharging.BEDSIDE to CHARGING_BEDSIDE), WhenCharging.entries.associateWith(::chargingAlias))
+        assertEquals(Page.BEDSIDE, chargingPage(CHARGING_BEDSIDE))
+        assertEquals(Page.CLOCK, chargingPage(CHARGING_CLOCK))
+    }
+
+    @Test fun theClockGroupHasSim170sRowsInOrder() {
+        assertEquals(
+            listOf(OptionRow.FACE, OptionRow.HOME_ZONE, OptionRow.WHEN_CHARGING, OptionRow.DISMISS, OptionRow.SET_TIME),
+            OptionRow.entries.filter { it.group == OptionGroup.CLOCK },
+        )
     }
 
     @Test fun homeTimeZoneStartsOnThePhonesOwnAndChoosingItAgainClearsTheSecondZone() {
@@ -68,7 +92,7 @@ class ChoicesTest {
 
     @Test fun everyGroupHasItsRowsInThe9900sOrder() {
         assertEquals(listOf(OptionGroup.CLOCK, OptionGroup.ALARM, OptionGroup.BEDSIDE, OptionGroup.STOPWATCH, OptionGroup.TIMER), OptionRow.entries.map { it.group }.distinct())
-        assertEquals(listOf(Kind.CHOICE, Kind.CHOICE, Kind.BUTTON), OptionRow.entries.filter { it.group == OptionGroup.CLOCK }.map { it.kind })
+        assertEquals(listOf(Kind.CHOICE, Kind.CHOICE, Kind.CHOICE, Kind.CHECK, Kind.BUTTON), OptionRow.entries.filter { it.group == OptionGroup.CLOCK }.map { it.kind })
     }
 
     @Test fun everyToneIsOneTheModuleLaysInAlarms() {

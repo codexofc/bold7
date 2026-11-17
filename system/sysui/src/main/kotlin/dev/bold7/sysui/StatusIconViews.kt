@@ -9,6 +9,7 @@ import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 import android.location.LocationManager
+import android.os.BatteryManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -16,6 +17,8 @@ import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewParent
 import android.widget.ImageView
+import dev.bold7.design.ChargingBolt
+import dev.bold7.ui.BoltTicker
 import io.github.libxposed.api.XposedInterface.Chain
 import java.lang.reflect.Executable
 import java.lang.reflect.Field
@@ -27,7 +30,7 @@ private const val STATUS_BAR_ICON = "com.android.internal.statusbar.StatusBarIco
 internal const val STATUS_BAR_POLICY = "com.android.systemui.statusbar.phone.PhoneStatusBarPolicy"
 internal const val BLUETOOTH_CONTROLLER = "com.android.systemui.statusbar.policy.BluetoothControllerImpl"
 internal const val LOCATION_CONTROLLER = "com.android.systemui.statusbar.policy.LocationControllerImpl"
-internal const val ICON_CONTROLLER = "com.android.systemui.statusbar.phone.StatusBarIconControllerImpl"
+internal const val ICON_CONTROLLER = "com.android.systemui.statusbar.phone.ui.StatusBarIconControllerImpl"
 
 /**
  * The 9900's indicators in place of Android's status icons (StatusIcons), in the two bars Bold7
@@ -270,4 +273,97 @@ internal class Indicator(val image: Drawable) : Drawable() {
 
     @Deprecated("Deprecated in Drawable")
     override fun getOpacity() = PixelFormat.TRANSLUCENT
+}
+
+/** [batteryImage] of a sticky ACTION_BATTERY_CHANGED. */
+internal fun batteryImage(intent: Intent): String = batteryImage(
+    intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1),
+    intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100),
+    intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0),
+)
+
+/** [charging] of a sticky ACTION_BATTERY_CHANGED: the bolt over the battery. */
+internal fun charging(intent: Intent): Boolean = charging(
+    intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1),
+    intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100),
+    intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0),
+)
+
+/**
+ * The 9900's battery in an app's banner where LineageOS 24 draws its own in Compose
+ * (battery_composable_view): no BatteryMeterView is left for the battery group to hook, so the bar
+ * takes this view in its place, fed by the sticky battery broadcast while it is in a window.
+ * While it charges, the bolt animates over it (ChargingBolt): it overflows the frame, so the view
+ * is that much taller, moved up by its top padding to keep the frame where StatusBarLayout puts it.
+ */
+internal class BatteryImage(context: Context, private val images: Images, private val fail: (String, Exception) -> Unit) : ImageView(context) {
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, intent: Intent) = show(intent)
+    }
+    private val bolt = BoltTicker(this)
+
+    /**
+     * On the Phone's one-line bar (StatusBarLayout.placeOneLine): the bolt at (16, 0) from the
+     * frame, measured on the Calendar's line (sim-471, C), not the pme's (17, -2) of the two lines.
+     */
+    var oneLine = false
+        set(value) {
+            if (field != value) invalidate()
+            field = value
+        }
+
+    init {
+        setPadding(0, BOLT_ABOVE, 0, BOLT_BELOW)
+        translationY = -BOLT_ABOVE.toFloat()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val name = boltImage(bolt.image) ?: return
+        val d = images[name]
+        val x = if (oneLine) ONE_LINE_BOLT_X else ChargingBolt.X
+        val y = BOLT_ABOVE + if (oneLine) 0 else ChargingBolt.Y
+        d.setBounds(x, y, x + d.intrinsicWidth, y + d.intrinsicHeight)
+        d.draw(canvas)
+    }
+
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        bolt.visible(isVisible)
+    }
+
+    override fun onScreenStateChanged(screenState: Int) {
+        super.onScreenStateChanged(screenState)
+        bolt.screen(screenState)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        try {
+            context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)?.let(::show)
+        } catch (e: RuntimeException) {
+            fail("battery: broadcast refused, drawn empty", e)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        try {
+            context.unregisterReceiver(receiver)
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "battery: the receiver was not registered", e)
+        }
+        super.onDetachedFromWindow()
+    }
+
+    private fun show(intent: Intent) {
+        setImageDrawable(Indicator(images[batteryImage(intent)]))
+        bolt.charging = charging(intent)
+    }
+
+    private companion object {
+        // The bolt (29 px) over the frame (25 px): 2 px above it on two lines, 4 below on one.
+        const val BOLT_ABOVE = 2
+        const val BOLT_BELOW = 4
+        const val ONE_LINE_BOLT_X = 16
+    }
 }

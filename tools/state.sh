@@ -11,7 +11,7 @@ section() { printf '\n## %s\n' "$1"; }
 adb get-state >/dev/null
 
 section identity
-sh 'getprop ro.build.fingerprint; getprop ro.build.display.id; getprop ro.fota.version; getprop ro.build.version.sdk; getprop ro.boot.slot_suffix; getenforce'
+sh 'getprop ro.build.fingerprint; getprop ro.build.display.id; getprop ro.lineage.version; getprop ro.build.version.sdk; getprop ro.boot.slot_suffix; getenforce'
 
 section modules
 su_ 'for m in /data/adb/modules/*; do n=${m##*/}; f=""; for x in disable remove update skip_mount; do [ -e $m/$x ] && f="$f $x"; done; v=$(grep -m1 ^version= $m/module.prop 2>/dev/null | cut -d= -f2-); echo "$n version=${v:-none}${f}"; done; ls /data/adb/modules_update 2>/dev/null | sed "s/^/pending-update /"; ls /data/adb/metamodule/mnt 2>/dev/null | grep -v lost+found | sed "s/^/metamodule-image /"; [ -d /data/adb/lspd ] && echo lspd-present || echo lspd-absent'
@@ -20,7 +20,7 @@ section roles
 for r in HOME DIALER SMS ASSISTANT BROWSER; do printf '%s ' "$r"; sh "cmd role get-role-holders android.app.role.$r"; done
 
 section system-files
-sh 'for f in /system_ext/priv-app/MtkSystemUI/MtkSystemUI.apk /system_ext/priv-app/SearchLauncherQuickStep/SearchLauncherQuickStep.apk /system/etc/fonts.xml /product/media/bootanimation.zip; do sha256sum $f; done'
+sh 'for f in /system_ext/priv-app/SystemUI/SystemUI.apk /system_ext/priv-app/Launcher3QuickStep/Launcher3QuickStep.apk /system/etc/fonts.xml /product/media/bootanimation.zip; do sha256sum $f; done'
 
 section disabled-packages
 sh 'pm list packages -d' | sort
@@ -54,6 +54,8 @@ for k in enabled_accessibility_services enabled_notification_listeners default_i
 section saisie
 printf 'bold7_saisie='; sh 'settings get global bold7_saisie'
 printf 'bold7_saisie_style='; sh 'settings get global bold7_saisie_style'
+# PermissionController's app language (British English while Bold7 is installed).
+sh 'cmd locale get-app-locales com.google.android.permissioncontroller --user 0'
 
 section sound-settings
 for k in ringtone notification_sound alarm_alert; do printf '%s=' "$k"; sh "settings get system $k"; done
@@ -82,11 +84,14 @@ for k in bold7_trackpad_off bold7_trackpad_horizontal bold7_trackpad_vertical bo
 su_ 'grep ^N: /proc/bus/input/devices' | sort
 
 # The End key: the layout Android loaded for each Q25_keyboard (the module's
-# /product/usr/keylayout copy while it is mounted, /system/usr/keylayout's without it), what End
+# /product/usr/keylayout copy while it is mounted, /vendor/usr/keylayout's without it), what End
 # (KEY_HOMEPAGE, 172) is in the stock and the module's file, and end_button_behavior (2 on the Q25).
 section touches
 sh 'dumpsys input' | grep -A12 -E '^ +[0-9]+: Q25_keyboard' | grep KeyLayoutFile | sed 's/^ *//' | sort || true
-for f in /system/usr/keylayout/Q25_keyboard.kl /product/usr/keylayout/Q25_keyboard.kl; do
-  printf '%s ' "$f"; sh "grep '^key 172 ' $f 2>/dev/null || echo absent"
+for f in /vendor/usr/keylayout/Q25_keyboard.kl /product/usr/keylayout/Q25_keyboard.kl; do
+  printf '%s ' "$f"; su_ "grep '^key 172 ' $f 2>/dev/null || echo absent"
 done
 printf 'end_button_behavior='; sh 'settings get system end_button_behavior'
+printf 'display_density_forced='; sh 'settings get secure display_density_forced'
+# PermissionController's app language (British English while Bold7 is installed).
+sh 'cmd locale get-app-locales com.android.permissioncontroller --user 0'

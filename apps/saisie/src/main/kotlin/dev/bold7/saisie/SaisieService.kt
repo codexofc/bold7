@@ -25,6 +25,8 @@ import android.widget.FrameLayout
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import dev.bold7.theme.ThemeImages
+import java.io.File
 import java.text.DateFormat
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
@@ -310,9 +312,13 @@ class SaisieService : InputMethodService() {
         return true
     }
 
-    /** A character key of the keyboard's map, or null. */
+    /**
+     * A character key, or null: the Q25's own map by scan code (Q25Keys), whatever layout Android
+     * lays over the keyboard; the keyboard's map only for a key without a scan code there.
+     */
     private fun press(event: KeyEvent): Press? {
         if (event.isCtrlPressed || event.isMetaPressed) return null
+        Q25Keys.of(event.scanCode)?.let { return Press(it.base, it.shift, it.alt, event.isShiftPressed, event.altLeft, event.repeatCount) }
         // The Q25's $ key (KEY_GRAVE) has no character in its map: the dollar, whatever the modifiers.
         val base = keyChar(event.keyCode, event.getUnicodeChar(0)).code
         if (base == 0 || base and KeyCharacterMap.COMBINING_ACCENT != 0 || Character.isISOControl(base)) return null
@@ -355,7 +361,10 @@ class SaisieService : InputMethodService() {
             KeyEvent.KEYCODE_DPAD_DOWN -> view.focus = view.focus.move(0, 1)
             KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_CENTER -> if (event.repeatCount == 0) pick(view.focus)
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> closeSymbols()
-            else -> if (event.repeatCount == 0) Symbols.of(event.getUnicodeChar(0).toChar(), view.focus.page)?.let { choose(it) }
+            else -> if (event.repeatCount == 0) {
+                val letter = Q25Keys.of(event.scanCode)?.base ?: event.getUnicodeChar(0).toChar()
+                Symbols.of(letter, view.focus.page)?.let { choose(it) }
+            }
         }
         return true
     }
@@ -440,21 +449,25 @@ class SaisieService : InputMethodService() {
 
     /**
      * Both languages at once, whatever the subtype: the user writes French with English words. Ours
-     * in French (in git) and OS 7's in English (assets-gen); until the French word list is read,
-     * the French list alone, so that no English entry ever replaces a French word ("dont", "il",
-     * "sec"); then the English entries whose typed form is a French word are left out. Read on a
-     * thread of its own: about a second of work that no key may wait behind.
+     * in French (in git) and OS 7's in English; until the French word list is read, the French list
+     * alone, so that no English entry ever replaces a French word ("dont", "il", "sec"); then the
+     * English entries whose typed form is a French word are left out. The word lists are AOSP's (in
+     * git) with OS 7's part laid over them (the words only its firmware has, read first so that
+     * their line wins). OS 7's files (os7/) come from the folder the module mounts, else from the
+     * APK (development build), else there are none. Read on a thread of its own: about a second of
+     * work that no key may wait behind.
      */
     private fun load() {
-        fun list(name: String) = runCatching { assets.open("substitution/$name.tsv").bufferedReader().use { Substitutions.parse(it.readText()) } }
-            .getOrDefault(Substitutions.NONE)
-        fun words(lang: String) = runCatching { assets.open("dictionary/$lang.tsv").bufferedReader().use { WordList.parse(it.readText()) } }.getOrNull()
+        fun read(path: String) = runCatching { assets.open(path).bufferedReader().use { it.readText() } }.getOrNull()
+        fun os7(path: String) = runCatching { File(ThemeImages.ROOT, "saisie/assets/os7/$path").readText() }.getOrNull() ?: read("os7/$path")
+        fun list(text: String?) = text?.let { runCatching { Substitutions.parse(it) }.getOrNull() } ?: Substitutions.NONE
+        fun words(lang: String) = read("dictionary/$lang.tsv")?.let { aosp -> WordList.parse(os7("dictionary/$lang.tsv").orEmpty() + "\n" + aosp) }
         Thread({
-            val fr = list("fr")
+            val fr = list(read("substitution/fr.tsv"))
             typing.post { substitutions = fr }
             val french = words("fr")
             val english = words("en")
-            val both = if (french == null) fr else fr + list("en").without(french::contains)
+            val both = if (french == null) fr else fr + list(os7("substitution/en.tsv")).without(french::contains)
             typing.post { substitutions = both }
             lexicons = listOfNotNull(french, english)
         }, "bold7-saisie-words").apply { priority = Thread.MIN_PRIORITY }.start()

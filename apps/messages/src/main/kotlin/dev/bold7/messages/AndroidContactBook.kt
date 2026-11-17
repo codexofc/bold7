@@ -36,6 +36,11 @@ class AndroidContactBook(context: Context) : ContactBook {
             ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
     }
 
+    override fun name(number: String): String? = read(null) {
+        resolver.query(Uri.withAppendedPath(PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number)), arrayOf(PhoneLookup.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() } else null }
+    }
+
     override fun chosen(uri: String): Recipient? = read(null) {
         resolver.query(Uri.parse(uri), arrayOf(Phone.NUMBER, Phone.DISPLAY_NAME_PRIMARY, Phone.TYPE, Phone.MIMETYPE), null, null, null)?.use { c ->
             if (!c.moveToFirst() || c.getString(3) != Phone.CONTENT_ITEM_TYPE) return@use null

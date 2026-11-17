@@ -1,6 +1,7 @@
 package dev.bold7.launcher.quickstep
 
 import android.view.Choreographer
+import dev.bold7.design.Fade
 import dev.bold7.platform.OpeningAnimation
 import dev.bold7.platform.OpeningWindow
 
@@ -11,16 +12,46 @@ object WindowZoom {
     /** An app opened from the home: it grows and fades in. */
     val open = animation(Transitions.OPEN)
 
-    /** An app left for the home: it shrinks and fades out over the home. */
-    val close = animation(Transitions.CLOSE)
+    /**
+     * An app left for the home: it shrinks and fades out over the home. Left from the switcher
+     * (Home Screen, or End while it shows), the app goes at once and the switcher fades out over
+     * the home ([Transitions.SWITCHER_TO_HOME], vid-04, C).
+     */
+    val close = OpeningAnimation { window ->
+        if (window.leaves) {
+            window.place(1f, 0f, 0f, 0f)
+            fadeLeaving(window, Transitions.SWITCHER_TO_HOME)
+        } else {
+            play(window, Transitions.CLOSE)
+        }
+    }
 
     /**
-     * No animation, the window whole at once: an app chosen in the switcher (no transition in the
-     * theme from application-switcher to an app, and application-switcher-animation-on = false, A).
+     * An app chosen in the switcher: the app whole at once, under the switcher, which fades out
+     * above it ([Transitions.SWITCHER_TO_APP], vid-04, C). No zoom: the theme has no rule from
+     * application-switcher to an app, and application-switcher-animation-on = false (A).
      */
-    val cut = OpeningAnimation { window ->
-        window.place(1f, 0f, 0f, 1f)
-        window.finish()
+    val fromSwitcher = OpeningAnimation { window ->
+        window.place(1f, 0f, 0f, 1f) // with the system's start transaction
+        if (window.leaves) fadeLeaving(window, Transitions.SWITCHER_TO_APP) else window.finish()
+    }
+
+    /** Plays [fade] on the translucent windows leaving above [window]'s, then ends the transition. */
+    private fun fadeLeaving(window: OpeningWindow, fade: Fade) {
+        Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+            private var first = -1L
+
+            override fun doFrame(nanos: Long) {
+                try {
+                    if (first < 0) first = nanos - VSYNC_NANOS
+                    val ms = (nanos - first) / 1_000_000L
+                    window.fadeLeaving(fade.alpha(ms))
+                    if (ms >= fade.durationMs) window.finish() else Choreographer.getInstance().postFrameCallback(this)
+                } catch (e: RuntimeException) {
+                    window.fail(e)
+                }
+            }
+        })
     }
 
     private fun animation(zoom: Zoom) = OpeningAnimation { play(it, zoom) }

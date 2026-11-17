@@ -3,7 +3,8 @@
   Pictures of BBOS 7.1: an ordinary app over MediaStore's pictures,
   out of the module, installed by tools/install.sh. It reads the pictures, deletes one when asked
   (MANAGE_MEDIA's app-op, so that OS 7's question replaces Android's), sets the wallpaper and a
-  contact's picture; it keeps nothing but its options. Nothing exported but the launcher's activity.
+  contact's picture; it keeps nothing but its options. Nothing exported but the launcher's activity
+  and Select Picture (signature).
   Nothing is shown over the lock screen.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -23,6 +24,12 @@
         android:name="dev.bold7.permission.COMPOSE_TEXT"
         android:protectionLevel="signature" />
     <uses-permission android:name="dev.bold7.permission.COMPOSE_TEXT" />
+
+    <!-- Select Picture, for Options' Change Wallpaper (the launcher): Bold7's signature
+         permission, declared here and by the launcher, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.SELECT_PICTURE"
+        android:protectionLevel="signature" />
 
     <!-- Runtime, granted by tools/install.sh (grant_permissions). -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -44,6 +51,12 @@
     </queries>
 
     <!-- No backup: it shows pictures (it stores none). -->
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
     <application
         android:name=".PicturesApp"
         android:allowBackup="false"
@@ -61,6 +74,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Select Picture (Options' Change Wallpaper): the same pages, a click gives the picture back,
+             with a read grant on its MediaStore uri. Shows a screen, writes nothing. -->
+        <activity
+            android:name=".SelectPictureActivity"
+            android:exported="true"
+            android:permission="dev.bold7.permission.SELECT_PICTURE"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden" />
 
         <!-- The picture in full, opened from the grid only. -->
         <activity

@@ -30,7 +30,7 @@ open class HubProvider : ContentProvider() {
                 store().counterRows().forEach { row -> addRow(if (seen) row else row.copyOf().also { it[4] = null }) }
             }
             // The roles as they stand now: the launcher reads the same two for its own count.
-            HubContract.KINDS_URI -> MatrixCursor(arrayOf(HubContract.KIND, HubContract.UNREAD)).apply {
+            HubContract.KINDS_URI -> MatrixCursor(arrayOf(HubContract.KIND, HubContract.UNREAD, HubContract.APP)).apply {
                 val context = context!!
                 val dialer = context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage
                 store().kindRows(Telephony.Sms.getDefaultSmsPackage(context), dialer).forEach(::addRow)

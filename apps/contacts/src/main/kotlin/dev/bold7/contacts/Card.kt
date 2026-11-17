@@ -5,7 +5,7 @@ import dev.bold7.ui.MenuEntry
 import dev.bold7.ui.withSwitchApplication
 
 // A contact's card of BBOS 7.1, pure (gsm 015, C; docs/BBOS7-VISUEL.md §30): the name and picture,
-// then boxes of details, Phone Numbers then Email Addresses (C), Addresses and Groups (D); the
+// then boxes of details, Phone Numbers then Email Addresses (C), Addresses (D), then Recent Activity (sim-194, drawn by CardView); the
 // trackpad walks the details, the menu acts on the one under it.
 
 enum class Kind { PHONE, EMAIL, ADDRESS }
@@ -18,7 +18,6 @@ data class Card(
     val name: String,
     val company: String,
     val details: List<Detail>,
-    val groups: List<String>,
     val photo: String? = null,
 ) {
     /** The boxes of the card, each with its details, empty ones left out. */

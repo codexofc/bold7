@@ -6,27 +6,28 @@
 # Each time the saver turns on or off, energy.sh is called with eco or perf. Rule: the saver's state
 # wins at each boot and at each of its changes; a manual `energy.sh … eco|perf` holds until the next.
 #
-# No polling and no app of ours: system_server bumps the property cache_key.is_power_save_mode each
-# time the saver changes (BatterySaverController), after writing Settings.Global.low_power
-# (BatterySaverStateMachine). resetprop -w sleeps on that one property's futex until its value moves:
-# nothing wakes at rest. The nonce also moves on policy changes (BatterySaverPolicy): low_power is
-# read again, and nothing is done unless it changed.
-# Runs until reboot; stops at its next wake-up once the module is disabled or marked for removal,
-# or once another instance has started (saver.pid).
+# No polling and no app of ours: each time the saver changes, system_server writes the event
+# battery_saver_mode (tag 2739, BatterySaverController.handleBatterySaverStateChanged, services.jar of
+# LineageOS 24), after BatterySaverStateMachine has written Settings.Global.low_power. logcat blocks on
+# the events buffer, filtered on that tag: it never wakes the phone itself, it only reads what logd
+# hands it while something else is logging anyway (about one event a second, screen on), and this
+# shell runs on the saver's own lines only. Each one makes it read low_power again: nothing is done
+# unless it changed (the event also comes with the saver's policy changes). Android 14 had a property
+# to wait on, cache_key.is_power_save_mode; Android 17 keeps those nonces in shared memory.
+# Runs until reboot; stops at its next event once the module is disabled or marked for removal, or
+# once another instance has started (saver.pid). Its logcat then goes at the event after (SIGPIPE).
 MODDIR=$1 CPUCTL=$2
 [ -d "$MODDIR" ] || exit 2
 # By their paths (KernelSU runs this with its busybox); the test gives fakes.
-RESETPROP=${RESETPROP:-/data/adb/ksu/bin/resetprop} SETTINGS=${SETTINGS:-/system/bin/settings}
-PROP=cache_key.is_power_save_mode
+LOGCAT=${LOGCAT:-/system/bin/logcat} SETTINGS=${SETTINGS:-/system/bin/settings}
+TAG=battery_saver_mode
 LOG=$MODDIR/bold7.log
 say() { log -p "$1" -t Bold7 "$2"; echo "$2" >>"$LOG"; }
 
 echo $$ >"$MODDIR/saver.pid"
 # What energy.sh boot has just applied.
 if [ -f "$MODDIR/eco" ]; then last=1; else last=0; fi
-# The nonce first: a change after this read wakes the wait below.
-nonce=$("$RESETPROP" $PROP)
-while :; do
+follow() {
     s=$("$SETTINGS" get global low_power)
     case $s in
     1) ;;
@@ -42,20 +43,18 @@ while :; do
         # A failed write is tried again at the next change.
         sh "$MODDIR/energy.sh" "$MODDIR" "$CPUCTL" $m && last=$s
     fi
-    if ! "$RESETPROP" -w $PROP "$nonce" >/dev/null 2>&1; then
-        say w "saver: wait on $PROP failed, battery saver no longer followed"
-        exit 1
-    fi
-    n=$("$RESETPROP" $PROP)
-    # A wait that returns without a change would spin: stop instead.
-    if [ "$n" = "$nonce" ]; then
-        say w "saver: woken without a change of $PROP, battery saver no longer followed"
-        exit 1
-    fi
-    nonce=$n
-    [ "$(cat "$MODDIR/saver.pid" 2>/dev/null)" = $$ ] || exit 0
-    if [ -e "$MODDIR/disable" ] || [ -e "$MODDIR/remove" ]; then
-        say i "saver: module disabled or removed, battery saver no longer followed"
-        exit 0
-    fi
-done
+}
+follow
+# logcat prints the buffer first, then each new line: a change made after the read above is in it.
+"$LOGCAT" -b events -v brief -s $TAG 2>/dev/null | {
+    while read -r _; do
+        [ "$(cat "$MODDIR/saver.pid" 2>/dev/null)" = $$ ] || exit 0
+        if [ -e "$MODDIR/disable" ] || [ -e "$MODDIR/remove" ]; then
+            say i "saver: module disabled or removed, battery saver no longer followed"
+            exit 0
+        fi
+        follow
+    done
+    say w "saver: logcat of $TAG ended, battery saver no longer followed"
+    exit 1
+}

@@ -20,6 +20,14 @@ class LockTest {
         assertEquals(OwnerLines(null, null), ownerLines(" \n "))
     }
 
+    // Options' Message on Lock Screen writes what the lock screen reads back.
+    @Test fun ownerTextRoundTrips() {
+        assertEquals(OwnerLines("Sam", "If found, call 555-0100"), ownerLines(ownerText(" Sam ", "If found, call 555-0100")))
+        assertEquals("Sam", ownerText("Sam", "  "))
+        assertEquals("", ownerText("", ""))
+        assertEquals(OwnerLines("Sam", "a\nb"), ownerLines(ownerText("Sam", "a\nb")))
+    }
+
     // The profile the launcher publishes, as the home shows it: Medium's speaker with one yellow
     // wave (sim-308), Normal's (sim-337), and every other profile's frame, whatever Android's ringer.
     @Test fun speakerIsTheProfileInUse() {
@@ -126,16 +134,25 @@ class LockTest {
         assertFalse(padCovered(keyboard = 2, hardKeyboardHidden = 2))
     }
 
-    // The device's PIN and password, and MediaTek's SIM view (the one this SystemUI
-    // inflates for the SIM's PIN and PUK); never AOSP's SIM views, the anti-theft lock, the pattern.
-    @Test fun onlyTheDevicesPinAndPasswordAndTheSimViewAreCovered() {
+    @Test fun aCodeIsCoveredOnlyWithAKeyboard() {
+        assertTrue(bouncerCovered(KEYGUARD_PIN_VIEW, keyboard = 2, hardKeyboardHidden = 1))
+        assertFalse(bouncerCovered(KEYGUARD_PIN_VIEW, keyboard = 1, hardKeyboardHidden = 1))
+        assertFalse(bouncerCovered(KEYGUARD_SIM_PIN_VIEW, keyboard = 2, hardKeyboardHidden = 2))
+        assertFalse(bouncerCovered("com.android.keyguard.KeyguardSimInputView", keyboard = 2, hardKeyboardHidden = 1))
+    }
+
+    // The device's PIN and password, and AOSP's two SIM views (LineageOS 24 has no
+    // MediaTek view); never their common parent, MediaTek's views.
+    @Test fun onlyTheDevicesCodesAndTheSimViewsAreCovered() {
         assertTrue(bouncerDressed("com.android.keyguard.KeyguardPINView"))
         assertTrue(bouncerDressed("com.android.keyguard.KeyguardPasswordView"))
-        assertTrue(bouncerDressed("com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView"))
-        assertEquals("com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView", KEYGUARD_SIM_VIEW)
-        assertFalse(bouncerDressed("com.android.keyguard.KeyguardSimPinView"))
-        assertFalse(bouncerDressed("com.android.keyguard.KeyguardSimPukView"))
+        assertTrue(bouncerDressed("com.android.keyguard.KeyguardSimPinView"))
+        assertTrue(bouncerDressed("com.android.keyguard.KeyguardSimPukView"))
+        assertEquals("com.android.keyguard.KeyguardSimPinView", KEYGUARD_SIM_PIN_VIEW)
+        assertEquals("com.android.keyguard.KeyguardSimPukView", KEYGUARD_SIM_PUK_VIEW)
+        assertFalse(bouncerDressed("com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView"))
         assertFalse(bouncerDressed("com.android.keyguard.KeyguardSimInputView"))
+        // The 9900 had no pattern (bold7-pas-de-schema): Android's own grid is never covered.
         assertFalse(bouncerDressed("com.android.keyguard.KeyguardPatternView"))
         assertFalse(bouncerDressed("com.mediatek.keyguard.AntiTheft.KeyguardAntiTheftLockView"))
         assertEquals("com.android.keyguard.KeyguardPasswordView", KEYGUARD_PASSWORD_VIEW)
@@ -166,11 +183,12 @@ class LockTest {
     // the only way to type); never the anti-theft lock, AOSP's SIM views, a SIM view uncovered.
     @Test fun keysTranslatedForTheDevicePinAndTheCoveredSimViewOnly() {
         assertTrue(pinKeysTranslated("com.android.keyguard.KeyguardPINView", simCovered = false))
-        assertTrue(pinKeysTranslated(KEYGUARD_SIM_VIEW, simCovered = true))
-        assertFalse(pinKeysTranslated(KEYGUARD_SIM_VIEW, simCovered = false))
+        for (sim in listOf(KEYGUARD_SIM_PIN_VIEW, KEYGUARD_SIM_PUK_VIEW)) {
+            assertTrue(pinKeysTranslated(sim, simCovered = true))
+            assertFalse(pinKeysTranslated(sim, simCovered = false))
+        }
         assertFalse(pinKeysTranslated("com.android.keyguard.KeyguardPasswordView", simCovered = true))
-        assertFalse(pinKeysTranslated("com.android.keyguard.KeyguardSimPinView", simCovered = true))
-        assertFalse(pinKeysTranslated("com.android.keyguard.KeyguardSimPukView", simCovered = true))
+        assertFalse(pinKeysTranslated("com.mediatek.keyguard.Telephony.KeyguardSimPinPukMeView", simCovered = true))
         assertFalse(pinKeysTranslated("com.android.keyguard.KeyguardSimInputView", simCovered = true))
         assertFalse(pinKeysTranslated("com.mediatek.keyguard.AntiTheft.KeyguardAntiTheftLockView", simCovered = true))
         assertEquals(KEYGUARD_PIN_VIEW, "com.android.keyguard.KeyguardPINView")
@@ -190,28 +208,31 @@ class LockTest {
 
     // --- SIM's PIN and PUK -------------------------------------------------------
 
-    // KeyguardSimPinPukMeViewController.mUnlockEnterState: 0 the PIN, 1 the PUK, 2 the new PIN,
-    // 3 its confirmation, 4 the PUK and new PIN sent (Android's progress dialog over the box),
-    // 5 MediaTek's network lock, which OS 7's box does not draw (Android's screen back).
-    @Test fun simEntryFollowsAndroidsState() {
-        assertEquals(SimEntry.PIN, simEntry(0))
-        assertEquals(SimEntry.PUK, simEntry(1))
-        assertEquals(SimEntry.NEW_PIN, simEntry(2))
-        assertEquals(SimEntry.CONFIRM_PIN, simEntry(3))
-        assertEquals(SimEntry.CONFIRM_PIN, simEntry(4))
-        assertEquals(null, simEntry(5))
-        assertEquals(null, simEntry(-1))
-        assertEquals(null, simEntry(null))
+    // AOSP's SIM PIN view asks for the PIN, always. The PUK view's state is its controller's
+    // (KeyguardSimPukViewController.StateMachine), which the view does not hold: it is read from
+    // the prompt Android shows for it (kg_puk_enter_puk_hint, kg_puk_enter_pin_hint,
+    // kg_enter_confirm_pin_hint), the last one kept under Android's other words (a wrong code, the
+    // attempts left), the PUK at first, as the state machine starts.
+    private val puk = "SIM is now disabled. Enter PUK code to continue. Contact carrier for details."
+    private val pukPrompts = mapOf(puk to SimEntry.PUK, "Enter desired PIN code" to SimEntry.NEW_PIN, "Confirm desired PIN code" to SimEntry.CONFIRM_PIN)
+
+    @Test fun simEntryFollowsTheViewAndAndroidsPrompt() {
+        assertEquals(SimEntry.PIN, simEntry(KEYGUARD_SIM_PIN_VIEW, "Confirm desired PIN code", pukPrompts, last = null))
+        assertEquals(SimEntry.PUK, simEntry(KEYGUARD_SIM_PUK_VIEW, null, pukPrompts, last = null))
+        assertEquals(SimEntry.NEW_PIN, simEntry(KEYGUARD_SIM_PUK_VIEW, " Enter desired PIN code ", pukPrompts, last = SimEntry.PUK))
+        assertEquals(SimEntry.CONFIRM_PIN, simEntry(KEYGUARD_SIM_PUK_VIEW, "Confirm desired PIN code", pukPrompts, last = SimEntry.NEW_PIN))
+        assertEquals(SimEntry.NEW_PIN, simEntry(KEYGUARD_SIM_PUK_VIEW, "PIN codes does not match", pukPrompts, last = SimEntry.NEW_PIN))
+        assertEquals(null, simEntry("com.android.keyguard.KeyguardPINView", puk, pukPrompts, last = null))
     }
 
-    // MtkSystemUI's strings (values/strings.xml of the Q25): the prompt of each state is OS 7's
+    // LineageOS 24's strings (SystemUI's values/strings.xml): the prompt of each state is OS 7's
     // label, never an error; a wrong code with the attempts left is Android's, in OS 7's dialog.
-    private val simPrompts = listOf("Enter SIM PIN.", "SIM is now disabled. Enter PUK code to continue. Contact carrier for details.", "Enter new PIN", "Confirm new PIN", "Enter your PIN")
+    private val simPrompts = listOf("Enter SIM PIN.", puk, "Enter desired PIN code", "Confirm desired PIN code", "Enter your PIN")
 
     @Test fun simMessagesReadWithoutAndroidsPrompts() {
         assertEquals(null, bouncerText(listOf("Enter SIM PIN."), simPrompts))
         assertEquals(null, bouncerText(listOf("SIM is now disabled. Enter PUK code to continue. Contact carrier for details."), simPrompts))
-        assertEquals(null, bouncerText(listOf("Confirm new PIN"), simPrompts))
+        assertEquals(null, bouncerText(listOf("Confirm desired PIN code"), simPrompts))
         val wrong = "Incorrect SIM PIN code, you have 2 remaining attempts."
         assertEquals(wrong, bouncerText(listOf(" $wrong "), simPrompts))
         assertEquals(BouncerBox.ERROR, bouncerBox(bouncerText(listOf(wrong), simPrompts), typed = 0))
@@ -286,7 +307,7 @@ class LockTest {
     // Class names written as strings in Bouncer.kt and PlaceCall.kt, tied to the Q25's SystemUI; LockTargets.kt
     // compiles the members.
     @Test fun bouncerTargetClassesAreInTheQ25SystemUi() = ZipFile("../../stubs/systemui.jar").use { jar ->
-        for (cls in listOf(KEYGUARD_PIN_VIEW, KEYGUARD_PASSWORD_VIEW, PASSWORD_TEXT_VIEW, KEYGUARD_PIN_BASED_VIEW, KEYGUARD_SECURITY_CONTAINER, KEYGUARD_SIM_VIEW, SHADE_WINDOW_VIEW, SHADE_WINDOW_HANDLER, SHADE_WINDOW_CONTROLLER, CENTRAL_SURFACES, KEYGUARD_STATE)) {
+        for (cls in listOf(KEYGUARD_PIN_VIEW, KEYGUARD_PASSWORD_VIEW, PASSWORD_TEXT_VIEW, KEYGUARD_PIN_BASED_VIEW, KEYGUARD_SECURITY_CONTAINER, KEYGUARD_SIM_PIN_VIEW, KEYGUARD_SIM_PUK_VIEW, KEYGUARD_STATE)) {
             assertNotNull(jar.getEntry(cls.replace('.', '/') + ".class"), cls)
         }
     }

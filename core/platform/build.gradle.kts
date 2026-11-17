@@ -18,8 +18,8 @@ fun Task.requireStubs(stubs: File) = doFirst {
 
 dependencies {
     if (frameworkStubs.exists()) compileOnly(files(frameworkStubs))
-    // AOSP's GroupedRecentTaskInfo.java uses androidx @NonNull/@Nullable; annotations only.
-    compileOnly("androidx.annotation:annotation:1.9.1")
+    // OS 7's language (OS7_LOCALE), which every app's process speaks (speakOs7Language).
+    implementation(project(":core:design"))
     testImplementation(kotlin("test-junit"))
 }
 

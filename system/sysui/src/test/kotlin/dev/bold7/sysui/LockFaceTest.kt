@@ -15,7 +15,7 @@ class LockFaceTest {
         assertFalse(stackHidden(state = 1, awake = true, faceReady = false))
     }
 
-    @Test fun faceFollowsAndroidsBottomAreaOnTheLockScreenOnly() {
+    @Test fun faceFollowsAndroidsLockScreenOnTheLockScreenOnly() {
         assertEquals(0.4f, faceAlpha(0.4f, state = 1, awake = true, bouncerShown = false))
         assertEquals(0f, faceAlpha(1f, state = 2, awake = true, bouncerShown = false))
         assertEquals(0f, faceAlpha(1f, state = 1, awake = false, bouncerShown = false))
@@ -61,13 +61,5 @@ class LockFaceTest {
         assertEquals(false, stackTouchAnswer(action = 2, hiddenAtDown = true, intercept = false))
         assertEquals(null, stackTouchAnswer(action = 3, hiddenAtDown = true, intercept = true))
         assertEquals(null, stackTouchAnswer(action = 0, hiddenAtDown = false, intercept = true))
-    }
-
-    // Class names written as strings in LockFace.kt, tied to the Q25's SystemUI; LockTargets.kt
-    // compiles the members.
-    @Test fun lockFaceTargetClassesAreInTheQ25SystemUi() = java.util.zip.ZipFile("../../stubs/systemui.jar").use { jar ->
-        for (cls in listOf(NOTIFICATION_STACK, KEYGUARD_BOTTOM_AREA, KEYGUARD_INDICATION_TEXT, LOCK_ICON_VIEW, KEYGUARD_STATUS_VIEW, SCRIM_CONTROLLER, SCRIM_STATE)) {
-            kotlin.test.assertNotNull(jar.getEntry(cls.replace('.', '/') + ".class"), cls)
-        }
     }
 }

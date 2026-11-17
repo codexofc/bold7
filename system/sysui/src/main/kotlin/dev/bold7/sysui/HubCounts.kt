@@ -24,6 +24,7 @@ private val HUB_COUNTS = Uri.parse("content://dev.bold7.hub.data/counts")
 private val HUB_KINDS = Uri.parse("content://dev.bold7.hub.data/kinds")
 private const val KIND = "kind"
 private const val UNREAD = "unread"
+private const val APP = "app"
 
 /** Android's "show notifications on the lock screen" (Settings.Secure, hidden name): 0 hides them all. */
 private const val LOCK_SCREEN_SHOW_NOTIFICATIONS = "lock_screen_show_notifications"
@@ -45,14 +46,19 @@ internal object HubCounts {
     private var refused = false
     private val main by lazy { Handler(Looper.getMainLooper()) }
     private val io by lazy { Handler(HandlerThread("Bold7HubCounts").apply { start() }.looper) }
+    @Volatile private var indicators: AppIndicators? = null
+
+    /** Another app's own icon, once drawn on io; null: the "?" bubble. Main thread. */
+    fun indicator(app: String) = indicators?.get(app)
 
     /** [banner] shows the counters from now on, at once; [lock] the lock screen's, which follow Android's setting. Main thread. */
-    fun attach(banner: BannerView, lock: Boolean) {
+    fun attach(banner: BannerView, lock: Boolean, images: Images) {
         banners[banner] = lock
         banner.setCounters(shown(lock))
         if (started) return
         started = true
         val context = banner.context.applicationContext
+        indicators = AppIndicators(context, images)
         io.post { start(context) }
     }
 
@@ -97,12 +103,20 @@ internal object HubCounts {
             Log.w(TAG, "counters: the lock screen's setting is unreadable, none there", e)
             false
         }
+        // Other apps' counts, newest first: rows with an app (an older Hub has no such column).
+        val apps = LinkedHashMap<String, Int>()
         val rows = try {
             unreadRows(showcaseOn(context), showcaseEvent(context)) {
                 context.contentResolver.query(HUB_KINDS, null, null, null, null)?.use { c ->
                     val kind = c.getColumnIndexOrThrow(KIND)
                     val unread = c.getColumnIndexOrThrow(UNREAD)
-                    buildMap { while (c.moveToNext()) put(c.getString(kind), c.getInt(unread)) }
+                    val app = c.getColumnIndex(APP)
+                    buildMap {
+                        while (c.moveToNext()) {
+                            val pkg = if (app >= 0) c.getString(app) else null
+                            if (pkg == null) put(c.getString(kind), c.getInt(unread)) else apps[pkg] = c.getInt(unread)
+                        }
+                    }
                 }.orEmpty()
             }
         } catch (e: RuntimeException) {
@@ -110,7 +124,8 @@ internal object HubCounts {
             refused = true
             emptyMap()
         }
-        val next = kindCounters(rows)
+        apps.keys.forEach { indicators?.draw(it) }
+        val next = kindCounters(rows) + appCounters(apps)
         main.post {
             if (next == counters && show == lockShown) return@post
             counters = next

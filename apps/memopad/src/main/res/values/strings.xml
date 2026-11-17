@@ -15,6 +15,7 @@
     <string name="act_edit">Edit</string>
     <string name="act_options">Options</string>
     <string name="act_delete">Delete</string>
+    <string name="act_show_home">Show Home Screen</string>
     <string name="act_save">Save</string>
     <string name="act_close">Close</string>
     <!-- The form (D for the labels, B for "title" and "memo"). -->
@@ -39,4 +40,5 @@
     <string name="not_saved">The memo could not be saved.</string>
     <string name="not_deleted">The memo could not be deleted.</string>
     <string name="act_switch_application">Switch Application</string>
+    <string name="act_help">Help</string>
 </resources>

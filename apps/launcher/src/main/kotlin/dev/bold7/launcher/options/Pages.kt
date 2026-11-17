@@ -1,7 +1,5 @@
 package dev.bold7.launcher.options
 
-import dev.bold7.launcher.R
-
 // The pages of Options, pure: the lists and where each entry leads. Labels in English,
 // OS 7's own. Sources: the main list's first seven rows, their subtitles and icons (sim-57,
 // sim-58, C; cat_*.png, A); Change Sounds and Alerts (sim-30, C); the other rows' names from the
@@ -14,10 +12,13 @@ enum class Screen {
     MAIN, SOUNDS, DISPLAY, TYPING_LANGUAGE, PHONE_TONES, SCREEN_DISPLAY, TYPING, ADVANCED_STYLE, TRACKPAD, HOME,
 
     // The lists under Sounds, Networks, Device and Security, and their forms.
-    PROFILE_SOUNDS, NOTIFIER, REMINDERS, PROFILES, DATE_TIME, LANGUAGE, NETWORKS, DEVICE, ABOUT, STORAGE, BATTERY, SECURITY, ENCRYPTION,
+    PROFILE_SOUNDS, NOTIFIER, REMINDERS, PROFILES, DATE_TIME, LANGUAGE, NETWORKS, DEVICE, ABOUT, STORAGE, BATTERY, SECURITY, PASSWORD, ENCRYPTION, LOCK_MESSAGE,
 
     // The forms that replace Android's pages for Touchscreen Sensitivity, Keyboard and Accessibility.
     TOUCHSCREEN, KEYBOARD, ACCESSIBILITY,
+
+    // Manage Panels, from Home Screen Preferences and the home's menu.
+    PANELS,
 }
 
 sealed interface Target {
@@ -43,18 +44,17 @@ sealed interface Target {
 const val EXTRA_MANAGE_CONNECTIONS = "dev.bold7.launcher.MANAGE_CONNECTIONS"
 
 /** A row of a list: its cat_*.png of the theme (A), title, grey subtitle, what it opens. */
-data class Entry(val icon: Int, val title: String, val subtitle: String, val target: Target)
+data class Entry(val icon: String, val title: String, val subtitle: String, val target: Target)
 
 // Settings' intent actions, as strings: constants of android.provider.Settings and TelecomManager.
 private const val SOUND = "android.settings.SOUND_SETTINGS"
 private const val OPERATOR = "android.settings.NETWORK_OPERATOR_SETTINGS"
 private const val BLUETOOTH = "android.settings.BLUETOOTH_SETTINGS"
 private const val NFC = "android.settings.NFC_SETTINGS"
-private const val NEW_PASSWORD = "android.app.action.SET_NEW_PASSWORD"
 private const val CALLS = "android.telecom.action.SHOW_CALL_SETTINGS"
-private const val LOCK_SCREEN = "android.settings.LOCK_SCREEN_SETTINGS"
 private const val INPUT = "android.settings.INPUT_METHOD_SETTINGS"
 private const val DICTIONARY = "android.settings.USER_DICTIONARY_SETTINGS"
+private const val SETTINGS = "android.settings.SETTINGS"
 
 
 fun title(screen: Screen): String = when (screen) {
@@ -80,10 +80,14 @@ fun title(screen: Screen): String = when (screen) {
     Screen.STORAGE -> "Storage"
     Screen.BATTERY -> "Battery"
     Screen.SECURITY -> "Security"
+    Screen.PASSWORD -> "Password"
+    Screen.LOCK_MESSAGE -> "Message on Lock Screen"
     Screen.ENCRYPTION -> "Encryption"
     Screen.TOUCHSCREEN -> "Touchscreen Sensitivity"
     Screen.KEYBOARD -> "Keyboard"
     Screen.ACCESSIBILITY -> "Accessibility"
+    // The home's menu entry (sim-04, C); the screen itself has no capture (D).
+    Screen.PANELS -> "Manage Panels"
 }
 
 private fun open(s: Screen) = Target.Open(s)
@@ -92,67 +96,75 @@ private fun android(action: String) = Target.Android(action)
 /** The entries of a list screen; empty for a form. */
 fun entries(screen: Screen): List<Entry> = when (screen) {
     Screen.MAIN -> listOf(
-        Entry(R.drawable.opt_sound, "Sounds and Ringtones", "Ringtones, reminders, profiles", open(Screen.SOUNDS)),
-        Entry(R.drawable.opt_connectivity, "Networks and Connections", "Bluetooth connections, Wi-Fi, mode", open(Screen.NETWORKS)),
-        Entry(R.drawable.opt_display, "Display", "Date, time, themes, screen", open(Screen.DISPLAY)),
-        Entry(R.drawable.opt_typing, "Typing and Language", "Text input, keyboard, languages", open(Screen.TYPING_LANGUAGE)),
-        Entry(R.drawable.opt_device, "Device", "PIN, auto on/off, battery, storage", open(Screen.DEVICE)),
-        Entry(R.drawable.opt_calls, "Call Management", "Call behaviour, voice mail, speed dial", android(CALLS)),
-        Entry(R.drawable.opt_security, "Security", "Password, encryption, firewall", open(Screen.SECURITY)),
+        Entry("opt_sound", "Sounds and Ringtones", "Ringtones, reminders, profiles", open(Screen.SOUNDS)),
+        Entry("opt_connectivity", "Networks and Connections", "Bluetooth connections, Wi-Fi, mode", open(Screen.NETWORKS)),
+        Entry("opt_display", "Display", "Date, time, themes, screen", open(Screen.DISPLAY)),
+        Entry("opt_typing", "Typing and Language", "Text input, keyboard, languages", open(Screen.TYPING_LANGUAGE)),
+        Entry("opt_device", "Device", "PIN, auto on/off, battery, storage", open(Screen.DEVICE)),
+        Entry("opt_calls", "Call Management", "Call behaviour, voice mail, speed dial", android(CALLS)),
+        Entry("opt_security", "Security", "Password, encryption, firewall", open(Screen.SECURITY)),
         // Under Security, sim-58's arrow shows more; the guide names Accessibility (B).
-        Entry(R.drawable.opt_accessibility, "Accessibility", "", open(Screen.ACCESSIBILITY)),
+        Entry("opt_accessibility", "Accessibility", "", open(Screen.ACCESSIBILITY)),
     )
     // sim-30 (C), which "Change Sounds and Alerts" of "Select a Profile" opens; Sounds and Ringtones too (D).
     Screen.SOUNDS -> listOf(
-        Entry(R.drawable.opt_phone_ringtone, "Phone Ringtone", "Set ringtone for chosen profile", open(Screen.PHONE_TONES)),
-        Entry(R.drawable.opt_profile_sounds, "Sounds for Selected Profile", "Set any alert in chosen profile", open(Screen.PROFILE_SOUNDS)),
-        Entry(R.drawable.opt_contact_sounds, "Sounds for Contacts", "Add alerts for one or more contacts", android(SOUND)),
-        Entry(R.drawable.opt_profiles, "Profile Management", "Add, edit or delete a sound profile", open(Screen.PROFILES)),
+        Entry("opt_phone_ringtone", "Phone Ringtone", "Set ringtone for chosen profile", open(Screen.PHONE_TONES)),
+        Entry("opt_profile_sounds", "Sounds for Selected Profile", "Set any alert in chosen profile", open(Screen.PROFILE_SOUNDS)),
+        Entry("opt_contact_sounds", "Sounds for Contacts", "Add alerts for one or more contacts", android(SOUND)),
+        Entry("opt_profiles", "Profile Management", "Add, edit or delete a sound profile", open(Screen.PROFILES)),
     )
     // Guide p. 160: "click Phone", then the notifiers and reminders (B); the sections are our own (D).
     Screen.PROFILE_SOUNDS -> listOf(
-        Entry(R.drawable.opt_phone_ringtone, "Phone", "", open(Screen.PHONE_TONES)),
-        Entry(R.drawable.opt_messages, "Messages and Email", "", open(Screen.NOTIFIER)),
-        Entry(R.drawable.opt_reminders, "Reminders", "", open(Screen.REMINDERS)),
+        Entry("opt_phone_ringtone", "Phone", "", open(Screen.PHONE_TONES)),
+        Entry("opt_messages", "Messages and Email", "", open(Screen.NOTIFIER)),
+        Entry("opt_reminders", "Reminders", "", open(Screen.REMINDERS)),
     )
     // The pages Manage Connections opens; the rows' names are the guide's (B), their order D.
     Screen.NETWORKS -> listOf(
-        Entry(R.drawable.opt_connectivity, "Manage Connections", "", Target.Connections),
-        Entry(R.drawable.opt_mobile, "Mobile Network", "", android(OPERATOR)),
-        Entry(R.drawable.opt_wifi, "Wi-Fi Network", "", Target.Wifi),
-        Entry(R.drawable.opt_bluetooth, "Bluetooth Connections", "", android(BLUETOOTH)),
-        Entry(R.drawable.opt_nfc, "NFC", "", android(NFC)),
+        Entry("opt_connectivity", "Manage Connections", "", Target.Connections),
+        Entry("opt_mobile", "Mobile Network", "", android(OPERATOR)),
+        Entry("opt_wifi", "Wi-Fi Network", "", Target.Wifi),
+        Entry("opt_bluetooth", "Bluetooth Connections", "", android(BLUETOOTH)),
+        Entry("opt_nfc", "NFC", "", android(NFC)),
     )
     // The theme's cat_device_* (A); which rows the Q25 has (no PIN, no auto on/off) is D.
     Screen.DEVICE -> listOf(
-        Entry(R.drawable.opt_about, "About", "", open(Screen.ABOUT)),
-        Entry(R.drawable.opt_memory, "Storage", "", open(Screen.STORAGE)),
-        Entry(R.drawable.opt_status, "Battery", "", open(Screen.BATTERY)),
+        Entry("opt_about", "About", "", open(Screen.ABOUT)),
+        Entry("opt_memory", "Storage", "", open(Screen.STORAGE)),
+        Entry("opt_status", "Battery", "", open(Screen.BATTERY)),
         // Where Setup's sections live once the first run is over: OS 7 has no Messages Options page for this, so Device it is (D).
-        Entry(R.drawable.opt_messages, "Text Messages Setup", "", Target.TextSetup),
+        Entry("opt_messages", "Text Messages Setup", "", Target.TextSetup),
+        // The 9900's last row of Device, its title, subtitle and icon (sim-410, C): there it opens the
+        // system's own list (sim-411), here Android's Settings, where everything Options does not draw lives (D).
+        Entry("opt_device_advanced", "Advanced System Settings", "Enterprise activation, service book", android(SETTINGS)),
     )
-    // Verification of the password stays Android's: Password opens its own screen for it (D).
+    // sim-59 (C): its first two rows and their subtitles. Smart Card, Firewall, Security Wipe,
+    // Security Status Information and Advanced Security Settings have nothing to act on in Bold7
+    // (no smart card, no IT policy; a wipe stays Android's): not drawn.
     Screen.SECURITY -> listOf(
-        Entry(R.drawable.opt_password, "Password", "", android(NEW_PASSWORD)),
-        Entry(R.drawable.opt_encryption, "Encryption", "", open(Screen.ENCRYPTION)),
+        Entry("opt_password", "Password", "Control access to your device", open(Screen.PASSWORD)),
+        Entry("opt_encryption", "Encryption", "Protect your information and files", open(Screen.ENCRYPTION)),
     )
     // Guide p. 24, 226 to 229 (B); Date and Time from sim-57's subtitle "Date, time" and
     // cat_display_date_time (A), its name D. Message Categorization (messages' folders) has nothing on the Q25.
+    // sim-446 (C): the rows, their order and subtitles; Message Categorisation (message colours) is not drawn.
     Screen.DISPLAY -> listOf(
-        Entry(R.drawable.opt_screen_display, "Screen Display", "", open(Screen.SCREEN_DISPLAY)),
-        Entry(R.drawable.opt_date_time, "Date and Time", "", open(Screen.DATE_TIME)),
-        Entry(R.drawable.opt_lock_message, "Message on Lock Screen", "", android(LOCK_SCREEN)),
+        Entry("opt_date_time", "Date and Time", "Change time zones and formats", open(Screen.DATE_TIME)),
+        Entry("opt_home_screen", "Home Screen Preferences", "Change wallpaper, download folder", open(Screen.HOME)),
+        Entry("opt_screen_display", "Screen Display", "Change theme, font, backlighting", open(Screen.SCREEN_DISPLAY)),
+        // Bold7's own screen, Android's text behind it.
+        Entry("opt_lock_message", "Message on Lock Screen", "Set text to show on locked screen", open(Screen.LOCK_MESSAGE)),
     )
     // Guide p. 213 to 219 and "Language" (B).
     Screen.TYPING_LANGUAGE -> listOf(
-        Entry(R.drawable.opt_language, "Language", "", open(Screen.LANGUAGE)),
-        Entry(R.drawable.opt_typing_style, "Typing", "", open(Screen.TYPING)),
-        Entry(R.drawable.opt_trackpad, "Trackpad Sensitivity", "", open(Screen.TRACKPAD)),
-        Entry(R.drawable.opt_touchscreen, "Touchscreen Sensitivity", "", open(Screen.TOUCHSCREEN)),
-        Entry(R.drawable.opt_keyboard, "Keyboard", "", open(Screen.KEYBOARD)),
-        Entry(R.drawable.opt_dictionary, "Custom Dictionary", "", android(DICTIONARY)),
-        Entry(R.drawable.opt_substitution, "Word Substitution", "", Target.Substitutions),
-        Entry(R.drawable.opt_spell_check, "Spell Check", "", android(INPUT)),
+        Entry("opt_language", "Language", "", open(Screen.LANGUAGE)),
+        Entry("opt_typing_style", "Typing", "", open(Screen.TYPING)),
+        Entry("opt_trackpad", "Trackpad Sensitivity", "", open(Screen.TRACKPAD)),
+        Entry("opt_touchscreen", "Touchscreen Sensitivity", "", open(Screen.TOUCHSCREEN)),
+        Entry("opt_keyboard", "Keyboard", "", open(Screen.KEYBOARD)),
+        Entry("opt_dictionary", "Custom Dictionary", "", android(DICTIONARY)),
+        Entry("opt_substitution", "Word Substitution", "", Target.Substitutions),
+        Entry("opt_spell_check", "Spell Check", "", android(INPUT)),
     )
     else -> emptyList()
 }
@@ -174,3 +186,11 @@ data class Listing(val screen: Screen, val entries: List<Entry> = entries(screen
 /** Reset to Default Settings of Home Screen Preferences: the note over its button (sim-284, C) and the question asked first (D). */
 const val RESET_HOME_NOTE = "When you click the Reset Settings button, you can select from a list of preferences to reset to factory default settings. Any customisations you made will be lost."
 const val RESET_HOME_QUESTION = "Reset Home Screen Preferences to their default settings?"
+
+/** Wallpaper Settings' buttons and Home Screen Panels' (sim-284, sim-287, C). */
+const val CHANGE_WALLPAPER = "Change Wallpaper"
+const val RESET_WALLPAPER = "Reset Wallpaper"
+const val MANAGE_PANELS = "Manage Panels"
+
+/** Downloads Folder's first value, the home itself (sim-284, C). */
+const val HOME_FOLDER = "Home"

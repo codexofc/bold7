@@ -1,0 +1,6 @@
+# The Q25's own keyboard map, kept whatever the input method.
+# Since Android 14, Android lays a layout of its own over a physical keyboard, chosen after the
+# input method's subtype (French gives AZERTY, English drops the Alt layer of Q25_keyboard.kcm).
+# A layout made for the device's vendor and product ids comes first, before the subtype's: this
+# one, which changes no key, so that Q25_keyboard.kcm stays as it is, Alt layer included.
+type OVERLAY

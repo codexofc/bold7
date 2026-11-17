@@ -129,7 +129,10 @@ data class Posted(
  */
 fun Posted.entersHub(): Boolean =
     flags and (Posted.FLAG_ONGOING_EVENT or Posted.FLAG_FOREGROUND_SERVICE or Posted.FLAG_GROUP_SUMMARY) == 0 &&
-        !media && packageName != "dev.bold7" && !packageName.startsWith("dev.bold7.")
+        !media && (packageName == ESSAI || packageName != "dev.bold7" && !packageName.startsWith("dev.bold7."))
+
+/** The test app (tools/essai) stands for a third-party app: its made-up notifications enter like any other's. */
+private const val ESSAI = "dev.bold7.essai"
 
 /** Packages whose notifications are system or tool noise, and the dialer (missed calls come from the call log). */
 private val NOT_MESSAGES = setOf(

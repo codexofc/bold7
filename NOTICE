@@ -10,21 +10,16 @@ animation): those stay outside the repository and are not covered by this licens
 Third-party code included in this repository is listed below, with its license.
 
 Android Open Source Project, Apache License 2.0, unmodified, original headers kept
-Copyright (C) 2017-2023 The Android Open Source Project
-Source: https://android.googlesource.com/platform/frameworks/base, tag android-14.0.0_r28
-(tag chosen against the Q25's own Launcher3: tools/stubs.sh checks the AIDL against its dex)
-  core/platform/src/main/aidl/com/android/systemui/shared/recents/IOverviewProxy.aidl
-  core/platform/src/main/aidl/com/android/systemui/shared/recents/ISystemUiProxy.aidl
-  core/platform/src/main/aidl/com/android/systemui/shared/recents/model/Task.aidl
-  core/platform/src/main/aidl/com/android/wm/shell/recents/IRecentTasks.aidl
-  core/platform/src/main/aidl/com/android/wm/shell/recents/IRecentTasksListener.aidl
-  core/platform/src/main/aidl/com/android/wm/shell/transition/IShellTransitions.aidl
-  core/platform/src/main/aidl/com/android/wm/shell/util/GroupedRecentTaskInfo.aidl
-  core/platform/src/main/aidl/com/android/internal/util/ScreenshotRequest.aidl
+Copyright (C) 2017-2026 The Android Open Source Project
+Source: https://android.googlesource.com/platform/frameworks/base, tag android-17.0.0_r1
+(the Q25's LineageOS 24: tools/stubs.sh checks the AIDL against its Launcher3's dex)
+  core/platform/src/main/aidl/com/android/systemui/shared/recents/ILauncherProxy.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/shared/IShellTransitions.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/shared/IFocusTransitionListener.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/shared/IHomeTransitionListener.aidl
+  core/platform/src/main/aidl/com/android/wm/shell/shared/IOverviewOverlayLeashInvalidationCallback.aidl
   core/platform/src/main/aidl/android/window/RemoteTransition.aidl
   core/platform/src/main/aidl/android/window/TransitionFilter.aidl
-  core/platform/src/main/java/com/android/wm/shell/util/GroupedRecentTaskInfo.java
-  core/platform/src/main/java/com/android/wm/shell/util/SplitBounds.java
 
 Thunderbird for Android (formerly K-9 Mail), Apache License 2.0, original headers kept
 Copyright 2008-2016, K-9 Mail Developers; Copyright 2005-2016, The Android Open Source Project
@@ -52,6 +47,13 @@ Source: frameworks/base/data/keyboards/Generic.kl, as BenOS ships it in
 Modified: line "key 172 HOME" changed to "key 172 ENDCALL" (the End key of the 9900):
   system/module/src/layer/product/usr/keylayout/Q25_keyboard.kl
 
+LineageOS device tree of the Q25, Apache License 2.0, unmodified, original headers kept
+Copyright (C) 2010 The Android Open Source Project
+Source: https://github.com/LineageOS/android_device_xelex_Q25, configs/ (identical to the
+files BenOS ships). Read by Typing's tests only, to check its table of the Q25's keys:
+  apps/saisie/src/test/resources/q25/Q25_keyboard.kl
+  apps/saisie/src/test/resources/q25/Q25_keyboard.kcm
+
 Barlow Semi Condensed Bold, SIL Open Font License 1.1
 Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
 Source: https://github.com/google/fonts/tree/main/ofl/barlowsemicondensed
@@ -64,3 +66,45 @@ Source: https://github.com/ImageMagick/ImageMagick, tag 7.1.2-31, MagickCore/res
 The ten coefficients of SincFast (by Nicolas Robidoux and Chantal Racette, for 16-bit quanta),
 reproduced as constants, and the order of its Lanczos resize, rewritten in Kotlin:
   core/firmware/src/main/kotlin/dev/bold7/firmware/Resize.kt
+
+AOSP LatinIME word lists, Apache License 2.0
+Copyright (C) 2008 The Android Open Source Project; LatinIME's NOTICE adds "Includes Dictionaries
+(c) Lexiteria LLC. Used by permission."
+Source: https://android.googlesource.com/platform/packages/inputmethods/LatinIME, branch main,
+dictionaries/fr_wordlist.combined.gz, en_GB_wordlist.combined.gz and en_US_wordlist.combined.gz
+Modified: each word and its frequency (f) on one line, "word TAB frequency", not_a_word entries
+left out; English is en_GB's list with the words only en_US has, at half their frequency:
+  apps/saisie/src/main/assets/dictionary/fr.tsv
+  apps/saisie/src/main/assets/dictionary/en.tsv
+
+Vector v2.2 (3080), by JingMatrix, GNU General Public License v3.0, unmodified
+Source: https://github.com/JingMatrix/Vector (commit 88f8e1fa, release v2.2)
+  Shipped as-is inside the module zip (vector/vector.zip, sha256 checked by the build) and
+  installed by the module only when Vector is missing. It is a separate program: Bold7 does not
+  link to it. Its license: https://www.gnu.org/licenses/gpl-3.0.html
+
+Camera: Bold7 Camera 3.6-bold7.1, my fork of BenOS Camera 3.6 by Rudi Timmermans, GNU General
+Public License v3.0, modified
+Source: https://github.com/codexofc/bold7-camera (commit 8939faaf83900b40149e3a7baffc19f30802aec8),
+forked from https://github.com/ruditimmermans/BenOSCamera (tag v3.6, commit 3f0d633d)
+  What I changed is in the fork's NOTICE: package dev.bold7.camera.benos, focus before each photo
+  and at a touch, a square 720x720 viewfinder stream, the system bars hidden, no update check (no
+  network at all), ZXing (Apache 2.0) instead of Google's ML Kit for QR codes. Built from that
+  commit and signed with Bold7's key, shipped inside the module zip (apps/dev.bold7.camera.benos.apk,
+  sha256 checked by the build) and installed by the module unless the user installed it. It is a
+  separate program: Bold7 does not link to it, it only starts it. The archive of its sources at
+  that commit (bold7-camera-3.6-bold7.1-src.tar.gz) is attached to each release of Bold7.
+
+Rust crates of the desktop app (desktop/), fetched by cargo at the versions of desktop/Cargo.lock,
+not stored in this repository, linked into the app's binary:
+  ed25519-dalek 3.0.0, curve25519-dalek 5.0.0, subtle 2.6.1: BSD-3-Clause
+    (https://github.com/dalek-cryptography/curve25519-dalek)
+  sha2 0.11.1, ed25519 3.0.0, pkcs8, spki, der, base64ct, pem-rfc7468, signature, zeroize:
+    MIT or Apache-2.0 (https://github.com/RustCrypto)
+  serde 1.0.229, serde_json 1.0.154: MIT or Apache-2.0 (https://github.com/serde-rs)
+  ureq 3.5.2, ureq-proto, http, httparse: MIT or Apache-2.0 (https://github.com/algesten/ureq)
+  native-tls, security-framework, schannel, openssl, openssl-sys: MIT or Apache-2.0 (the TLS of
+    the system: Security.framework on macOS, SChannel on Windows, the system's OpenSSL on Linux)
+  The other crates of desktop/Cargo.lock are MIT or Apache-2.0 (memchr: Unlicense or MIT, used
+  under MIT; fiat-crypto: MIT, Apache-2.0 or BSD-1-Clause; unicode-ident, a build-time macro
+  dependency: MIT or Apache-2.0, with Unicode-3.0 data that does not reach the binary).

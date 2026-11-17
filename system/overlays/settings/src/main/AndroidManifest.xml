@@ -1,8 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Static, as the BBKB one. MtkSettings (versionName 14) declares no <overlayable>: idmap2
-         then accepts any preinstalled overlay (default policies), which /system_ext/overlay
-         gives. MediaTek's own com.mediatek.MtkSettingsResOverlay (/vendor/overlay, priority 1)
-         already overlays it that way, on one string only. Its signature plays no part. -->
+    <!-- Static, as the SystemUI one. Lineage's Settings (versionName 17, /system_ext/priv-app)
+         declares no <overlayable>: idmap2 then accepts any preinstalled overlay (default
+         policies), which /system_ext/overlay gives. The ROM's own
+         com.android.settings.auto_generated_rro_product__ and com.mtg.gmssettingsoverlay already
+         overlay it that way. Its signature plays no part. -->
     <overlay
         android:targetPackage="com.android.settings"
         android:isStatic="true"

@@ -10,17 +10,17 @@
 #                            dev.bold7.phone already holding it without a save (the original holder
 #                            would be lost).
 #   tools/dialer.sh retour   checks the save; if dev.bold7.phone still holds the role, gives it back
-#                            to the saved holder (to Google's Phone if that one is gone), checked;
+#                            to the saved holder (to LineageOS's Phone if that one is gone), checked;
 #                            otherwise keeps the user's later choice. Deletes the save. Without a save,
-#                            gives the role to Google's Phone if dev.bold7.phone holds it, else does
+#                            gives the role to LineageOS's Phone if dev.bold7.phone holds it, else does
 #                            nothing. Exits 2 when the save is broken (kept, nothing changed), 1 on
 #                            any other failure (the save kept). tools/uninstall.sh runs it, in both
 #                            runs, before uninstalling the app.
 #
 # poser and retour CHANGE THE PHONE'S STATE (who shows every call): ask the phone's owner first.
 # The way back without a computer: Android's Settings, Apps, Default apps, Phone app. By adb, in
-# one command: adb shell cmd role add-role-holder android.app.role.DIALER com.google.android.dialer
-# Uninstalling dev.bold7.phone also gives the role back to Google's Phone (the role's
+# one command: adb shell cmd role add-role-holder android.app.role.DIALER com.android.dialer
+# Uninstalling dev.bold7.phone also gives the role back to LineageOS's Phone (the role's
 # fallBackToDefaultHolder, config_defaultDialer), which stays Telecom's system dialer throughout.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -33,7 +33,7 @@ WAIT=${DIALER_WAIT:-5}
 ROLE=android.app.role.DIALER
 OURS=dev.bold7.phone
 # config_defaultDialer of the Q25 (cmd overlay lookup), the system dialer of Telecom.
-GOOGLE=com.google.android.dialer
+STOCK=com.android.dialer
 
 holder() { sh "cmd role get-role-holders $ROLE"; }
 installed() { [[ $(sh "pm path $1" || true) == package:* ]]; }
@@ -78,8 +78,8 @@ poser)
 retour)
   if [ ! -e "$SAVE" ]; then
     if [ "$(holder)" = $OURS ]; then
-      echo "No save, and $OURS holds DIALER: giving it to $GOOGLE."
-      give $GOOGLE
+      echo "No save, and $OURS holds DIALER: giving it to $STOCK."
+      give $STOCK
     else
       echo "No save: DIALER=$(holder) left as it is."
     fi
@@ -91,8 +91,8 @@ retour)
   cur=$(holder)
   if [ "$cur" = $OURS ]; then
     if ! installed "$saved"; then
-      echo "$saved, the holder saved, is not installed any more: $GOOGLE instead."
-      saved=$GOOGLE
+      echo "$saved, the holder saved, is not installed any more: $STOCK instead."
+      saved=$STOCK
     fi
     give "$saved"
   else

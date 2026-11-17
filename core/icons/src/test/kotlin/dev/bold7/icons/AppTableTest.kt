@@ -210,12 +210,13 @@ class ShippedAppTableTest {
     @Test fun thePlayStoreIsBlackBerryAppWorld() =
         assertEquals("BlackBerry App World", table.nameFor("com.android.vending", "com.android.vending.AssetBrowserActivity"))
 
-    // The 40 launcher activities of the Q25 (`cmd package query-activities`, minus Google TV and YouTube Music, uninstalled), 27
+    // The 40 launcher activities of the Q25 (`cmd package query-activities`, minus Google TV and YouTube Music, uninstalled),
+    // plus Bold7's Camera, which the module installs and the original BenOS Camera hides behind; 27
     // since Google Messages, Google's Phone, Clock and Contacts, Google Calendar and Android's Settings
     // hide behind Bold7's Messages, Phone, Clock, Contacts, Calendar and Options
     // Google's Calculator behind Bold7's, Google Keep behind Bold7's MemoPad and Aves behind
     // Bold7's Pictures, which are not among them.
-    @Test fun leavesTwelveAppsOfTheQ25OnTheGrid() {
+    @Test fun leavesElevenAppsOfBenOsOnTheGrid() {
 
         val q25 = """
             com.android.chrome/com.google.android.apps.chrome.Main com.android.fmradio/.FmMainActivity
@@ -235,7 +236,8 @@ class ShippedAppTableTest {
             com.google.android.googlequicksearchbox/.SearchActivity com.google.android.keep/.activities.BrowseActivity
             com.google.android.play.games/com.google.android.gms.games.ui.destination.main.MainActivity
             com.google.android.youtube/.app.honeycomb.Shell${'$'}HomeActivity
-            com.light.lightcamera/.MainActivity com.machiav3lli.backup/.ui.activities.NeoActivity
+            com.light.lightcamera/.MainActivity dev.bold7.camera.benos/com.light.lightcamera.MainActivity
+            com.machiav3lli.backup/.ui.activities.NeoActivity
             com.pranavpandey.rotation/.activity.SplashActivity de.monocles.browser/.activities.MainWebViewActivity
             deckers.thibault.aves.libre/deckers.thibault.aves.MainActivity io.github.sds100.keymapper/.MainActivity
             kwlkkw.odbaum.pebxnq/.ui.MainActivity org.fdroid.fdroid/.views.main.MainActivity
@@ -246,15 +248,42 @@ class ShippedAppTableTest {
             val (pkg, cls) = c.split('/')
             pkg to if (cls.startsWith(".")) pkg + cls else cls
         }
-        assertEquals(40, q25.size)
+        assertEquals(41, q25.size)
         val shown = q25.filterNot { (pkg, cls) -> table.hidden(pkg, cls) }.map { (pkg, cls) -> table.nameFor(pkg, cls) ?: pkg }
         assertEquals(
             listOf(
-                "Browser", "com.android.fmradio", "Voice Notes Recorder", "BlackBerry App World",
+                "Browser", "Voice Notes Recorder", "BlackBerry App World",
                 "com.google.android.apps.docs", "Maps", "com.google.android.apps.tachyon", "Wallet",
                 "com.google.android.gm",
                 "com.google.android.youtube", "Camera", "Files",
             ),
+            shown,
+        )
+    }
+
+    // The launcher activities of the Q25 under LineageOS 24 and MindTheGapps
+    // (`cmd package query-activities`, Bold7's own apps aside, which the tests above cover). What
+    // stays on the grid is the OS 7 app of the same job, under its name, plus the module's manager.
+    @Test fun leavesTheOs7AppsOfLineageOnTheGrid() {
+        val q25 = """
+            com.android.contacts/.activities.PeopleActivity com.android.deskclock/.DeskClock
+            com.android.dialer/.main.impl.MainActivity com.android.messaging/.ui.conversationlist.ConversationListActivity
+            com.android.settings/.Settings com.android.vending/.AssetBrowserActivity
+            org.lineageos.aperture/.CameraLauncher dev.bold7.camera.benos/com.light.lightcamera.MainActivity
+            com.light.lightcamera/.MainActivity org.lineageos.etar/com.android.calendar.AllInOneActivity
+            org.lineageos.glimpse/.MainActivity org.lineageos.recorder/.RecorderActivity
+            org.lineageos.twelve/.MainActivity com.google.android.apps.messaging/.ui.ConversationListActivity
+            com.android.calculator2/.Calculator com.android.documentsui/.LauncherActivity
+            com.android.fmradio/.FmMainActivity com.google.android.googlequicksearchbox/.SearchActivity
+            org.lineageos.audiofx/.activity.ActivityMusic org.lineageos.jelly/.MainActivity
+            com.rifsxd.ksunext/.ui.MainActivity
+        """.split(Regex("\\s+")).filter(String::isNotEmpty).map { c ->
+            val (pkg, cls) = c.split('/')
+            pkg to if (cls.startsWith(".")) pkg + cls else cls
+        }
+        val shown = q25.filterNot { (pkg, cls) -> table.hidden(pkg, cls) }.map { (pkg, cls) -> table.nameFor(pkg, cls) ?: pkg }
+        assertEquals(
+            listOf("BlackBerry App World", "Camera", "Voice Notes Recorder", "Music", "Files", "Browser", "KernelSU Next"),
             shown,
         )
     }

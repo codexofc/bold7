@@ -12,7 +12,6 @@ com.android.soundrecorder	*	Voice Notes Recorder	shown	B p17
 com.android.vending	*	BlackBerry App World	shown	B p18
 com.google.android.apps.maps	*	Maps	shown	B p17
 com.google.android.apps.walletnfcrel	*	Wallet	shown	A theme net_rim_bb_wallet_app, absent from the guide
-com.light.lightcamera	*	Camera	shown	B p17
 com.soundcloud.android	*	Music	shown	D choice of the project owner: SoundCloud replaces YouTube Music, under the name of the OS 7 app that plays music (B p17)
 com.twitter.android	*	Twitter	shown	C sim-06 (Twitter icon of the home screen); absent from the guide
 org.fossify.filemanager	*	Files	shown	B p18
@@ -105,3 +104,34 @@ deckers.thibault.aves.libre	*	-	hidden	D duplicate of Pictures
 # Tasks is Bold7's own (apps/tasks), its tasks in its own database. The Q25 has no Tasks
 # app to hide: the OS 7 name is new on the grid, after the guide's list.
 dev.bold7.tasks	*	Tasks	shown	B p17
+
+# LineageOS 24 and MindTheGapps: the Q25's apps since BenOS left. Each takes the
+# name and icon of the OS 7 app that does the same job (B p17 to p18), hides behind Bold7's own app
+# of that job, or hides as a tool OS 7 never had on its grid; Show All and the search still reach them.
+# Camera is Bold7's fork of BenOS Camera (github.com/codexofc/bold7-camera), which the
+# module installs: Aperture and the original BenOS Camera hide behind it (D), never a second Camera.
+dev.bold7.camera.benos	*	Camera	shown	B p17
+org.lineageos.aperture	*	Camera	hidden	B p17; D behind Bold7's Camera
+com.light.lightcamera	*	Camera	hidden	B p17; D behind Bold7's Camera
+org.lineageos.recorder	*	Voice Notes Recorder	shown	B p17
+org.lineageos.twelve	*	Music	shown	B p17; D Twelve plays the files of the phone, as OS 7's Music does
+org.lineageos.jelly	*	Browser	shown	B p17
+com.android.documentsui	*	Files	shown	B p18
+org.lineageos.etar	*	-	hidden	D hidden behind Bold7's Calendar (the same calendar provider)
+org.lineageos.glimpse	*	-	hidden	D hidden behind Bold7's Pictures (the same MediaStore)
+com.android.contacts	*	-	hidden	D hidden behind Bold7's Contacts
+com.android.dialer	*	-	hidden	D hidden behind Bold7's Phone
+com.android.messaging	*	-	hidden	D hidden behind Bold7's Messages, Google Messages holding the texts
+com.android.deskclock	*	-	hidden	D hidden behind Bold7's Clock, its alarms untouched
+com.android.calculator2	*	-	hidden	D hidden behind Bold7's Calculator
+com.android.fmradio	*	-	hidden	D OS 7 had no radio app on its grid; Show All and the search find it
+org.lineageos.audiofx	*	-	hidden	D technical, sound effects; OS 7 had none
+org.lineageos.updater	*	-	hidden	D technical, system updates, reached from Settings
+com.stevesoltys.seedvault	*	-	hidden	D technical, backups, reached from Settings
+org.lineageos.camelot	*	-	hidden	D document viewer, opened from files; OS 7 had no PDF app on its grid
+org.lineageos.canvas	*	-	hidden	D drawing app, OS 7 had none
+org.lineageos.backgrounds	*	-	hidden	D wallpaper picker, reached from Options
+
+# The module's manager is how Bold7 is removed (safe mode aside): it stays on the grid, under its
+# own name, with the generated icon. The package is the build's, not a random one.
+com.rifsxd.ksunext	*	KernelSU Next	shown	D no OS 7 equivalent; kept visible, it is the way to remove the module

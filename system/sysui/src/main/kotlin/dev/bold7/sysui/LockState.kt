@@ -20,16 +20,15 @@ fun awake(dozing: Boolean, dozeAmount: Float): Boolean = !dozing && dozeAmount =
 fun stackHidden(state: Int, awake: Boolean, faceReady: Boolean): Boolean = faceReady && state == STATE_KEYGUARD && awake
 
 /**
- * The face's opacity: Android's own for its bottom area's content (KeyguardBottomAreaViewBinder
- * fades the children, keyguard_indication_area among them, not the area itself), on the lock
- * screen itself, [awake]; whole while OS 7's entry shows over it ([bouncerShown]: sim-85 keeps the
- * lock screen as sim-64 under "Enter Password:", where Android fades its own out); none anywhere
- * else.
+ * The face's opacity: Android's own for its lock screen ([androidAlpha], the alpha
+ * KeyguardRootViewBinder gives keyguard_root_view, 0 while it is not visible), on the lock screen
+ * itself, [awake]; whole while OS 7's entry shows over it ([bouncerShown]: sim-85 keeps the lock
+ * screen as sim-64 under "Enter Password:", where Android fades its own out); none anywhere else.
  */
-fun faceAlpha(indicationAlpha: Float, state: Int, awake: Boolean, bouncerShown: Boolean): Float = when {
+fun faceAlpha(androidAlpha: Float, state: Int, awake: Boolean, bouncerShown: Boolean): Float = when {
     state != STATE_KEYGUARD || !awake -> 0f
     bouncerShown -> 1f
-    else -> indicationAlpha.coerceIn(0f, 1f)
+    else -> androidAlpha.coerceIn(0f, 1f)
 }
 
 /**

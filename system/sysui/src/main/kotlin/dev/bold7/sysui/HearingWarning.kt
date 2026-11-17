@@ -1,6 +1,7 @@
 package dev.bold7.sysui
 
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
 import android.graphics.Color
@@ -18,9 +19,9 @@ import dev.bold7.ui.DialogView
 import dev.bold7.ui.mnemonic
 import java.lang.reflect.Method
 
-/** SafetyWarningDialog, which R8 folded into VolumeDialogImpl's fifth anonymous class on the Q25. */
-internal const val SAFE_VOLUME_DIALOG = "com.android.systemui.volume.VolumeDialogImpl\$5"
-internal const val CSD_DIALOG = "com.android.systemui.volume.CsdWarningDialog"
+/** The delegates of the two warnings' SystemUIDialog, whose onStart gets the dialog (LineageOS 24). */
+internal const val SAFE_VOLUME_DIALOG = "com.android.systemui.volume.SafetyWarningDialogDelegate"
+internal const val CSD_DIALOG = "com.android.systemui.volume.CsdWarningDialogDelegate"
 
 /** Android's warnings of a loud headset: the safe media volume's, and the sound dose's (CSD). */
 internal enum class HearingWarning { SAFE_VOLUME, CSD }
@@ -63,7 +64,7 @@ internal fun hearingFace(kind: HearingWarning, message: String?, android: List<H
 
 /**
  * OS 7's dialog over Android's warnings of a loud headset (docs/BBOS7-VISUEL.md §14), after
- * their start(), from SystemUIDialog.onStart, once Android built them: core/ui's DialogView with
+ * their delegates' onStart(Dialog), from SystemUIDialog.onStart, once Android built them: core/ui's DialogView with
  * the question mark of sim-341, over Android's dialog, which stays underneath, hidden, and keeps
  * everything that matters: when it shows, its threshold, its decision, its volume keys (Volume up
  * held past a second to proceed, Volume down to lower), Back and Escape, its dismissal and its
@@ -75,8 +76,8 @@ internal class HearingWarnings(
     private val images: (Context) -> Images?,
     private val fail: (String, Exception) -> Unit,
 ) {
-    val safeVolumeStart: Method = loader.loadClass(SAFE_VOLUME_DIALOG).getDeclaredMethod("start")
-    val csdStart: Method = loader.loadClass(CSD_DIALOG).getDeclaredMethod("start")
+    val safeVolumeStart: Method = loader.loadClass(SAFE_VOLUME_DIALOG).getDeclaredMethod("onStart", Dialog::class.java)
+    val csdStart: Method = loader.loadClass(CSD_DIALOG).getDeclaredMethod("onStart", Dialog::class.java)
 
     fun dress(dialog: AlertDialog, kind: HearingWarning) {
         val images = images(dialog.context) ?: return
@@ -91,7 +92,7 @@ internal class HearingWarnings(
             return
         }
         val labels = face.buttons.map { it.label }
-        val view = DialogView(images.context(dialog.context), face.text, labels, DialogIcon.QUESTION)
+        val view = DialogView(images.context, face.text, labels, DialogIcon.QUESTION)
         view.focused = face.focused
         val content = dialog.findViewById<ViewGroup>(android.R.id.content)
         val stock = (0 until content.childCount).map(content::getChildAt)

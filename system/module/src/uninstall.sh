@@ -15,6 +15,8 @@ cp -f "$MODDIR/setup.sh" "$S/setup.sh"
 cp -f "${USER_DE:-/data/user_de/0}/dev.bold7.launcher/shared_prefs/profiles.xml" "$S/profiles.xml" 2>/dev/null
 # Vector leaves with Bold7 only if Bold7 installed it.
 if [ -e "$S/vector.installe" ] && [ -d "$ADB/modules/zygisk_vector" ]; then touch "$ADB/modules/zygisk_vector/remove"; fi
+# The fabricated overlay's files, which Android would otherwise register again at the next boot.
+sh "$MODDIR/overlays.sh" purge
 mkdir -p "$ADB/boot-completed.d"
 chmod 755 "$ADB/boot-completed.d"
 # ksud runs every executable file of the folder at boot completed, and skips the others.

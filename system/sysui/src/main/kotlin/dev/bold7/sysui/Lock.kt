@@ -36,6 +36,13 @@ fun ownerLines(text: String?): OwnerLines {
     return OwnerLines(lines.firstOrNull(), lines.drop(1).joinToString("\n").ifEmpty { null })
 }
 
+/**
+ * Message on Lock Screen's two fields, Display Owner Name and Display Information (simulator
+ * 7.1.0.318, C), as Android's one text that [ownerLines] reads back: the name, then the
+ * information; either alone when the other is empty (D).
+ */
+fun ownerText(name: String, info: String): String = listOf(name.trim(), info.trim()).filter { it.isNotEmpty() }.joinToString("\n")
+
 const val OWNER_X = 30
 const val OWNER_NAME_WIDTH = 580
 const val OWNER_INFO_WIDTH = 500
@@ -228,14 +235,21 @@ const val EMERGENCY_ICON = "lock_emergency"
 fun padCovered(keyboard: Int, hardKeyboardHidden: Int): Boolean = keyboard == 2 && hardKeyboardHidden != 2
 
 /**
- * The bouncer views OS 7's entry covers, by their exact class: the device's PIN and password, and
- * MediaTek's view of the SIM's PIN and PUK (KeyguardSimPinPukMeView: the only one
- * KeyguardSecurityViewFlipperController inflates for the SIM on the Q25). Never AOSP's SIM views
- * (KeyguardSimPinView, KeyguardSimPukView, never inflated here), MediaTek's anti-theft lock, nor
- * the pattern.
+ * The bouncer views OS 7's entry covers, by their exact class: the device's PIN and password, and AOSP's views of the SIM's PIN and PUK (KeyguardSimPinView, KeyguardSimPukView:
+ * LineageOS 24 has no MediaTek view). Never their parent KeyguardSimInputView.
  */
 fun bouncerDressed(viewClass: String): Boolean =
-    viewClass == KEYGUARD_PIN_VIEW || viewClass == KEYGUARD_PASSWORD_VIEW || viewClass == KEYGUARD_SIM_VIEW
+    viewClass == KEYGUARD_PIN_VIEW || viewClass == KEYGUARD_PASSWORD_VIEW || simView(viewClass)
+
+/**
+ * Whether OS 7's box goes over a bouncer view of this class ([bouncerDressed]): a code is typed, so
+ * only with a keyboard at hand ([padCovered]).
+ */
+fun bouncerCovered(viewClass: String, keyboard: Int, hardKeyboardHidden: Int): Boolean =
+    bouncerDressed(viewClass) && padCovered(keyboard, hardKeyboardHidden)
+
+/** One of the SIM's two views. */
+fun simView(viewClass: String): Boolean = viewClass == KEYGUARD_SIM_PIN_VIEW || viewClass == KEYGUARD_SIM_PUK_VIEW
 
 /**
  * The key code Android's PIN view should get for a key of the Q25's keyboard. Its digits sit on
@@ -260,8 +274,8 @@ private const val KEYCODE_NUMPAD_9 = 153
 
 /**
  * Whether [pinKeyCode] applies to the bouncer view of this class. onKeyDown is final in
- * KeyguardPinBasedInputView, which the SIM's views and MediaTek's anti-theft lock share. The
- * device's PIN (KeyguardPINView); and MediaTek's SIM view only while OS 7's box covers it
+ * KeyguardPinBasedInputView, which the SIM's views share. The
+ * device's PIN (KeyguardPINView); and a SIM's view only while OS 7's box covers it
  * ([simCovered]): its pad is then hidden and the keyboard is the only way to type, as
  * on the 9900, whose number fields take the digits of the letter keys. A digit typed is one press
  * of Android's own key (NumPadKey.performClick), nothing is sent: only Enter and the trackpad's
@@ -270,22 +284,21 @@ private const val KEYCODE_NUMPAD_9 = 153
  * no keyboard, a failure), the SIM's screen is Android's as before: a letter types nothing.
  */
 fun pinKeysTranslated(viewClass: String, simCovered: Boolean): Boolean =
-    viewClass == KEYGUARD_PIN_VIEW || (viewClass == KEYGUARD_SIM_VIEW && simCovered)
+    viewClass == KEYGUARD_PIN_VIEW || (simView(viewClass) && simCovered)
 
 /**
- * What the SIM's view asks for, by KeyguardSimPinPukMeViewController.mUnlockEnterState (MtkSystemUI
- * of the Q25, jadx): 0 the PIN, 1 the PUK, 2 a new PIN, 3 its confirmation, 4 the PUK and the new
- * PIN sent (Android's progress dialog over the box until the modem answers: the confirmation's
- * label stays). Null, Android's screen back: 5, MediaTek's network lock, which this lot does not
- * draw (its Dismiss button would be hidden), and anything unknown.
+ * What the SIM's view asks for. KeyguardSimPinView: its PIN. KeyguardSimPukView: its state is
+ * KeyguardSimPukViewController's (StateMachine: the PUK, a new PIN, its confirmation), which the
+ * view does not hold; read from the prompt Android shows in its message area for each state
+ * ([pukPrompts]: the shown text to its state), the [last] one kept under Android's other words (a
+ * wrong code, the attempts left), the PUK at first, where the state machine starts. Null for any
+ * other view: Android's screen back.
  */
 enum class SimEntry { PIN, PUK, NEW_PIN, CONFIRM_PIN }
 
-fun simEntry(state: Int?): SimEntry? = when (state) {
-    0 -> SimEntry.PIN
-    1 -> SimEntry.PUK
-    2 -> SimEntry.NEW_PIN
-    3, 4 -> SimEntry.CONFIRM_PIN
+fun simEntry(viewClass: String, prompt: CharSequence?, pukPrompts: Map<String, SimEntry>, last: SimEntry?): SimEntry? = when (viewClass) {
+    KEYGUARD_SIM_PIN_VIEW -> SimEntry.PIN
+    KEYGUARD_SIM_PUK_VIEW -> prompt?.toString()?.trim()?.let(pukPrompts::get) ?: last ?: SimEntry.PUK
     else -> null
 }
 

@@ -98,3 +98,12 @@ class AgendaTest {
         assertEquals(at(day.plusDays(2).atStartOfDay()), to)
     }
 }
+
+class MonthMarkTest {
+    @kotlin.test.Test fun onlyTheFocusedDayWithAppointmentsHasTheMark() {
+        kotlin.test.assertTrue(monthMark(busy = true, focused = true))
+        kotlin.test.assertFalse(monthMark(busy = true, focused = false))
+        kotlin.test.assertFalse(monthMark(busy = false, focused = true))
+        kotlin.test.assertFalse(monthMark(busy = false, focused = false))
+    }
+}

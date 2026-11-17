@@ -21,6 +21,7 @@
     <string name="home_maximise_panel">Maximise Panel</string>
     <string name="home_restore_panel">Restore Panel</string>
     <string name="home_add_folder">Add Folder</string>
+    <string name="home_manage_panels">Manage Panels</string>
     <string name="home_show_all">Show All</string>
     <string name="home_options">Options</string>
     <string name="home_switch_application">Switch Application</string>
@@ -28,7 +29,8 @@
     <string name="home_edit_folder">Edit Folder</string>
     <string name="home_delete_folder">Delete Folder</string>
     <string name="home_folder_root">Home</string>
-    <string name="folder_name">Folder Name:</string>
+    <string name="folder_add">Add</string>
+    <string name="folder_save">Save</string>
     <!-- The universal search typed from the home: the names of the categories as the
          tiles of OS 7 write them (sim-54), docs/BBOS7-VISUEL.md, § 9; "Composer" is D. -->
     <string name="search_dial">Dial:</string>

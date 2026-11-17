@@ -35,7 +35,16 @@ SAVE=${SILENCE_SAVE:-$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pw
 # the 9900 says nothing when an app pastes.
 KEYS="global:charging_sounds_enabled secure:charging_vibration_enabled system:lockscreen_sounds_enabled system:sound_effects_enabled system:accelerometer_rotation secure:clipboard_show_access_notifications"
 
-get() { sh "settings get ${1%%:*} ${1#*:}"; }
+# A read that fails ("cmd: Failure calling service settings: Failed transaction", an exception, no
+# answer) is never a value: the script stops at once, before it writes the setting or deletes its save.
+checked() {
+  case $1 in '' | cmd:* | *Failure* | *Exception*)
+    echo "The phone did not answer (${1:-nothing}): stopped, nothing more written, the save kept. Try again in a moment." >&2
+    kill -TERM $$; exit 1 ;;
+  esac
+  printf '%s\n' "$1"
+}
+get() { checked "$(sh "settings get ${1%%:*} ${1#*:}")"; }
 valid() { [ "$1" = null ] || [[ $1 =~ ^[0-9]+$ ]]; }
 put() { # <space:key> <value>
   valid "$2" || die "refusing to write $2"

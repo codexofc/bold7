@@ -10,25 +10,25 @@ import kotlin.math.roundToInt
 // Mapping and sources: docs/BBOS7-VISUEL.md §19, "System palette"; the overlay switch is
 // SystemPaletteOverlays.
 
-/** The shades SystemUI writes for each tonal palette (TonalPalette.SHADE_KEYS of the Q25). */
-internal val SHADES = listOf(10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
+/** The shades of a tonal palette, TonalPalette.SHADE_KEYS of LineageOS 24 (0 is white). */
+internal val SHADES = listOf(0, 10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
+
+/** The two schemes SystemUI writes each color for: system_<name>_light and system_<name>_dark. */
+private val SCHEMES = listOf("light", "dark")
 
 private val WHITE = withOpacity(0xFFFFFF, 1f)
 private val BLACK = withOpacity(0x000000, 1f)
 
 /**
- * The 12 shades of a tonal palette from its [anchors] (shade to color, 0 and 1000 included; 0 is
- * not written, it only starts the ramp). A shade between two anchors is interpolated in sRGB, by
- * its position in the list of shades.
+ * The 13 shades of a tonal palette from its [anchors] (shade to color, 0 and 1000 included). A
+ * shade between two anchors is interpolated in sRGB, by its position in the list of shades.
  */
 internal fun ramp(anchors: Map<Int, Int>): Map<Int, Int> {
-    val steps = listOf(0) + SHADES
-    val at = anchors.mapKeys { steps.indexOf(it.key) }.toSortedMap()
-    return SHADES.associateWith { shade ->
-        val i = steps.indexOf(shade)
+    val at = anchors.mapKeys { SHADES.indexOf(it.key) }.toSortedMap()
+    return SHADES.withIndex().associate { (i, shade) ->
         val lo = at.headMap(i + 1).lastKey()
         val hi = at.tailMap(i).firstKey()
-        if (lo == hi) at.getValue(lo) else lerp(at.getValue(lo), at.getValue(hi), (i - lo).toFloat() / (hi - lo))
+        shade to if (lo == hi) at.getValue(lo) else lerp(at.getValue(lo), at.getValue(hi), (i - lo).toFloat() / (hi - lo))
     }
 }
 
@@ -40,6 +40,9 @@ private fun lerp(a: Int, b: Int, t: Float): Int = (0..3).fold(0) { acc, k ->
 
 /** [fg] drawn over the opaque [bg]: OS 7's translucent dividers as the solid color Material expects. */
 private fun over(fg: Int, bg: Int): Int = lerp(bg, fg or (0xFF shl 24), (fg ushr 24) / 255f)
+
+/** [rgb] at the opacity of Android's own value (0 to 255). */
+private fun alpha(rgb: Int, a: Int): Int = (a shl 24) or (rgb and 0xFFFFFF)
 
 // The palette's greys, each at the shade whose Material tone (L*) is nearest to its own.
 private val GREY = ramp(mapOf(
@@ -60,23 +63,36 @@ private val INDIGO = ramp(mapOf(
     0 to WHITE, 200 to Palette.BluePastel, 600 to Palette.BlueHighlight, 700 to Palette.BlueBase, 800 to Palette.BlueShade, 1000 to BLACK,
 ))
 
+// The red of new_overlay.png, its rim, and the pastel (D): the error palette, which SystemUI
+// leaves to the framework's.
+private val RED = ramp(mapOf(
+    0 to WHITE, 100 to Palette.RedPastel, 400 to Palette.RedHighlight, 600 to Palette.RedBase, 800 to Palette.RedShade, 1000 to BLACK,
+))
+
 /** Material roles of one scheme, light ([t] = Bright) or dark, in OS 7's tokens. */
 private fun roles(t: Theme, inverse: Theme, dark: Boolean): Map<String, Int> {
     val container = if (dark) Palette.PrimaryShade else Palette.PrimaryPastel
     val onContainer = if (dark) Palette.PrimaryPastel else Palette.PrimaryShade
+    val tertiaryContainer = if (dark) Palette.BlueShade else Palette.BluePastel
+    val error = if (dark) Palette.RedHighlight else Palette.RedBase
     return mapOf(
         "primary" to Palette.PrimaryHighlight,
         "on_primary" to Palette.TextOnPrimary,
         "primary_container" to container,
         "on_primary_container" to onContainer,
+        "primary_dim" to Palette.PrimaryBase,
+        "inverse_primary" to if (dark) Palette.PrimaryBase else Palette.AccentLight,
+        "surface_tint" to Palette.PrimaryHighlight,
         "secondary" to Palette.PrimaryBase,
         "on_secondary" to Palette.TextOnPrimary,
         "secondary_container" to container,
         "on_secondary_container" to onContainer,
+        "secondary_dim" to Palette.PrimaryShade,
         "tertiary" to Palette.BlueHighlight,
         "on_tertiary" to Palette.TextOnPrimary,
-        "tertiary_container" to if (dark) Palette.BlueShade else Palette.BluePastel,
+        "tertiary_container" to tertiaryContainer,
         "on_tertiary_container" to if (dark) Palette.BluePastel else Palette.BlueShade,
+        "tertiary_dim" to Palette.BlueBase,
         "background" to t.background,
         "on_background" to t.textPrimary,
         "surface" to t.background,
@@ -91,12 +107,16 @@ private fun roles(t: Theme, inverse: Theme, dark: Boolean): Map<String, Int> {
         "surface_container_highest" to if (dark) t.surface else t.surfaceBase,
         "surface_variant" to if (dark) t.surface else t.surfaceBase,
         "on_surface_variant" to t.textSecondary,
+        // A snackbar: the other scheme's overlay.
+        "inverse_surface" to inverse.overlay,
+        "inverse_on_surface" to inverse.textPrimary,
         "outline" to t.textTertiary,
         "outline_variant" to over(t.divider, t.overlay),
-        "error" to if (dark) Palette.RedHighlight else Palette.RedBase,
+        "error" to error,
         "on_error" to Palette.TextOnPrimary,
         "error_container" to if (dark) Palette.RedShade else Palette.RedPastel,
         "on_error_container" to if (dark) Palette.RedPastel else Palette.RedShade,
+        "error_dim" to if (dark) Palette.RedBase else Palette.RedShade,
         "control_activated" to Palette.PrimaryHighlight,
         "control_normal" to t.textSecondary,
         "control_highlight" to t.pressed,
@@ -111,6 +131,42 @@ private fun roles(t: Theme, inverse: Theme, dark: Boolean): Map<String, Int> {
         "palette_key_color_tertiary" to Palette.BlueHighlight,
         "palette_key_color_neutral" to GREY.getValue(500),
         "palette_key_color_neutral_variant" to GREY.getValue(500),
+        "palette_key_color_error" to Palette.RedBase,
+        "scrim" to BLACK,
+        "shadow" to BLACK,
+        "under_surface" to BLACK,
+        "overview_background" to if (dark) t.surface else t.surfaceBase,
+        "widget_background" to t.overlay,
+        // Quick settings sit on the dark shade in both schemes, as Android's: a tile on is the
+        // focus blue, off the flat button grey of the dark menus, white text.
+        "shade_active" to Palette.PrimaryHighlight,
+        "on_shade_active" to Palette.TextOnPrimary,
+        "on_shade_active_variant" to Palette.TextOnPrimary,
+        "shade_inactive" to Theme.Dark.divider,
+        "on_shade_inactive" to Theme.Dark.textPrimary,
+        "on_shade_inactive_variant" to Theme.Dark.textSecondary,
+        "shade_disabled" to Theme.Dark.surfaceBase,
+        // The shade's layers, at Android's opacity (0x80, 0x8A, 0x52 and 0x26 light, 0x26 and 0x1A
+        // dark): OS 7's overlay, its background, then a white and a blue sheen. Without blur, the
+        // overlay, opaque.
+        "surface_effect_0" to alpha(t.overlay, 0x80),
+        "surface_effect_0_fallback" to t.overlay,
+        "surface_effect_1" to alpha(t.background, 0x8A),
+        "surface_effect_2" to if (dark) alpha(Theme.Dark.textPrimary, 0x26) else alpha(WHITE, 0x52),
+        "surface_effect_3" to if (dark) alpha(Palette.PrimaryPastel, 0x1A) else alpha(Palette.PrimaryHighlight, 0x26),
+        // Android's clocks, weather and themed icons, which OS 7 does not have: its text and its blue.
+        "clock_hour" to t.textPrimary,
+        "clock_minute" to t.textPrimary,
+        "clock_second" to Palette.PrimaryHighlight,
+        "weather_temp" to Palette.PrimaryHighlight,
+        "brand_a" to Palette.PrimaryHighlight,
+        "brand_b" to Palette.AccentLight,
+        "brand_c" to Palette.PrimaryBase,
+        "brand_d" to Palette.BlueHighlight,
+        "theme_app" to container,
+        "on_theme_app" to onContainer,
+        "theme_app_ring" to Palette.AccentLight,
+        "theme_notif" to tertiaryContainer,
     )
 }
 
@@ -122,63 +178,60 @@ private fun fixed(role: String, palette: Map<Int, Int>) = mapOf(
     "on_${role}_fixed_variant" to palette.getValue(700),
 )
 
+private fun tonal(name: String) = SHADES.flatMap { s -> SCHEMES.map { "${name}_${s}_$it" } }
+
+/** OS 7's error palette, written with the accents: SystemUI leaves it to the framework's red. */
+private val ERROR_COLORS = tonal("error")
+
 /**
- * The OS 7 value of each system_<name> color SystemUI writes in its fabricated overlays, keyed by
- * <name>: the tonal palettes (accent1_600…), the light and dark roles (primary_light…), the fixed
- * roles (primary_fixed…). One accent like OS 7 (accent2 = accent1), greys without tint.
+ * The OS 7 value of each system_<name> color, keyed by <name>: the tonal palettes
+ * (accent1_600_light…), the roles (primary_light…), the fixed roles (primary_fixed_light…), each
+ * in both schemes. One accent like OS 7 (accent2 = accent1), greys without tint, one palette for
+ * both schemes.
  */
 val SYSTEM_COLORS: Map<String, Int> = buildMap {
-    for ((name, palette) in listOf("neutral1" to GREY, "neutral2" to GREY, "accent1" to BLUE, "accent2" to BLUE, "accent3" to INDIGO)) {
-        for ((shade, color) in palette) put("${name}_$shade", color)
-    }
+    val palettes = listOf("neutral1" to GREY, "neutral2" to GREY, "accent1" to BLUE, "accent2" to BLUE, "accent3" to INDIGO, "error" to RED)
+    for ((name, palette) in palettes) for ((shade, color) in palette) for (s in SCHEMES) put("${name}_${shade}_$s", color)
     for ((role, color) in roles(Theme.Bright, Theme.Dark, dark = false)) put("${role}_light", color)
     for ((role, color) in roles(Theme.Dark, Theme.Bright, dark = true)) put("${role}_dark", color)
-    putAll(fixed("primary", BLUE))
-    putAll(fixed("secondary", BLUE))
-    putAll(fixed("tertiary", INDIGO))
+    for ((role, color) in fixed("primary", BLUE) + fixed("secondary", BLUE) + fixed("tertiary", INDIGO)) for (s in SCHEMES) put("${role}_$s", color)
 }
 
 /** One of the fabricated overlays SystemUI builds in createOverlays: its field in the controller, its name, its colors. */
 internal data class PaletteOverlay(val field: String, val name: String, val colors: List<String>)
 
+/** The controller's overlay fields and the names newFabricatedOverlay gives them. */
+internal val PALETTE_OVERLAYS = listOf("mAccentOverlay" to "accent", "mNeutralOverlay" to "neutral", "mDynamicOverlay" to "dynamic")
+
+private const val COLOR_PREFIX = "android:color/system_"
+
 /**
- * The three overlays ThemeOverlayController.createOverlays writes, from SystemUI's own lists:
- * [shadeKeys] (TonalPalette.SHADE_KEYS), [roles] (DynamicColors.ALL_DYNAMIC_COLORS_MAPPED, each in
- * _dark then _light) and [fixedRoles] (FIXED_COLORS_MAPPED). Throws IllegalStateException when
- * they are not the ones SYSTEM_COLORS was written for: Android's overlays are then kept.
+ * The three overlays to write, from the resources Android's own hold ([written], each overlay
+ * field to its resource names, android:color/system_…): the same colors, plus the error palette
+ * with the accents. Throws IllegalStateException when one of Android's is missing or empty, or
+ * holds a resource OS 7 has no value for: Android's overlays are then kept.
  */
-internal fun paletteOverlays(shadeKeys: Any?, roles: List<String>, fixedRoles: List<String>): List<PaletteOverlay> {
-    check(shadeKeys == SHADES) { "SystemUI's shades $shadeKeys are not $SHADES" }
-    fun tonal(vararg palettes: String) = palettes.flatMap { p -> SHADES.map { "${p}_$it" } }
-    val overlays = listOf(
-        PaletteOverlay("mNeutralOverlay", "neutral", tonal("neutral1", "neutral2")),
-        PaletteOverlay("mSecondaryOverlay", "accent", tonal("accent1", "accent2", "accent3")),
-        PaletteOverlay("mDynamicOverlay", "dynamic", roles.flatMap { listOf("${it}_dark", "${it}_light") } + fixedRoles),
-    )
+internal fun paletteOverlays(written: Map<String, List<String>>): List<PaletteOverlay> {
+    val overlays = PALETTE_OVERLAYS.map { (field, name) ->
+        val resources = written[field]
+        check(!resources.isNullOrEmpty()) { "SystemUI wrote no $name colors" }
+        val colors = resources.map { check(it.startsWith(COLOR_PREFIX)) { "$it in $name is not a system color" }; it.removePrefix(COLOR_PREFIX) }
+        PaletteOverlay(field, name, if (name == "accent") (colors + ERROR_COLORS).distinct() else colors)
+    }
     val missing = overlays.flatMap { it.colors }.filter { it !in SYSTEM_COLORS }
     check(missing.isEmpty()) { "no OS 7 value for ${missing.joinToString()}" }
     return overlays
 }
 
 /** Whether the colors in place, [posed] reading system_<name>, are already every one of SYSTEM_COLORS. */
-internal fun bb10PaletteInPlace(posed: (String) -> Int): Boolean = SYSTEM_COLORS.all { (name, color) -> posed(name) == color }
-
-/** The tonal palettes of SystemUI's ColorScheme, by field name. */
-internal val SCHEME_PALETTES = listOf("accent1", "accent2", "accent3", "neutral1", "neutral2")
-
-/**
- * OS 7's shades of one of [SCHEME_PALETTES], in the order of TonalPalette.allShades (SHADES):
- * what ThemeOverlayController's scheme holds once the hook went through, so that its check
- * (getS500, index 6) compares the colors in place with OS 7's.
- */
-internal fun schemeShades(palette: String): List<Int> = SHADES.map { SYSTEM_COLORS.getValue("${palette}_$it") }
+internal fun os7PaletteInPlace(posed: (String) -> Int): Boolean = SYSTEM_COLORS.all { (name, color) -> posed(name) == color }
 
 internal enum class PaletteStep { REGISTER, ALREADY_IN_PLACE }
 
 /**
- * What becomes of our overlays once Android's check sends them to ThemeOverlayApplier: registered,
- * unless every color in place ([posed]) is already OS 7's, in which case registering them again
- * would only make a new .frro and relaunch every activity.
+ * What becomes of our overlays once ThemeOverlayApplier takes them: registered, unless every
+ * color in place ([posed]) is already OS 7's, in which case registering them again would only make
+ * a new .frro and relaunch every activity.
  */
 internal fun paletteStep(posed: (String) -> Int): PaletteStep =
-    if (bb10PaletteInPlace(posed)) PaletteStep.ALREADY_IN_PLACE else PaletteStep.REGISTER
+    if (os7PaletteInPlace(posed)) PaletteStep.ALREADY_IN_PLACE else PaletteStep.REGISTER

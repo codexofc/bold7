@@ -5,7 +5,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.os.Bundle
 import android.text.TextPaint
@@ -21,6 +20,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import dev.bold7.design.Durations
 import dev.bold7.design.ListColors
+import dev.bold7.design.OS7_NAMES
 import dev.bold7.design.Typography
 import dev.bold7.hub.data.HubContract
 import dev.bold7.hub.data.ItemKey
@@ -40,6 +40,7 @@ import dev.bold7.ui.fillPaint
 import dev.bold7.ui.slate
 import dev.bold7.ui.status
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -50,7 +51,7 @@ internal val MailBorder = 0xFFC6C6C6.toInt()
 
 /** "16 Sep 2011 13:36" (gsm 030, C), or in 12 h by the phone's setting. */
 internal fun mailDate(context: Context): (Long) -> String {
-    val f = DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "d MMM yyyy HH:mm" else "d MMM yyyy h:mm a", context.resources.configuration.locales[0])
+    val f = DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "d MMM yyyy HH:mm" else "d MMM yyyy h:mm a", OS7_NAMES)
     return { f.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) }
 }
 
@@ -137,9 +138,9 @@ class MailActivity : Activity() {
         val g = graph
         g.ioThread.post {
             val images = mapOf(
-                Act.REPLY to R.drawable.msg_sm_reply, Act.FORWARD to R.drawable.msg_sm_forward, Act.REPLY_ALL to R.drawable.msg_sm_reply_all,
-                Act.MARK_UNREAD to R.drawable.msg_sm_mark_unread, Act.DELETE to R.drawable.msg_sm_delete,
-            ).mapValues { BitmapFactory.decodeResource(resources, it.value) }
+                Act.REPLY to "msg_sm_reply", Act.FORWARD to "msg_sm_forward", Act.REPLY_ALL to "msg_sm_reply_all",
+                Act.MARK_UNREAD to "msg_sm_mark_unread", Act.DELETE to "msg_sm_delete",
+            ).mapValues { themeBitmap(applicationContext, it.value) }
             // A showcase email is made up (ShowcaseInbox): no account is asked, nothing is written.
             val showcase = isShowcase(key)
             val m = if (showcase) showcaseMail(key, System.currentTimeMillis()) else if (showcaseOn(this)) null else g.mail.open(key).first

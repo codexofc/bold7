@@ -23,9 +23,6 @@ object ContactRoom {
     fun cardValue(width: Int, labelWidth: Float): Float =
         (width - CardView.VALUE_RIGHT - CardView.BAND_PAD - CardView.LABEL_X - labelWidth - GAP).coerceAtLeast(0f)
 
-    /** A group's name on the card: the label's column to the value's margin. */
-    fun cardGroup(width: Int): Float = (width - CardView.LABEL_X - CardView.VALUE_RIGHT).coerceAtLeast(0).toFloat()
-
     /** A box's title, on the card and in the form. */
     fun boxTitle(width: Int): Float = (width - 2 * CardView.TITLE_X).coerceAtLeast(0).toFloat()
 

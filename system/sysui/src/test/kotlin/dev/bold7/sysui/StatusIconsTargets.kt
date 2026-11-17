@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import com.android.internal.statusbar.StatusBarIcon
 import com.android.systemui.statusbar.StatusBarIconView
 import com.android.systemui.statusbar.phone.PhoneStatusBarPolicy
-import com.android.systemui.statusbar.phone.StatusBarIconControllerImpl
+import com.android.systemui.statusbar.phone.ui.StatusBarIconControllerImpl
 import com.android.systemui.statusbar.phone.StatusIconContainer
 import com.android.systemui.statusbar.policy.BluetoothControllerImpl
 import com.android.systemui.statusbar.policy.LocationControllerImpl

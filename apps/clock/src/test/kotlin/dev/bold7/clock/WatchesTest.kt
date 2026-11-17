@@ -7,6 +7,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WatchesTest {
+    @Test fun theTimerOpensAtFiveMinutesAndStarts() {
+        val t = Countdown(DEFAULT_TIMER_MS)
+        assertEquals(300_000, t.left(0))
+        assertTrue(t.start(0).running)
+    }
+
     @Test fun theStopwatchCountsOnlyWhileRunning() {
         val s = Stopwatch().start(1_000)
         assertEquals(500, s.elapsed(1_500))

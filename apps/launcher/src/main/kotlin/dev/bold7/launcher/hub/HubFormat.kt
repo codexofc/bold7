@@ -5,7 +5,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The phone's zone, language and clock, read with the items. */
+/** The phone's zone and clock, read with the items, and the names of days and months (OS7_NAMES on the phone). */
 data class HubFormat(val zone: ZoneId, val locale: Locale, val clock24: Boolean)
 
 /**

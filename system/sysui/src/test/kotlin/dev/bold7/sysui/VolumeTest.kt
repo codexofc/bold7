@@ -1,9 +1,11 @@
 package dev.bold7.sysui
 
 import java.io.File
+import java.util.zip.ZipFile
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 class VolumeTest {
     // AudioManager.STREAM_* and RINGER_MODE_*.
@@ -120,6 +122,14 @@ class VolumeTest {
         }
         assertEquals(25, names.size) // the background, 4 icons and their -mute, 16 bars
         assertEquals(emptyList(), names.filterNot { drawableExists(it) })
+    }
+
+    // The classes VolumeHud names by strings, in LineageOS 24's SystemUI; VolumeTargets.kt compiles
+    // their members, TargetTableTest the table.
+    @Test fun targetClassesAreLineages() = ZipFile("../../stubs/systemui.jar").use { jar ->
+        for (cls in listOf(VOLUME_LAUNCH, VOLUME_PLUGIN_VIEW_MODEL, VOLUME_VISIBILITY, VOLUME_VISIBLE, VOLUME_CONTROLLER_IMPL, VOLUME_PANEL_STATE, VOLUME_CONTROLLER, VOLUME_STATE, VOLUME_STREAM_STATE)) {
+            assertNotNull(jar.getEntry(cls.replace('.', '/') + ".class"), cls)
+        }
     }
 }
 

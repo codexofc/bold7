@@ -52,12 +52,11 @@ object HomeDimens {
     const val BANNER_DATE_LEFT = 7
     const val BANNER_RIGHT = 6
 
-    /** By eye (Eyeballed): the calendar's day, the banner's focus squares, the AM/PM gap, the open folder's icon. */
+    /** By eye (Eyeballed): the calendar's day, the banner's focus squares, the AM/PM gap. */
     const val CALENDAR_DATE_SIZE = Eyeballed.CALENDAR_DATE_SIZE
     const val CALENDAR_DATE_BASELINE = Eyeballed.CALENDAR_DATE_BASELINE
     const val BANNER_FOCUS_SQUARE = Eyeballed.BANNER_FOCUS_SQUARE
     const val AM_PM_GAP = Eyeballed.AM_PM_GAP
-    const val FOLDER_OPEN_FRAME = Eyeballed.FOLDER_OPEN_FRAME
 }
 
 /**
@@ -264,6 +263,13 @@ object ListDimens {
     const val CHECK_RIGHT = 12
 
     /**
+     * An options group box's white from the screen's edge (sim-170, sim-270, C: border at 4, white
+     * from 5). OS 7 measures its rows' margins from the screen's edges, not the box's: a label at
+     * x 11 and a field or box 12 px from the right edge, inside a box as outside.
+     */
+    const val BOX_INSET = 5
+
+    /**
      * A row with a choice field, as Trackpad Sensitivity's (sim, C): 57 px, its label as
      * a check box's, the field border_button.png (A, ~focus under the trackpad) 186 px wide, 12 px
      * from the right edge, 5 px under the row's top and 51 high, its value centred left of
@@ -274,6 +280,15 @@ object ListDimens {
     const val CHOICE_FIELD_HEIGHT = 51
     const val CHOICE_ARROW_RIGHT = 13
     const val CHOICE_ARROW_WIDTH = 20
+
+    /**
+     * The transparent edge of border_button.png on each side (A): the field is drawn that much
+     * wider so that its visible edges are the measured ones (sim-66: 442 to 628, 12 px from the right edge).
+     */
+    const val CHOICE_FIELD_SHADOW = 3
+
+    /** The arrow's image from the field's visible right edge (sim-66: its glyph 599 to 610, the edge at 628). */
+    const val CHOICE_ARROW_FROM_EDGE = 17
 
     /**
      * Its open list (C): border_inplace.png (A) 78 px wide, 8 px right of the field's left edge, rows

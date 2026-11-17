@@ -2,6 +2,7 @@ package dev.bold7.calendar
 
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 import java.time.LocalDate
 
@@ -86,7 +87,7 @@ fun CalendarScreen.focused(agenda: List<AgendaRow>, inHour: List<Occurrence>): O
     (click(agenda, inHour) as? Click.Open)?.occurrence
 
 /** The menu's actions; New Alarm, New Task, Search, Calendar Reminders, Options and Help are not there yet. */
-enum class Act { NEW, NEW_ALARM, NEW_TASK, OPEN, DELETE, ACCEPT, TENTATIVE, DECLINE, TODAY, GO_TO_DATE, VIEW, DAY, WEEK, MONTH, AGENDA, CLOSE, SWITCH }
+enum class Act { NEW, NEW_ALARM, NEW_TASK, OPEN, DELETE, ACCEPT, TENTATIVE, DECLINE, TODAY, GO_TO_DATE, VIEW, DAY, WEEK, MONTH, AGENDA, HELP, CLOSE, SWITCH }
 
 /**
  * The full menu (sim-221, sim-222, sim-240): Switch Application | New Appointment, New Alarm, New Task | Open, Delete when an appointment is
@@ -109,7 +110,7 @@ fun menu(focused: Occurrence?): Pair<List<MenuEntry<Act>>, Int> {
         add(MenuEntry(Act.VIEW, separatorAbove = true, submenu = true))
         add(MenuEntry(Act.CLOSE, separatorAbove = true))
     }
-    val full = Menu(entries, highlighted = entries.indexOfFirst { it.action == if (focused != null) Act.OPEN else Act.NEW }).withSwitchApplication(Act.SWITCH)
+    val full = Menu(entries, highlighted = entries.indexOfFirst { it.action == if (focused != null) Act.OPEN else Act.NEW }).withHelp(Act.HELP, before = Act.CLOSE).withSwitchApplication(Act.SWITCH)
     return full.entries to full.highlighted!!
 }
 

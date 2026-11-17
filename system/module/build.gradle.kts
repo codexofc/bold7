@@ -58,9 +58,16 @@ val overlays = mapOf(
     "Bold7Recents" to "system/overlays/recents",
     "Bold7Android" to "system/overlays/android",
     "Bold7SystemUI" to "system/overlays/systemui",
-    "Bold7BBKB" to "system/overlays/bbkb",
     "Bold7PermissionController" to "system/overlays/permissioncontroller",
     "Bold7Settings" to "system/overlays/settings",
+)
+// The phone's APK each RRO targets, as tools/stubs.sh pulls it into stubs/device.
+val overlayTargets = mapOf(
+    "Bold7Recents" to "framework/framework-res.apk",
+    "Bold7Android" to "framework/framework-res.apk",
+    "Bold7SystemUI" to "SystemUI.apk",
+    "Bold7PermissionController" to "PermissionController.apk",
+    "Bold7Settings" to "Settings.apk",
 )
 // The app-name RROs: one APK per id of system/overlays/names/names.tsv (a product flavor each),
 // Bold7Name_<id>.apk in the same folder.
@@ -92,6 +99,18 @@ val privappCheck by tasks.registering(Exec::class) {
     inputs.files(apks, whitelist, rootProject.file("tools/privapp_check.py"))
     // Same python as fontsXml: the whitelist is parsed with pyexpat.
     commandLine(listOf("/usr/bin/python3", "-I", rootProject.file("tools/privapp_check.py"), aapt2, whitelist) + apks)
+}
+
+// Every framework reference of each RRO is a resource of the phone's framework-res, and every
+// resource it overlays still exists in its target (tools/rro_check.py).
+val rroCheck by tasks.registering(Exec::class) {
+    dependsOn(overlays.values.map(::assembleOf))
+    val aapt2 = File(sdkDir, "build-tools").listFiles()!!.filter { it.resolve("aapt2").exists() }
+        .maxBy { version(it.name) }.resolve("aapt2")
+    val device = rootProject.file("stubs/device")
+    val pairs = overlays.map { (name, dir) -> "${apk(dir)}=${device.resolve(overlayTargets.getValue(name))}" }
+    inputs.files(overlays.values.map(::apk), overlayTargets.values.map(device::resolve), rootProject.file("tools/rro_check.py"))
+    commandLine(listOf("/usr/bin/python3", "-I", rootProject.file("tools/rro_check.py"), aapt2, device.resolve("framework/framework-res.apk")) + pairs)
 }
 
 // The launcher's baseline profile as ART on Android 14 reads it for a system app: <apk>.prof beside
@@ -180,10 +199,10 @@ val bootAnimation by tasks.registering(Exec::class) {
 }
 
 // bold7-trackpad, the trackpad's program (trackpad/bold7_trackpad.c): C,
-// no library but the NDK's libc, linked statically for arm64 at Android 14's API level, by the
+// no library but the NDK's libc, linked statically for arm64 at Android 17's API level (37, NDK r30), by the
 // NDK pinned here. Its pure model (trackpad/model.c) is tested first on the Mac, by the
 // Mac's own clang: the binary does not build without its tests.
-val trackpadNdk = "29.0.14206865"
+val trackpadNdk = "30.0.16248370"
 val trackpadSources = fileTree("trackpad") { include("*.c", "*.h") }
 val trackpadTestBuild by tasks.registering(Exec::class) {
     val out = layout.buildDirectory.file("trackpad-test/test_model")
@@ -200,8 +219,25 @@ val trackpadTest by tasks.registering(Exec::class) {
     outputs.upToDateWhen { false }
     commandLine(binary.get().asFile)
 }
-// `./gradlew test` runs it with the JVM tests of the other modules.
-tasks.register("test") { dependsOn(trackpadTest) }
+// bold7-led, the LED's program (led/bold7_led.c): built and tested the same way.
+val ledSources = fileTree("led") { include("*.c", "*.h") }
+val ledTestBuild by tasks.registering(Exec::class) {
+    val out = layout.buildDirectory.file("led-test/test_model")
+    inputs.files(ledSources)
+    outputs.file(out)
+    doFirst { out.get().asFile.parentFile.mkdirs() }
+    commandLine("/usr/bin/clang", "-std=c11", "-Wall", "-Wextra", "-Werror", "-o", out.get().asFile,
+        file("led/model.c"), file("led/test_model.c"))
+}
+val ledTest by tasks.registering(Exec::class) {
+    dependsOn(ledTestBuild)
+    val binary = layout.buildDirectory.file("led-test/test_model")
+    inputs.file(binary)
+    outputs.upToDateWhen { false }
+    commandLine(binary.get().asFile)
+}
+// `./gradlew test` runs them with the JVM tests of the other modules.
+tasks.register("test") { dependsOn(trackpadTest, ledTest) }
 
 val trackpadBinary by tasks.registering(Exec::class) {
     dependsOn(trackpadTest)
@@ -214,9 +250,22 @@ val trackpadBinary by tasks.registering(Exec::class) {
     val ndk = File(sdkDir, "ndk/$trackpadNdk")
     val host = ndk.resolve("toolchains/llvm/prebuilt").listFiles()?.singleOrNull { it.isDirectory }
         ?: error("NDK $trackpadNdk missing in $sdkDir/ndk (or not one prebuilt host): install it with the SDK manager")
-    val clang = host.resolve("bin/aarch64-linux-android34-clang")
+    val clang = host.resolve("bin/aarch64-linux-android37-clang")
     commandLine(clang, "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-s", "-o", out.get().asFile,
         file("trackpad/bold7_trackpad.c"), file("trackpad/model.c"))
+}
+
+val ledBinary by tasks.registering(Exec::class) {
+    dependsOn(ledTest)
+    val out = layout.buildDirectory.file("led/bin/bold7-led")
+    inputs.files(ledSources)
+    outputs.file(out)
+    doFirst { out.get().asFile.parentFile.mkdirs() }
+    val ndk = File(sdkDir, "ndk/$trackpadNdk")
+    val host = ndk.resolve("toolchains/llvm/prebuilt").listFiles()?.singleOrNull { it.isDirectory }
+        ?: error("NDK $trackpadNdk missing in $sdkDir/ndk (or not one prebuilt host): install it with the SDK manager")
+    commandLine(host.resolve("bin/aarch64-linux-android37-clang"), "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-s",
+        "-o", out.get().asFile, file("led/bold7_led.c"), file("led/model.c"))
 }
 
 // The ordinary apps the module installs by pm install from customize.sh (setup.sh install), package to
@@ -234,53 +283,87 @@ val apps = mapOf(
     "dev.bold7.memopad" to "apps/memopad",
     "dev.bold7.tasks" to "apps/tasks",
     "dev.bold7.pictures" to "apps/pictures",
+    "dev.bold7.help" to "apps/help",
     "dev.bold7.sysui" to "system/sysui",
 )
 
-// Vector v2.2 (build 3080, JingMatrix's fork of LSPosed, GPL-3.0), the version tested on the Q25,
-// embedded so that customize.sh installs it when it is missing. The zip lives out of
-// git, in vendor/ of the main checkout (a link in a worktree); refused unless its sha256 matches.
-val vectorZip = rootProject.file("vendor/vector/Vector-v2.2-3080-Release.zip")
-val vectorCheck by tasks.registering {
-    val zip = vectorZip
-    val sha256 = "9ee8323575d615f7b3f1076ff60b2a63a49390ef11881b52632311a37f6f79cc"
-    inputs.file(zip)
+// A file of vendor/ (out of git, in the main checkout, a link in a worktree), refused unless its
+// sha256 is the one given.
+fun vendorCheck(name: String, file: File, sha256: String) = tasks.register(name) {
+    inputs.file(file)
     doLast {
-        val actual = java.security.MessageDigest.getInstance("SHA-256").digest(zip.readBytes())
+        val actual = java.security.MessageDigest.getInstance("SHA-256").digest(file.readBytes())
             .joinToString("") { "%02x".format(it) }
-        check(actual == sha256) { "$zip: sha256 $actual, not $sha256" }
+        check(actual == sha256) { "$file: sha256 $actual, not $sha256" }
     }
 }
+
+// Vector v2.2 (build 3080, JingMatrix's fork of LSPosed, GPL-3.0), the version tested on the Q25,
+// embedded so that customize.sh installs it when it is missing.
+val vectorZip = rootProject.file("vendor/vector/Vector-v2.2-3080-Release.zip")
+val vectorCheck = vendorCheck("vectorCheck", vectorZip, "9ee8323575d615f7b3f1076ff60b2a63a49390ef11881b52632311a37f6f79cc")
+
+// Camera: Bold7's fork of BenOS Camera (GPL-3.0, github.com/codexofc/bold7-camera, NOTICE), built
+// from the fork and signed with Bold7's key; setup.sh installs it unless the user installed it.
+// The archive of its sources goes with each release (tools/release.sh).
+val cameraApk = rootProject.file("vendor/bold7-camera/bold7-camera-3.6-bold7.1.apk")
+val cameraCheck = vendorCheck("cameraCheck", cameraApk, "60f06e6c9ee5ac5ac52a49aefb539796c0d9aee5b5159cd641ca0bfdb35eca5f")
 
 // The KernelSU module zip. Files go to layer/<partition>/<dir>, which
 // post-fs-data.sh lays over /<partition>/<dir>: one overlay mount per folder. Never under system/,
 // which KernelSU would hand to a metamodule. /system has no overlay folder (PackagePartitions):
 // RROs go to /system_ext/overlay, whose static overlays win.
+val publicBuild = providers.gradleProperty("bold7.public").orNull == "true"
+
+// The extractor (core/firmware) as one dex jar, with the two tables it reads, for the public zip:
+// customize.sh runs it by app_process on the user's own file of the 9900 (src/extract.sh).
+val extractorDex = rootProject.file("core/firmware/build/dex/bold7-firmware.jar")
+
 val moduleZip by tasks.registering(Zip::class) {
     archiveFileName = "bold7-module.zip"
     destinationDirectory = layout.buildDirectory.dir("dist")
     from("src")
+    // The card's banner in KernelSU Next's module list (banner= of module.prop, read from the
+    // module's folder by its manager, Module.kt of v3.4.2): our logo, docs/logo/README.md.
+    from(rootProject.file("docs/logo/banner.png"))
     from(trackpadBinary) { into("bin") }
-    from(assets.resolve("module")) { into("layer"); exclude("system/fonts/**", "system/fonts-os7/**") }
-    from(fallbackFonts) { into("layer/system/fonts") }
-    from(moduleFonts) { into("layer/system/fonts") }
-    from(fontsXml) { into("layer/system/etc") }
-    from(sounds) { into("layer") }
-    from(layout.buildDirectory.dir("bootanim")) { into("layer") }
-    // The images the apps read by name (core/theme), laid out as assets-gen: post-fs-data.sh
-    // lays layer/product/media over /product/media, so they show at /product/media/bold7 once the
-    // module is installed and the phone restarted. Development zip only: the public one gets them
-    // from the extraction at install. Images only for now: sounds, fonts and dictionaries
-    // join them once something reads them from there.
-    from(assets) { include("*/res/**"); into("layer/product/media/bold7") }
-    dependsOn(bootAnimation)
-    dependsOn(privappCheck, overlays.values.map(::assembleOf))
+    from(ledBinary) { into("bin") }
+    if (publicBuild) {
+        // Nothing of BlackBerry: fonts, fonts.xml, sounds, boot animation and images are made on the
+        // phone at install, from the user's file (extract.sh).
+        dependsOn(":core:firmware:extractorDex")
+        from(extractorDex) { into("firmware") }
+        from(rootProject.file("core/icons/src/main/res/raw/bbos7_icons.tsv")) { into("firmware") }
+        from("sounds.tsv") { into("firmware") }
+        // Typing's AOSP French list (Apache 2.0, in git): the extraction lays OS 7's part over it.
+        from(rootProject.file("apps/saisie/src/main/assets/dictionary/fr.tsv")) { into("firmware/dictionary") }
+    } else {
+        from(assets.resolve("module")) { into("layer"); exclude("system/fonts/**", "system/fonts-os7/**") }
+        from(fallbackFonts) { into("layer/system/fonts") }
+        from(moduleFonts) { into("layer/system/fonts") }
+        from(fontsXml) { into("layer/system/etc") }
+        // Android 15 and later build the system fonts from font_fallback.xml (SystemFonts), and
+        // keep fonts.xml for the apps that read it: the same derived file over both.
+        from(fontsXml) { into("layer/system/etc"); rename { "font_fallback.xml" } }
+        from(sounds) { into("layer") }
+        from(layout.buildDirectory.dir("bootanim")) { into("layer") }
+        // The images the apps read by name (core/theme), laid out as assets-gen: post-fs-data.sh
+        // lays layer/product/media over /product/media, so they show at /product/media/bold7 once the
+        // module is installed and the phone restarted, with the wallpapers the Setup Wizard offers
+        // and the decoded help the launcher's Help shows. The public zip gets them from the extraction.
+        from(assets) { include("*/res/**", "wallpapers/**", "help/**"); into("layer/product/media/bold7") }
+        dependsOn(bootAnimation)
+    }
+    dependsOn(privappCheck, rroCheck, overlays.values.map(::assembleOf))
     privApps.forEach { (name, dir) -> from(apk(dir)) { into("layer/system/priv-app/$name"); rename { "$name.apk" } } }
     from(launcherProfile) { into("layer/system/priv-app/Bold7Launcher") }
     dependsOn(apps.values.map(::assembleOf))
     apps.forEach { (pkg, dir) -> from(apk(dir)) { into("apps"); rename { "$pkg.apk" } } }
     from(vectorZip) { into("vector"); rename { "vector.zip" } }
+    from(rootProject.file("NOTICE")) { into("vector") }
     dependsOn(vectorCheck)
+    from(cameraApk) { into("apps"); rename { "dev.bold7.camera.benos.apk" } }
+    dependsOn(cameraCheck)
     overlays.forEach { (name, dir) -> from(apk(dir)) { into("layer/system_ext/overlay"); rename { "$name.apk" } } }
     dependsOn(":system:overlays:names:assembleRelease")
     nameIds.forEach { id ->
@@ -292,19 +375,12 @@ val moduleZip by tasks.registering(Zip::class) {
 
 tasks.assemble { dependsOn(moduleZip) }
 
-// The public zip (-Pbold7.public=true, tools/release.sh) must carry nothing of BlackBerry. Until the
-// module extracts these at install from the user's own 9900 file, they still come from assets-gen,
-// so the public zip is refused before anything runs. Remove a line once its part is extracted on
-// the phone; the list empty, the public zip builds.
-val publicZipBlockers = listOf(
-    "BBAlpha fonts and the OS 7 fallback fonts (layer/system/fonts)",
-    "OS 7 sounds (layer/product/media/audio)",
-    "the boot animation, drawn from the 9900's logo (layer/product/media/bootanimation.zip)",
-    "the image store (layer/product/media/bold7)",
-    "overlays carrying firmware images (Bold7Android, Bold7PermissionController)",
-    "apps and SystemUI still compiling firmware images into their APK",
-)
-if (providers.gradleProperty("bold7.public").orNull == "true") gradle.taskGraph.whenReady {
+// The public zip (-Pbold7.public=true, tools/release.sh) must carry nothing of BlackBerry: fonts,
+// sounds, boot animation and images are extracted on the phone. What other parts still carry is
+// refused here before anything runs; remove a line once its part is done, the list empty, the
+// public zip builds, then the root build's PublicZipCheck checks every file in it.
+val publicZipBlockers = emptyList<String>()
+if (publicBuild) gradle.taskGraph.whenReady {
     if (hasTask(moduleZip.get()) && publicZipBlockers.isNotEmpty()) throw GradleException(
         "No public module zip yet: it would still carry BlackBerry files:\n" +
             publicZipBlockers.joinToString("\n") { "  - $it" })

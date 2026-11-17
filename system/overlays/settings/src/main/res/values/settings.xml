@@ -83,4 +83,10 @@
         <item name="android:textAppearance">@style/TextAppearance.CategoryTitle.SettingsLib</item>
         <item name="android:textColor">@color/settingslib_text_color_preference_category_title</item>
     </style>
+
+    <!-- No pattern in the screen lock choice: the 9900 had passwords only (guide 7.1
+         p. 30, p. 318; a project decision). ChooseLockGenericController.isScreenLockVisible
+         reads this bool for PATTERN (read in the Q25's Settings dex). A pattern already set
+         stays Android's. -->
+    <bool name="config_hide_pattern_security_option">true</bool>
 </resources>
