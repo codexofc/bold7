@@ -68,6 +68,8 @@ Put both in the phone's `Download` folder, by USB from the computer or downloade
 
 Bold7 recognises the file by its size and SHA-256 and accepts nothing else.
 
+**Need help finding the official 9900 file?** Contact me for advice by email at arthur@sw3rm.com or on Discord (username `_codexofc`).
+
 **Optional, icons of your own.** Bold7 draws every app the 9900 never had with its own icon, framed like the 9900's. If you have older icons for some apps, put a folder `Bold7-icons/` of `<package name>.png` files (for example `com.whatsapp.png`, PNG, 1 MB at most each), or a zip holding that folder, in `Download` too. The installer copies them to `Bold7/icons/` on your storage, where you can add more later.
 
 **Optional, check the download.** With OpenSSL 3 on the computer, the `.sig` file next to the zip on the releases page, and the key `bold7-release.pub` from the repository (`system/module/release/`):
@@ -119,4 +121,4 @@ KernelSU Next manager, **Modules**, Bold7, **Remove**, then reboot. Once the pho
 - **The phone does not start after installing Bold7**: press **Volume down** repeatedly while it boots. KernelSU starts in safe mode with every module turned off. Remove Bold7 from the manager, then reboot.
 - **The installer stops**: the last lines of the log say why. Nothing was changed.
 - **Texts do not appear in Messages**: open **Setup** on the home screen, Text Messages, and check that "Allow Bixby and text on Galaxy devices" is on in Google Messages.
-- **Anything else**: open an issue on https://github.com/codexofc/bold7/issues with your LineageOS version and what you saw, or send me a DM on Discord (`_codexofc`).
+- **Anything else**: open an issue on https://github.com/codexofc/bold7/issues with your LineageOS version and what you saw, or write to me by email (arthur@sw3rm.com) or on Discord (`_codexofc`).

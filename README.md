@@ -145,7 +145,7 @@ Pick the release of your system on the [releases page](https://github.com/codexo
 | `9900M_PBr7.1.0_rel2807_PL5.1.0.692_A7.1.0.1033_Wind.exe` (Bold 9900 OS Loader, OS 7.1.0.1033) | 273797496 | `4f68dd201def6f3f5c648ce166e7e0e5ff713c79f55f97cb777b8aafa8b85adb` |
 | `BlackBerry Simulator_7.1.0.318_9900.exe` (BlackBerry Simulator 7.1.0.318 for the 9900) | 240527751 | `79208dc1036487b05a1be007063bc377a649f4d9a973e58bade2ac06878474f1` |
 
-**Need help finding the official 9900 file?** Contact the maintainer for advice by email at arthur@sw3rm.com or on Discord (username `codexofc_`).
+**Need help finding the official 9900 file?** Contact the maintainer for advice by email at arthur@sw3rm.com or on Discord (username `_codexofc`).
 
 1. **Download two files** into `Download/`: the zip of your system from the releases page, and the official 9900 file.
 2. **Install the zip** from the KernelSU manager: Modules, Install, choose the zip. The manager shows each step: device and system recognised, 9900 file found and extracted, apps installed. If the 9900 file is missing, the installer stops before changing anything and says which file to place where.
