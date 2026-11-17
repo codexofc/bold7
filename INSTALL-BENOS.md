@@ -69,4 +69,4 @@ KernelSU manager, **Modules**, Bold7, **Remove**, then reboot. Once the phone is
 - **The phone does not start after installing Bold7**: press **Volume down** repeatedly while it boots. KernelSU starts in safe mode with every module turned off. Remove Bold7 from the manager, then reboot.
 - **The installer stops**: the last lines of the log say why. Nothing was changed.
 - **Texts do not appear in Messages**: open **Setup** on the home screen, Text Messages, and check that "Allow Bixby and text on Galaxy devices" is on in Google Messages.
-- **Anything else**: open an issue on https://github.com/codexofc/bold7/issues with your BenOS version and what you saw, or write to me by email (arthur@sw3rm.com) or on Discord (`codexofc_`).
+- **Anything else**: ask in the [Bold7 topic](https://discord.com/channels/1356921788038119556/1572002370160828446) on the official Zinwa Discord, where other Q25 users can help, open an issue on https://github.com/codexofc/bold7/issues with your BenOS version and what you saw, or write to me by email (arthur@sw3rm.com) or on Discord (`codexofc_`).
