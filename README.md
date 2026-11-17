@@ -20,15 +20,22 @@
 </p>
 
 <p align="center">
+  <a href="INSTALL-LINEAGEOS24.md"><img alt="Install guide: LineageOS 24" src="https://img.shields.io/badge/Install%20guide-LineageOS%2024-c8102e?style=for-the-badge"></a>
+  <a href="INSTALL-BENOS.md"><img alt="Install guide: BenOS" src="https://img.shields.io/badge/Install%20guide-BenOS-c8102e?style=for-the-badge"></a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> ·
   <a href="#install">Install</a> ·
+  <a href="INSTALL-LINEAGEOS24.md">Guide: LineageOS 24</a> ·
+  <a href="INSTALL-BENOS.md">Guide: BenOS</a> ·
   <a href="#performance">Performance</a> ·
   <a href="#for-developers">For developers</a> ·
   <a href="#legal">Legal</a>
 </p>
 
 > [!IMPORTANT]
-> **Bold7 0.1, two lines, one interface.** Bold7 runs on the official **LineageOS 24** of the Q25 (Android 17, weekly security updates), the line developed first, on the `main` branch of this repository, and on **BenOS** (Android 14), on the [`benos`](https://github.com/codexofc/bold7/tree/benos) branch. 0.1 is the first public release: what still shows Android is listed in the [roadmap](ROADMAP.md). [Download](https://github.com/codexofc/bold7/releases)
+> **Bold7 0.1, two lines, one interface.** Bold7 runs on the official **LineageOS 24** of the Q25 (Android 17, weekly security updates), the line developed first, on the `main` branch of this repository, and on **BenOS** (Android 14), on the [`benos`](https://github.com/codexofc/bold7/tree/benos) branch. 0.1 is the first public release: what still shows Android is listed in the [roadmap](ROADMAP.md). [Download](https://github.com/codexofc/bold7/releases) · Step-by-step install guides: [LineageOS 24](INSTALL-LINEAGEOS24.md) (root included) · [BenOS](INSTALL-BENOS.md)
 
 ---
 
@@ -117,6 +124,8 @@ Bold7 is not a theme. It is a launcher, a set of apps, an input method, a System
 - The End key returns to the home screen.
 
 ## Install
+
+**Step-by-step guides, from a stock phone to the first unlock:** [LineageOS 24](INSTALL-LINEAGEOS24.md) (LineageOS, Google apps, root with KernelSU Next, NeoZygisk, then Bold7) and [BenOS](INSTALL-BENOS.md). The summary follows.
 
 Pick the release of your system on the [releases page](https://github.com/codexofc/bold7/releases). Each zip checks the system it runs on and refuses the other one, and the KernelSU manager only ever offers updates of the line you installed.
 
