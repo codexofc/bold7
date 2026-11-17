@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -27,6 +26,7 @@ import dev.bold7.ui.fillPaint
 import dev.bold7.ui.fit
 import dev.bold7.ui.status
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
 import kotlin.math.abs
 
 /**
@@ -107,10 +107,10 @@ class ViewerActivity : Activity() {
         val g = graph
         g.io.post {
             val images = mapOf(
-                Act.VIEW_SLIDESHOW to R.drawable.pic_sm_play, Act.SET_WALLPAPER to R.drawable.pic_sm_set_as_wallpaper,
-                Act.ASSIGN_CONTACT to R.drawable.pic_sm_set_as_caller_id, Act.SEND to R.drawable.pic_sm_send_or_share_image,
-                Act.DELETE to R.drawable.pic_sm_delete, Act.ZOOM to R.drawable.pic_sm_zoom_in, Act.ROTATE to R.drawable.pic_sm_rotate,
-            ).mapValues { BitmapFactory.decodeResource(resources, it.value, BitmapFactory.Options().apply { inScaled = false }) }
+                Act.VIEW_SLIDESHOW to "pic_sm_play", Act.SET_WALLPAPER to "pic_sm_set_as_wallpaper",
+                Act.ASSIGN_CONTACT to "pic_sm_set_as_caller_id", Act.SEND to "pic_sm_send_or_share_image",
+                Act.DELETE to "pic_sm_delete", Act.ZOOM to "pic_sm_zoom_in", Act.ROTATE to "pic_sm_rotate",
+            ).mapValues { themeBitmap(applicationContext, it.value) }
             runOnUiThread { glyphs.putAll(images) }
         }
         load(intent.getIntExtra(EXTRA_INDEX, 0))
@@ -194,6 +194,7 @@ class ViewerActivity : Activity() {
                 picture.turn(viewing.quarter)
             }
             Act.ZOOM -> picture.zoomIn()
+            Act.HELP -> dev.bold7.ui.Help.open(this, "pictures")
             Act.CLOSE -> finish()
             Act.SWITCH -> SwitchApplication.start(this)
             Act.OPEN -> Unit
@@ -215,6 +216,7 @@ class ViewerActivity : Activity() {
         Act.SEND_TEXT -> R.string.act_send_text
         Act.ROTATE -> R.string.act_rotate
         Act.ZOOM -> R.string.act_zoom
+        Act.HELP -> R.string.act_help
         Act.CLOSE -> R.string.act_close
         Act.SWITCH -> R.string.act_switch_application
         Act.OPEN -> R.string.act_open

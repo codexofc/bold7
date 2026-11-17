@@ -9,15 +9,19 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BannerTest {
-    @Test fun theBatteryShowsTenthsRoundedUpRedBelowTenAndThePlugWhileCharging() {
-        assertEquals(Frame(0), batteryFrame(0, charging = false))
-        assertEquals(Frame(1), batteryFrame(5, charging = false))
-        assertEquals(Frame(1), batteryFrame(10, charging = false))
-        assertEquals(Frame(2), batteryFrame(11, charging = false))
-        assertEquals(Frame(10), batteryFrame(100, charging = false))
-        assertEquals(Frame(6, row = 2), batteryFrame(55, charging = true))
+    // BatteryManager's statuses: 2 charging, 3 discharging, 5 full.
+    @Test fun theBatteryShowsTenthsRoundedUpRedBelowTenAndThePlugWhenFullOnPower() {
+        assertEquals(Frame(0), batteryFrame(0, status = 3))
+        assertEquals(Frame(1), batteryFrame(5, status = 3))
+        assertEquals(Frame(1), batteryFrame(10, status = 3))
+        assertEquals(Frame(2), batteryFrame(11, status = 3))
+        assertEquals(Frame(10), batteryFrame(100, status = 3))
+        // Charging: its own row, the bolt over it (guide p. 20, sim-470); full on power: the plug (sim-415).
+        assertEquals(Frame(6), batteryFrame(55, status = 2))
+        assertEquals(Frame(10, row = 2), batteryFrame(100, status = 2))
+        assertEquals(Frame(10, row = 2), batteryFrame(100, status = 5))
         // Unknown: the strip's "?".
-        assertEquals(Frame(11), batteryFrame(-1, charging = false))
+        assertEquals(Frame(11), batteryFrame(-1, status = 3))
     }
 
     @Test fun theSignalStripGoesOffNoServiceThenNoBarToFive() {
@@ -54,6 +58,14 @@ class BannerTest {
             indicators(counts),
         )
         assertEquals(emptyList(), indicators(mapOf(ItemKind.SMS to 0)))
+    }
+
+    // Each other app after them, in the Hub's order (newest first), with its own icon ("?" until drawn).
+    @Test fun otherAppsFollowTheKindsEachWithItsIndicator() {
+        assertEquals(
+            listOf(Indicator(UNREAD_SMS, 1), Indicator(UNREAD_OTHER, 2, "com.whatsapp"), Indicator(UNREAD_OTHER, 1, "com.twitter.android")),
+            indicators(mapOf(ItemKind.SMS to 1), linkedMapOf("com.whatsapp" to 2, "com.twitter.android" to 1, "gone" to 0)),
+        )
     }
 
     // A pull down on the banner opens the list of notifications; a tap, a sideways or upward move does not.

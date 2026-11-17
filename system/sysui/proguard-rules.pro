@@ -2,3 +2,5 @@
 -keep class dev.bold7.sysui.SysuiModule { <init>(); }
 # The framework stubs on the compile classpath (hidden task stack listener) name synthetic constructor classes they do not hold.
 -dontwarn android.**
+# Same for com.android.internal.widget: LockscreenCredential's synthetic constructor class (PasswordScreen), absent from Lineage's stubs.
+-dontwarn com.android.internal.widget.**

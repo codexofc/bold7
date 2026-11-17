@@ -1,0 +1,7 @@
+/* Bold7's own help pages, read after the 9900's style.css when there is one. */
+body { margin: 0; background: #FFF; font-family: sans-serif; }
+h1 { color: #7C7E80; font-weight: normal; font-size: 1.3em; margin: 0; padding: 16px 8px; border-bottom: solid 1px #C6C6C6; }
+.content { padding: 10px 8px; }
+.content li { margin: 20px 0; }
+.bold7-note { display: block; color: #7C7E80; padding: 16px 8px; }
+#nav a { display: block; padding: 18px 8px; color: #000; text-decoration: none; border-bottom: solid 1px #C6C6C6; }

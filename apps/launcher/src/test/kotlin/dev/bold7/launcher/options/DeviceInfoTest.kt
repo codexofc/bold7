@@ -54,6 +54,9 @@ class DeviceInfoTest {
         assertEquals("USB", charging["Power Source"])
         assertEquals("Overheat", charging["Health"])
         assertEquals("Wireless", batteryRows(facts(plugged = 4)).toMap()["Power Source"])
+        // The Q25 stays Charging at 100 % while its charger says Full (B1): the level decides, as the banner's bolt.
+        assertEquals("Full", batteryRows(facts(percent = 100, status = 2, plugged = 2)).toMap()["Status"])
+        assertEquals("Charging", batteryRows(facts(percent = 99, status = 2, plugged = 2)).toMap()["Status"])
     }
 
     @Test

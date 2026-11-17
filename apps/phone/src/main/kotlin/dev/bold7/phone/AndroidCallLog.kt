@@ -18,7 +18,7 @@ const val LOG_MAX = 200
  * Android's call log (READ_CALL_LOG) and the contacts' photos (READ_CONTACTS), both granted by the
  * DIALER role and by tools/install.sh, and placing a call through Telecom (CALL_PHONE). Blocking
  * binder calls: on the graph's io thread only. Nothing is written to these providers, except the
- * missed calls marked seen by Telecom ([markMissedSeen]).
+ * missed calls marked seen by Telecom ([markMissedSeen]) and a call deleted by Delete ([delete]).
  */
 class AndroidCallLog(private val context: Context) : CallLogSource {
     override fun recent(): List<LogEntry> = try {
@@ -124,6 +124,19 @@ class AndroidCallLog(private val context: Context) : CallLogSource {
         } catch (e: SecurityException) {
             Log.i(TAG, "missed calls not marked seen: not the default dialer")
         }
+    }
+
+    /** Delete of a call log (guide 7.1 p. 72): WRITE_CALL_LOG, granted with the DIALER role and by tools/install.sh. */
+    override fun delete(e: LogEntry): Boolean = try {
+        val ids = if (numberKey(e.number).isEmpty()) listOf(e.id) else context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI, arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER), null, null, null,
+        )?.use { c -> buildList { while (c.moveToNext()) if (sameNumber(c.getString(1).orEmpty(), e.number)) add(c.getLong(0)) } }.orEmpty()
+        ids.isNotEmpty() && context.contentResolver.delete(
+            CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} IN (${ids.joinToString(",") { "?" }})", ids.map(Long::toString).toTypedArray(),
+        ) > 0
+    } catch (e: SecurityException) {
+        Log.w(TAG, "call not deleted: WRITE_CALL_LOG not granted")
+        false
     }
 
     /** Places a call (CALL_PHONE): Telecom shows it in the DIALER role's InCallService, ours once given. False if refused. */

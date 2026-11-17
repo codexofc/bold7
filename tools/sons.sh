@@ -26,6 +26,16 @@ cd "$(dirname "$0")/.."
 # pipefail (SIGPIPE): its output is captured, then tested.
 sh() { adb shell -n "$@" | tr -d '\r'; }
 die() { echo "$*" >&2; exit 1; }
+# A read that fails ("cmd: Failure calling service settings: Failed transaction", an exception, no
+# answer) is never a value: the script stops at once, before it writes the setting or deletes its save.
+checked() {
+  case $1 in '' | cmd:* | *Failure* | *Exception*)
+    echo "The phone did not answer (${1:-nothing}): stopped, nothing more written, the save kept. Try again in a moment." >&2
+    kill -TERM $$; exit 1 ;;
+  esac
+  printf '%s\n' "$1"
+}
+get() { checked "$(sh "settings get system $1")"; }
 # The main checkout's build/, also from a worktree: poser and retour may run from different ones.
 # SONS_SAVE: for tools/test_sons.py only.
 SAVE=${SONS_SAVE:-$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)/build/state/sons-avant.txt}
@@ -75,14 +85,14 @@ uri_of() {
 put() {
   valid "$2" || die "$1: refusing to write $2"
   if [ "$2" = null ]; then sh "settings delete system $1" >/dev/null; else sh "settings put system $1 '$2'"; fi
-  [ "$(sh "settings get system $1")" = "$2" ] || die "$1 did not take the value $2"
+  [ "$(get $1)" = "$2" ] || die "$1 did not take the value $2"
 }
 # Fails if a setting plays a sound of the module, or a MediaStore item whose row is gone (a sound
 # the module took away, once MediaStore has forgotten it).
 clean() {
   local k v f
   for k in $KEYS; do
-    v=$(sh "settings get system $k")
+    v=$(get $k)
     [[ $v == content://media/* ]] || continue
     f=$(file_of "$v")
     [ -n "$f" ] || die "$k=$v plays no MediaStore row (a sound gone with the module?): choose another one in Android's Settings."
@@ -96,7 +106,7 @@ adb get-state >/dev/null
 case ${1:-} in
 '')
   for k in $KEYS; do
-    v=$(sh "settings get system $k")
+    v=$(get $k)
     printf '%s=%s\n  %s\n' "$k" "$v" "$(file_of "$v")"
   done
   ;;
@@ -108,7 +118,7 @@ poser)
   else
     saved=
     for k in $KEYS; do
-      v=$(sh "settings get system $k")
+      v=$(get $k)
       valid "$v" || die "$k=$v: not a value retour could write back, nothing saved nor changed."
       ! ours "$(file_of "$v")" || die "$k already plays a sound of the module: no original value to save."
       saved+="$k"$'\t'"$v"$'\n'
@@ -131,7 +141,7 @@ poser)
   # the line the save holds would be lost (retour would give back the older value): refused.
   keep=
   for k in $KEYS; do
-    cur=$(sh "settings get system $k")
+    cur=$(get $k)
     personal "$cur" "$(file_of "$cur")" || continue
     if [ "${2:-}" != --ecraser ]; then
       keep+=" $k"
@@ -144,7 +154,7 @@ poser)
   for k in $KEYS; do
     [[ " $keep " == *" $k "* ]] || put $k "$(uri_of "$(target $k)")"
   done
-  for k in $KEYS; do echo "$k=$(sh "settings get system $k")"; done
+  for k in $KEYS; do echo "$k=$(get $k)"; done
   ;;
 retour)
   if [ -e "$SAVE" ]; then
@@ -157,7 +167,7 @@ retour)
       [[ " $KEYS " == *" $k "* ]] && valid "$v" || die "$SAVE: unexpected line '$k	$v', nothing changed."
     done <"$SAVE"
     while IFS=$'\t' read -r k v; do
-      cur=$(sh "settings get system $k")
+      cur=$(get $k)
       f=$(file_of "$cur")
       # What poser set, a sound of the module, or a row gone with it: back to the saved value.
       if [ "$f" = "$(target $k)" ] || ours "$f" || { [[ $cur == content://media/* ]] && [ -z "$f" ]; }; then

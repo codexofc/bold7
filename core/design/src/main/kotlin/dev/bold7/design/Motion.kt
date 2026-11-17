@@ -90,7 +90,7 @@ object Durations {
     /** An app's status message (sim-42), by eye. */
     const val STATUS_MS = Eyeballed.STATUS_MS
 
-    /** animation-duration-portrait; also the length of OS 7's window zoom (D). */
+    /** animation-duration-portrait. */
     const val PORTRAIT_MS = 250L
 
     /** The universal search appearing (animation-duration-search), linear. */

@@ -9,6 +9,7 @@ import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 import android.location.LocationManager
+import android.os.BatteryManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -16,6 +17,8 @@ import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewParent
 import android.widget.ImageView
+import dev.bold7.design.ChargingBolt
+import dev.bold7.ui.BoltTicker
 import io.github.libxposed.api.XposedInterface.Chain
 import java.lang.reflect.Executable
 import java.lang.reflect.Field
@@ -270,4 +273,83 @@ internal class Indicator(val image: Drawable) : Drawable() {
 
     @Deprecated("Deprecated in Drawable")
     override fun getOpacity() = PixelFormat.TRANSLUCENT
+}
+
+/** [batteryImage] of a sticky ACTION_BATTERY_CHANGED, as the home's banner reads it. */
+internal fun batteryImage(intent: Intent): String = batteryImage(
+    intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1),
+    intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100),
+    intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0),
+)
+
+/** [charging] of a sticky ACTION_BATTERY_CHANGED: the bolt over the battery. */
+internal fun charging(intent: Intent): Boolean = charging(
+    intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1),
+    intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100),
+    intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0),
+)
+
+/**
+ * The 9900's battery in Android's BatteryMeterView of an app's bar (its [icon], mBatteryIconView,
+ * which the battery group's hook feeds), and while it charges the bolt over it (ChargingBolt),
+ * redrawn by [ticker]. The bolt overflows the 25 px frame (2 px above it on two lines, 4 below on
+ * one), so this drawable is that much taller with the frame [ABOVE] px down, and SysuiModule moves
+ * the BatteryMeterView up as much: the frame stays where StatusBarLayout puts it. [battery] is a
+ * shared image (Images): bounds set at each draw, on the main thread.
+ */
+internal class BatteryBolt(private val images: Images, val icon: ImageView) : Drawable() {
+    val ticker = BoltTicker(icon)
+    var battery: Drawable? = null
+
+    /**
+     * On the Phone's one-line bar (StatusBarLayout.placeOneLine): the bolt at (16, 0) from the
+     * frame, measured on the Calendar's line (sim-471, C), not the pme's (17, -2) of the two lines.
+     */
+    var oneLine = false
+
+    override fun getIntrinsicWidth() = battery?.intrinsicWidth ?: 0
+    override fun getIntrinsicHeight() = ABOVE + (battery?.intrinsicHeight ?: 0) + BELOW
+
+    override fun draw(canvas: Canvas) {
+        val frame = battery ?: return
+        val left = bounds.left
+        val top = bounds.top + ABOVE
+        frame.setBounds(left, top, left + frame.intrinsicWidth, top + frame.intrinsicHeight)
+        frame.draw(canvas)
+        val bolt = images[boltImage(ticker.image) ?: return]
+        val x = left + if (oneLine) ONE_LINE_X else ChargingBolt.X
+        val y = top + if (oneLine) 0 else ChargingBolt.Y
+        bolt.setBounds(x, y, x + bolt.intrinsicWidth, y + bolt.intrinsicHeight)
+        bolt.draw(canvas)
+    }
+
+    override fun setAlpha(alpha: Int) = Unit
+    override fun setColorFilter(colorFilter: ColorFilter?) = Unit
+
+    @Deprecated("Deprecated in Drawable")
+    override fun getOpacity() = PixelFormat.TRANSLUCENT
+
+    companion object {
+        // The bolt (29 px) over the frame (25 px): 2 px above it on two lines, 4 below on one.
+        const val ABOVE = 2
+        const val BELOW = 4
+        const val ONE_LINE_X = 16
+    }
+}
+
+/**
+ * A view of no size that SysuiModule adds to the BatteryMeterView, only to tell [ticker] what the
+ * battery's own view cannot, being SystemUI's: whether it is shown (onVisibilityAggregated) and
+ * the screen on (onScreenStateChanged). The bolt runs only then, never with the screen off.
+ */
+internal class BoltClock(context: Context, private val ticker: BoltTicker) : View(context) {
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        ticker.visible(isVisible)
+    }
+
+    override fun onScreenStateChanged(screenState: Int) {
+        super.onScreenStateChanged(screenState)
+        ticker.screen(screenState)
+    }
 }

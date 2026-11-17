@@ -1,5 +1,6 @@
 package dev.bold7.launcher.options
 
+import dev.bold7.design.ChargingBolt
 import dev.bold7.platform.DeviceFacts
 import java.util.Locale
 
@@ -34,7 +35,8 @@ fun storageRows(f: DeviceFacts): List<Pair<String, String>> = listOf(
 fun batteryRows(f: DeviceFacts): List<Pair<String, String>> = listOf(
     "Level" to "${f.batteryPercent}%",
     "Status" to when (f.batteryStatus) {
-        2 -> "Charging"
+        // Full at 100 %: the Q25 stays Charging there while its charger says Full (B1), as the banner's bolt.
+        2 -> if (ChargingBolt.shows(2, f.batteryPercent)) "Charging" else "Full"
         3 -> "Discharging"
         4 -> "Not charging"
         5 -> "Full"

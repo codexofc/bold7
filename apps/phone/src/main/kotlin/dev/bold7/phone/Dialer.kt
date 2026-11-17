@@ -2,6 +2,7 @@ package dev.bold7.phone
 
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 import dev.bold7.ui.matchesWords
 import java.time.Instant
@@ -88,7 +89,7 @@ const val WAIT = ';'
 fun Dialer.reduce(e: DialEvent): Dialer = when (e) {
     // The field keeps the focus until the trackpad or a typed letter leaves it (sim-141: the Phone
     // opens with the cursor in "Find Contact or Dial a Number", no row in blue).
-    is DialEvent.Loaded -> copy(log = e.log, contacts = e.contacts).let { if (focus == FIELD && typed.isEmpty()) it else it.refocused(focused) }
+    is DialEvent.Loaded -> copy(log = byNumber(e.log), contacts = e.contacts).let { if (focus == FIELD && typed.isEmpty()) it else it.refocused(focused) }
     // A pause or a wait only after a number (D: the 9900 adds them to a number typed).
     is DialEvent.Typed -> if ((e.c == PAUSE || e.c == WAIT) && typed.isEmpty()) this else copy(typed = typed + e.c).refocused(null)
     DialEvent.Erased -> if (typed.isEmpty()) this else copy(typed = typed.dropLast(1)).refocused(null)
@@ -101,8 +102,11 @@ private const val DIAL_SYMBOLS = "0123456789+*#"
 /** What follows a pause or a wait is dialled after the call connects: the number is what comes before. */
 private fun number(typed: String) = typed.takeWhile { it != PAUSE && it != WAIT }
 
-/** The same number however written: its last 9 digits ("01 99…" is "+33 1 99…"), as the Hub's key. */
-private fun sameNumber(a: String, b: String) = a.filter { it.isDigit() }.takeLast(9).let { it.isNotEmpty() && it == b.filter { c -> c.isDigit() }.takeLast(9) }
+/** A number's key: its last 9 digits ("01 99…" is "+33 1 99…"), as the Hub's; empty without digits. */
+fun numberKey(n: String) = n.filter { it.isDigit() }.takeLast(9)
+
+/** The same number however written. */
+fun sameNumber(a: String, b: String) = numberKey(a).let { it.isNotEmpty() && it == numberKey(b) }
 
 private fun LogEntry.matches(all: String): Boolean {
     val typed = number(all)
@@ -181,9 +185,14 @@ fun logRow(e: LogEntry, zone: ZoneId, withheld: String = "", dayFirst: Boolean =
  * pages here); Help is not there (no help app). Something to call puts "Call …" first and under
  * the focus, with Add Speed Dial for a call of the log (D: no capture of that menu).
  */
-enum class PhoneAct { CALL, ADD_SPEED_DIAL, CALL_FROM_CONTACTS, VOICE_MAIL, VIEW, SPEED_DIAL_LIST, ADD_PAUSE, ADD_WAIT, RINGTONES, STATUS, OPTIONS, SWITCH }
+enum class PhoneAct {
+    CALL, ADD_SPEED_DIAL, DELETE, CALL_FROM_CONTACTS, VOICE_MAIL, CONTACT, TEXT, VIEW, SPEED_DIAL_LIST, COPY,
+    ADD_PAUSE, ADD_WAIT, RINGTONES, STATUS, OPTIONS, HELP, CLOSE, SWITCH,
+}
 
 fun Dialer.menu(): Menu<PhoneAct> {
+    val log = focused?.takeIf { typed.isEmpty() && it.type != LogType.CONTACT }
+    if (log != null) return logMenu(log)
     val calls = toCall() != null
     val entries = buildList {
         if (calls) add(MenuEntry(PhoneAct.CALL))
@@ -196,8 +205,47 @@ fun Dialer.menu(): Menu<PhoneAct> {
         add(MenuEntry(PhoneAct.RINGTONES, separatorAbove = true))
         add(MenuEntry(PhoneAct.STATUS))
         add(MenuEntry(PhoneAct.OPTIONS, separatorAbove = true))
+        // Close under Help (sim-143's arrow; sim-394, C); Help left out, Bold7 has no help.
+        add(MenuEntry(PhoneAct.CLOSE))
     }
-    return Menu(entries, highlighted = 0).withSwitchApplication(PhoneAct.SWITCH)
+    return Menu(entries, highlighted = 0).withHelp(PhoneAct.HELP, before = PhoneAct.CLOSE).withSwitchApplication(PhoneAct.SWITCH)
+}
+
+/**
+ * A call focused, nothing typed (sim-392 to sim-394, sim-402 to sim-404, simulator, C): "Contact …" and
+ * its submenu first in focus, Delete, "Copy …" for a number no contact has. Not there: View's
+ * History and Call Notes, Add to Contacts (Add to Existing Contact needs Contacts to complete a
+ * contact), Help.
+ */
+private fun logMenu(e: LogEntry): Menu<PhoneAct> {
+    val number = e.number.isNotEmpty()
+    val entries = listOfNotNull(
+        MenuEntry(PhoneAct.CALL_FROM_CONTACTS, separatorAbove = true),
+        MenuEntry(PhoneAct.VOICE_MAIL),
+        MenuEntry(PhoneAct.CONTACT, separatorAbove = true, submenu = true).takeIf { number },
+        MenuEntry(PhoneAct.VIEW, separatorAbove = !number, submenu = true),
+        MenuEntry(PhoneAct.ADD_SPEED_DIAL, separatorAbove = true).takeIf { number },
+        MenuEntry(PhoneAct.DELETE, separatorAbove = !number),
+        MenuEntry(PhoneAct.COPY, separatorAbove = true).takeIf { number && e.name.isEmpty() },
+        MenuEntry(PhoneAct.RINGTONES, separatorAbove = true),
+        MenuEntry(PhoneAct.STATUS),
+        MenuEntry(PhoneAct.OPTIONS, separatorAbove = true),
+        MenuEntry(PhoneAct.CLOSE),
+    )
+    val focus = entries.indexOfFirst { it.action == PhoneAct.CONTACT }.takeIf { it >= 0 } ?: 0
+    return Menu(entries, highlighted = focus).withHelp(PhoneAct.HELP, before = PhoneAct.CLOSE).withSwitchApplication(PhoneAct.SWITCH)
+}
+
+/** "Contact …"'s submenu (sim-395, sim-403, C): Call and Text, Call in focus. */
+fun contactMenu(): Menu<PhoneAct> = Menu(listOf(MenuEntry(PhoneAct.CALL), MenuEntry(PhoneAct.TEXT)), highlighted = 0)
+
+/**
+ * One row per number, its latest call (sim-399, C: a new call from a number takes its row to the top);
+ * [log] newest first. Calls without a number stay apart.
+ */
+fun byNumber(log: List<LogEntry>): List<LogEntry> {
+    val seen = HashSet<String>()
+    return log.filter { e -> numberKey(e.number).let { it.isEmpty() || seen.add(it) } }
 }
 
 /** What a key held on the Phone screen does (guide p. 64): 1 the voice mail, a letter its speed dial, or offers to assign it. */

@@ -8,10 +8,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.RemoteException
+import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Email
 import android.provider.ContactsContract.CommonDataKinds.Event
-import android.provider.ContactsContract.CommonDataKinds.GroupMembership
 import android.provider.ContactsContract.CommonDataKinds.Note
 import android.provider.ContactsContract.CommonDataKinds.Organization
 import android.provider.ContactsContract.CommonDataKinds.Phone
@@ -21,6 +21,7 @@ import android.provider.ContactsContract.CommonDataKinds.Website
 import android.provider.ContactsContract.Contacts
 import android.provider.ContactsContract.Data
 import android.provider.ContactsContract.RawContacts
+import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.util.Log
 
@@ -67,7 +68,6 @@ class AndroidContacts(private val context: Context) : ContactStore {
         } ?: return@read null
         val details = ArrayList<Detail>()
         val phoneBases = ArrayList<PhoneBase>()
-        val groups = ArrayList<Long>()
         var company = ""
         resolver.query(
             Data.CONTENT_URI,
@@ -85,25 +85,51 @@ class AndroidContacts(private val context: Context) : ContactStore {
                     Email.CONTENT_ITEM_TYPE -> if (value.isNotBlank()) details += Detail(Kind.EMAIL, "Email", value, dataId)
                     StructuredPostal.CONTENT_ITEM_TYPE -> if (value.isNotBlank()) details += Detail(Kind.ADDRESS, postalLabel(c.getInt(3)), value, dataId)
                     Organization.CONTENT_ITEM_TYPE -> if (company.isEmpty()) company = value
-                    GroupMembership.CONTENT_ITEM_TYPE -> c.getString(2)?.toLongOrNull()?.let { groups += it }
                 }
             }
         }
         // A number's label is its OS 7 type, the second of a kind its "2" (Mobile 2).
         val types = phoneTypes(phoneBases).iterator()
-        Card(id, name, company, details.map { if (it.kind == Kind.PHONE) it.copy(label = types.next().label) else it }, groupTitles(groups), photo)
+        Card(id, name, company, details.map { if (it.kind == Kind.PHONE) it.copy(label = types.next().label) else it }, photo)
     }
 
-    /** The titles of the groups the user made; Android's own (My Contacts, Starred) left out. */
-    private fun groupTitles(ids: List<Long>): List<String> {
-        if (ids.isEmpty()) return emptyList()
-        val out = ArrayList<String>()
-        resolver.query(
-            ContactsContract.Groups.CONTENT_URI, arrayOf(ContactsContract.Groups.TITLE),
-            "${ContactsContract.Groups._ID} IN (${ids.joinToString(",")}) AND ${ContactsContract.Groups.SYSTEM_ID} IS NULL AND ${ContactsContract.Groups.DELETED} = 0",
-            null, ContactsContract.Groups.TITLE,
-        )?.use { c -> while (c.moveToNext()) c.getString(0)?.takeIf { it.isNotBlank() }?.let { out += it } }
-        return out
+    /**
+     * The calls (READ_CALL_LOG) and texts (READ_SMS) of the contact's numbers, as Phone and Messages
+     * read them; null when neither is allowed, so the card hides the box.
+     */
+    override fun activity(card: Card): List<Recent>? {
+        val numbers = card.details.filter { it.kind == Kind.PHONE }.map { it.value }
+        fun matches(n: String?) = n != null && numbers.any { sameNumber(it, n) }
+        val calls: List<Recent>? = try {
+            resolver.query(CallLog.Calls.CONTENT_URI, arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE), null, null, "${CallLog.Calls.DATE} DESC LIMIT 200")?.use { c ->
+                val out = ArrayList<Recent>()
+                while (c.moveToNext()) if (matches(c.getString(0))) {
+                    val kind = when (c.getInt(1)) {
+                        CallLog.Calls.OUTGOING_TYPE -> ActivityKind.CALL_OUT
+                        CallLog.Calls.MISSED_TYPE, CallLog.Calls.REJECTED_TYPE, CallLog.Calls.BLOCKED_TYPE -> ActivityKind.CALL_MISSED
+                        else -> ActivityKind.CALL_IN
+                    }
+                    out += Recent(kind, c.getLong(2))
+                }
+                out
+            }
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "call log unreadable"); null
+        }
+        val texts: List<Recent>? = try {
+            resolver.query(Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.TYPE, Telephony.Sms.DATE), null, null, "${Telephony.Sms.DATE} DESC LIMIT 200")?.use { c ->
+                val out = ArrayList<Recent>()
+                while (c.moveToNext()) if (matches(c.getString(0))) {
+                    val type = c.getInt(1)
+                    if (type == Telephony.Sms.MESSAGE_TYPE_INBOX) out += Recent(ActivityKind.TEXT_IN, c.getLong(2))
+                    else if (type == Telephony.Sms.MESSAGE_TYPE_SENT) out += Recent(ActivityKind.TEXT_OUT, c.getLong(2))
+                }
+                out
+            }
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "texts unreadable"); null
+        }
+        return if (calls == null && texts == null) null else recentActivity(calls.orEmpty() + texts.orEmpty())
     }
 
     /** What the form shows of contact [id]: each value with its Data row. */

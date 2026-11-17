@@ -11,8 +11,16 @@ class BannerTextTest {
         assertEquals("00:44" to "", bannerTime(t, is24Hour = true))
         assertEquals("12:44" to "AM", bannerTime(t, is24Hour = false))
         assertEquals("1:05" to "PM", bannerTime(t.withHour(13).withMinute(5), is24Hour = false))
-        assertEquals("Fri 13 Nov", bannerDate(t, Locale.UK))
-        // French writes its abbreviations with a dot, which the banner leaves out.
-        assertEquals("ven 13 nov", bannerDate(t, Locale.FRANCE))
+        assertEquals("Fri 13 Nov", bannerDate(t))
+    }
+
+    @Test fun theDateStaysEnglishOnAFrenchPhone() {
+        val before = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.FRANCE)
+            assertEquals("Fri 13 Nov", bannerDate(LocalDateTime.of(2026, 11, 13, 0, 44)))
+        } finally {
+            Locale.setDefault(before)
+        }
     }
 }

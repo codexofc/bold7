@@ -12,13 +12,14 @@ import android.database.ContentObserver
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.graphics.ImageDecoder
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.os.BatteryManager
 import android.os.Handler
 import dev.bold7.showcase.SHOWCASE_SETTING
 import dev.bold7.showcase.Showcase
@@ -35,42 +36,66 @@ import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.Log
 import android.view.View
+import dev.bold7.design.ChargingBolt
 import dev.bold7.design.HomeBanner
 import dev.bold7.design.HomeColors
 import dev.bold7.design.HomeDimens
 import dev.bold7.design.Typography
 import dev.bold7.design.bannerDate
 import dev.bold7.design.bannerTime
+import dev.bold7.theme.ThemeImages
+import dev.bold7.ui.BoltTicker
+import java.io.File
 import java.time.LocalDateTime
 
 private const val MODULE_PACKAGE = "dev.bold7.sysui"
 
-/** The images of this APK by name (drawable-nodpi: drawn at their own pixel size), read once each. */
-internal class Images(val res: Resources) {
+/**
+ * The theme's images by name, read by core/theme's store (ThemeImages): from the folder the module
+ * mounts (/product/media/bold7), else, in development, from this APK's own compiled resources. One
+ * drawable per name, shared (bounds set at each draw). A name found nowhere gives an empty image and
+ * is told once to [missing], never a throw into SystemUI.
+ */
+internal class Images(val res: Resources, base: Context, private val missing: (String) -> Unit) {
     private val cache = HashMap<String, Drawable>()
 
-    operator fun get(name: String): Drawable = cache.getOrPut(name) {
-        res.getDrawable(res.getIdentifier(name, "drawable", MODULE_PACKAGE), null)
-    }
-
-    /** A string of this APK, by its R id: these resources are the module's own. */
-    fun text(id: Int): String = res.getString(id)
-
-    private var wrapper: Context? = null
-
     /**
-     * SystemUI's application context with this APK's resources, for core/ui's views: they find their
-     * theme images (ui_popup, ui_button…) by name, and core/ui keeps one image store per process
-     * from the first context it is given. So the wrapper is made once, is its own application
-     * context and answers to this package: the store neither holds a dialog's context nor looks
-     * the APK's images up in SystemUI's own resources.
+     * SystemUI's application context with this APK's resources, for core/ui's views and for the
+     * store: core/theme keeps one store per process, made from the first context it is given, and
+     * falls back on that context's package. So this wrapper is its own application context and
+     * answers to this package, and the store is made from it here, before any view asks: it neither
+     * holds a dialog's context nor looks the images up in SystemUI's own resources.
      */
-    @Synchronized
-    fun context(base: Context): Context = wrapper ?: object : ContextWrapper(base.applicationContext ?: base) {
+    val context: Context = object : ContextWrapper(base.applicationContext ?: base) {
         override fun getResources(): Resources = res
         override fun getApplicationContext(): Context = this
         override fun getPackageName(): String = MODULE_PACKAGE
-    }.also { wrapper = it }
+    }
+
+    private val store = ThemeImages.of(context)
+
+    operator fun get(name: String): Drawable = cache.getOrPut(name) {
+        // ThemeImages' only ColorDrawable is its empty image: none of the theme's images is one.
+        store.drawable(name).also { if (it is ColorDrawable) missing(name) }
+    }
+
+    /**
+     * The animated GIF [name], whole: the store decodes a file's first frame only. From the
+     * mounted folder (the first block holding it, as ThemeImages chooses), else [get], whose
+     * compiled resource Resources already gives as an AnimatedImageDrawable. A new drawable each
+     * call. Throws IOException on a file it cannot decode.
+     */
+    // Simplification: listed and decoded on the calling thread (one 35x35 GIF, at power off only).
+    fun animation(name: String): Drawable {
+        val file = ThemeImages.ROOT.listFiles()?.sorted()?.map { File(it, "res/drawable-nodpi/$name.gif") }?.firstOrNull { it.isFile }
+        return file?.let { ImageDecoder.decodeDrawable(ImageDecoder.createSource(it)) } ?: get(name)
+    }
+
+    /** The bitmap of [name], shared, any thread: the store's 1x1 empty image when it is missing. */
+    fun bitmap(name: String): android.graphics.Bitmap = store.bitmap(name)
+
+    /** A string of this APK, by its R id: these resources are the module's own. */
+    fun text(id: Int): String = res.getString(id)
 }
 
 /** Which of the 9900's banners: an app's (banner.pme, §18) or the lock screen's, the home's (lockscreen.pme, §10). */
@@ -209,6 +234,7 @@ internal class BannerView(
     private var amPm = ""
     private var date = ""
     private var battery: Drawable? = null
+    private val bolt = BoltTicker(this)
     private var profile: Drawable? = null
     private var ringerMode = AudioManager.RINGER_MODE_NORMAL
     private var alarm: Drawable? = null
@@ -252,7 +278,7 @@ internal class BannerView(
             // SystemUI keeps running.
             fail("radio indicators: callbacks refused", e)
         }
-        HubCounts.attach(this, lock = kind == BannerKind.LOCK)
+        HubCounts.attach(this, lock = kind == BannerKind.LOCK, images)
         context.contentResolver.registerContentObserver(Settings.Global.getUriFor(SHOWCASE_SETTING), false, showcaseWatch)
         if (kind == BannerKind.APP) {
             watchCall()
@@ -296,6 +322,17 @@ internal class BannerView(
         }
     }
 
+    // The lock screen's charging bolt: animated while shown with the screen on (BoltTicker).
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        bolt.visible(isVisible)
+    }
+
+    override fun onScreenStateChanged(screenState: Int) {
+        super.onScreenStateChanged(screenState)
+        bolt.screen(screenState)
+    }
+
     override fun onDetachedFromWindow() {
         HubCounts.detach(this)
         context.contentResolver.unregisterContentObserver(showcaseWatch)
@@ -323,12 +360,9 @@ internal class BannerView(
         try {
             when (intent.action) {
                 Intent.ACTION_BATTERY_CHANGED -> {
-                    val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
-                    val raw = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-                    val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
-                    // As the home's banner: the plug while charging or full (BannerSource).
-                    val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
-                    battery = images[batteryImage(if (raw < 0) -1 else raw * 100 / scale, charging)]
+                    // As the home's banner: the plug once full on power, the bolt while it charges.
+                    battery = images[batteryImage(intent)]
+                    bolt.charging = charging(intent)
                 }
                 AudioManager.RINGER_MODE_CHANGED_ACTION -> {
                     ringerMode = intent.getIntExtra(AudioManager.EXTRA_RINGER_MODE, AudioManager.RINGER_MODE_NORMAL)
@@ -348,7 +382,7 @@ internal class BannerView(
         val (t, a) = bannerTime(now, DateFormat.is24HourFormat(context))
         time = t
         amPm = a
-        date = bannerDate(now, context.resources.configuration.locales[0])
+        date = bannerDate(now)
         if (profile == null) showProfile()
         invalidate()
     }
@@ -474,7 +508,7 @@ internal class BannerView(
         if (counters == this.counters) return
         shown = counters.map { c ->
             val number = c.count.toString()
-            val icon = images[c.image]
+            val icon = c.app?.let { HubCounts.indicator(it) } ?: images[c.image]
             Shown(number, count.measureText(number).toInt(), icon, icon.intrinsicWidth)
         }
         placesWidth = -1
@@ -549,6 +583,7 @@ internal class BannerView(
         wide(canvas, images["lock_banner_divider"], row - 1)
         wide(canvas, images["lock_indicator_bar"], row)
         battery?.let { draw(canvas, it, HomeBanner.BATTERY_X, HomeBanner.BATTERY_Y) }
+        boltImage(bolt.image)?.let { draw(canvas, images[it], HomeBanner.BATTERY_X + ChargingBolt.X, HomeBanner.BATTERY_Y + ChargingBolt.Y) }
         alarm?.let { draw(canvas, it, HomeBanner.ALARM_X, HomeBanner.ALARM_Y) }
         canvas.drawText(date, HomeBanner.DATE_X.toFloat(), HomeBanner.DATE_BASELINE.toFloat(), text)
         drawName(canvas, w, HomeBanner.NETWORK_BASELINE)

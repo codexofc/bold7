@@ -52,6 +52,13 @@ class ZoomTest {
         assertEquals(0.75f, Transitions.CLOSE.scale)
     }
 
+    @Test fun `the home zoom takes TransitionContext's defaults, 250 ms and an ease-out (firmware)`() {
+        assertEquals(250L, Transitions.DURATION_MS)
+        // Ease-out: fast first, slow at the end.
+        assertTrue(Transitions.CURVE.transform(0.5f) > 0.6f)
+        assertTrue(Transitions.CURVE.transform(0.9f) > 0.95f)
+    }
+
     @Test fun `the switcher leaves in a 150 ms fade without any change of scale and Manage Connections goes up in 190 ms at constant speed`() {
         val f = Transitions.SWITCHER_CLOSE
         assertEquals(150, f.durationMs)
@@ -62,5 +69,27 @@ class ZoomTest {
         assertEquals(0.9f, 1f - f.alpha(126), 0.1f)
         assertEquals(190L, Transitions.CONNECTIONS_CLOSE_MS)
         assertEquals(0.5f, Transitions.CONNECTIONS_CLOSE_CURVE.transform(0.5f), eps)
+    }
+
+    @Test fun `an app chosen in the switcher shows under the switcher, which fades out above it as measured`() {
+        val f = Transitions.SWITCHER_TO_APP
+        assertEquals(1f, f.alpha(0), eps)
+        assertEquals(0f, f.alpha(f.durationMs), eps)
+        // vid-04 (C): the app below at 0,28 ; 0,53 ; 0,81 ; 1 in 42 ms steps.
+        assertEquals(0.28f, 1f - f.alpha(42), 0.05f)
+        assertEquals(0.53f, 1f - f.alpha(84), 0.05f)
+        assertEquals(0.81f, 1f - f.alpha(126), 0.05f)
+        assertEquals(1f, 1f - f.alpha(168), eps)
+    }
+
+    @Test fun `Home Screen chosen over an app, the switcher fades out over the home as measured`() {
+        val f = Transitions.SWITCHER_TO_HOME
+        assertEquals(1f, f.alpha(0), eps)
+        assertEquals(0f, f.alpha(183), eps)
+        // vid-04 (C): the home at 0,38 ; 0,71 ; 0,90 to 0,92 ; 0,99 in 42 ms steps.
+        assertEquals(0.38f, 1f - f.alpha(42), 0.05f)
+        assertEquals(0.71f, 1f - f.alpha(84), 0.05f)
+        assertEquals(0.91f, 1f - f.alpha(126), 0.05f)
+        assertEquals(0.99f, 1f - f.alpha(168), 0.05f)
     }
 }

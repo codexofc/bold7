@@ -13,19 +13,37 @@ sealed interface Field {
     val enabled: Boolean
 }
 
-/** A choice field: [values], [chosen] shown; [unavailable] values are listed grey and refused (D). */
+/**
+ * A choice field: [values], [chosen] shown; [unavailable] values are listed grey and refused (D).
+ * [folder]: Downloads Folder's, at the right without a label, a folder's icon before its value (sim-284, C).
+ */
 data class Choice(
     override val label: String,
     val values: List<String>,
     val chosen: Int,
     val unavailable: Set<Int> = emptySet(),
     override val enabled: Boolean = true,
+    val folder: Boolean = false,
 ) : Field
 
 data class Check(override val label: String, val checked: Boolean, override val enabled: Boolean = true) : Field
 
 /** A grey button under a group's fields, as Advanced Style Options (sim-91a, C). */
 data class Button(override val label: String, override val enabled: Boolean) : Field
+
+/** A wallpaper Save would set: the 9900's own (Reset Wallpaper), or a picture of Pictures (Change Wallpaper). */
+sealed interface WallpaperChange {
+    data object Default : WallpaperChange
+
+    /** [uri]: the picture's content uri, as Select Picture gave it. */
+    data class Picture(val uri: String) : WallpaperChange
+}
+
+/** Wallpaper Settings' thumbnail (sim-284, C): the wallpaper in use, or [pending] once chosen; never focused. */
+data class Wallpaper(val pending: WallpaperChange? = null) : Field {
+    override val label get() = ""
+    override val enabled get() = false
+}
 
 /** A line of text and its grey note, as Typing's input language (sim-91a, C); the screen acts on its click. */
 data class Note(override val label: String, val note: String, override val enabled: Boolean, val red: Boolean = false) : Field
@@ -92,6 +110,16 @@ data class Form(
 
     val changed: Boolean get() = groups != initial
 
+    /** The note at [field] with [text]: what Message on Lock Screen's text box gives back. */
+    fun withNote(field: Int, text: String): Form = (fields.getOrNull(field) as? Note)?.let { replace(field, it.copy(note = text)) } ?: this
+
+    /** The choice at [field] grey or not, as Password's Lock After follows Enable. */
+    fun withEnabled(field: Int, enabled: Boolean): Form = (fields.getOrNull(field) as? Choice)?.let { replace(field, it.copy(enabled = enabled)) } ?: this
+
+    /** The wallpaper Save will set, shown in Wallpaper Settings' thumbnail. */
+    fun withWallpaper(change: WallpaperChange): Form =
+        fields.indexOfFirst { it is Wallpaper }.takeIf { it >= 0 }?.let { replace(it, Wallpaper(change)) } ?: this
+
     /** What is shown becomes what is saved. */
     fun saved() = copy(initial = groups)
 
@@ -130,7 +158,7 @@ data class Form(
         is Choice -> show(copy(open = ChoiceList(f.values.size, f.chosen)))
         is Check -> show(replace(focus, f.copy(checked = !f.checked)))
         is Button, is Note -> FormResult.Act(focus)
-        null -> show(this)
+        is Wallpaper, null -> show(this)
     }
 
     // The next field that takes the focus, or none: the focus stops at the ends.

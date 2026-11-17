@@ -20,6 +20,13 @@ class LibraryTest {
         assertEquals(listOf(2, 2, 1, 1), c.map { it.pictures.size })
     }
 
+    @Test fun aFolderWithoutNameIsNoCategoryButStaysInTheLibrary() {
+        val root = Picture(5, "x.png", 50, "", "", 10)
+        val c = categories(all + root, Sort.NAME, "Camera Pictures", "Picture Library")
+        assertEquals(listOf("Camera Pictures", "Picture Library", "Bold7", "Screenshots"), c.map { it.title })
+        assertEquals(3, c[1].pictures.size)
+    }
+
     @Test fun theQ25sCameraFolderIsCameraPictures() {
         assertEquals(true, isCamera(pic(9, "IMG.jpg", "Pictures/BenOSCamera/", 40, 0)))
         assertEquals(false, isCamera(pic(9, "IMG.jpg", "Pictures/Camera roll/", 40, 0)))

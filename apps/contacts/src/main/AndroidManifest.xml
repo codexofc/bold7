@@ -41,6 +41,9 @@
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Call places the call through Telecom, whose DIALER holder shows it. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- The card's Recent Activity: the calls and texts of the contact's numbers, read only (hard restricted: exempted by the module). -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_SMS" />
 
     <!-- Package visibility (Android 11+): Messages' Compose and the email app of Email. -->
     <queries>
@@ -52,6 +55,12 @@
     </queries>
 
     <!-- No backup: it shows contacts (it stores none). -->
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
     <application
         android:name=".ContactsApp"
         android:allowBackup="false"

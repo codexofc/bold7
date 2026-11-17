@@ -21,6 +21,9 @@ interface CallLogSource {
 
     fun markMissedSeen()
 
+    /** Deletes every call of [e]'s number, or [e] alone without a number (WRITE_CALL_LOG); false if refused or none gone. */
+    fun delete(e: LogEntry): Boolean
+
     /** Whether the call went to Telecom. */
     fun place(number: String): Boolean
 
@@ -94,6 +97,9 @@ private class ShowcaseCallLog(private val now: () -> Long, private val avatar: (
     override fun name(number: String) = Showcase.byNumber(number)?.name
 
     override fun markMissedSeen() = Unit
+
+    // Simplification (showcase data): nothing is written, the call stays.
+    override fun delete(e: LogEntry) = true
 
     // Simplification (showcase data): the call pretends to go (the screen goes back as after a real one); nothing is placed.
     override fun place(number: String) = true

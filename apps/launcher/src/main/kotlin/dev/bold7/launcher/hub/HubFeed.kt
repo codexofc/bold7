@@ -4,6 +4,8 @@ import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.HubContract
 import dev.bold7.hub.data.HubItem
 import dev.bold7.hub.data.ItemKey
+import dev.bold7.launcher.home.UNREAD_OTHER
+import dev.bold7.launcher.notices.NoticeHeader
 import dev.bold7.launcher.notices.NoticeLine
 import dev.bold7.launcher.notices.NoticeNames
 import dev.bold7.launcher.notices.notices
@@ -63,6 +65,8 @@ class HubFeed(
     private val noticeNames: NoticeNames? = null,
     /** An app's name on the home, for its header in that list; called on [io]. */
     private val appName: (String) -> String? = { null },
+    /** Draws an app's indicator (its small icon) before the state that shows it is published; called on [io]. */
+    private val drawIndicator: (String) -> Unit = {},
     /** A read or its working out that threw: reported, and the next change reads again. */
     private val onError: (RuntimeException) -> Unit,
 ) {
@@ -84,11 +88,12 @@ class HubFeed(
                         null -> mutable.value.copy(loaded = true)
                         else -> {
                             val format = reader.format()
-                            HubListState(
-                                loaded = true,
-                                badges = hubBadges(s.accounts, s.items, s.smsApp, s.dialer),
-                                notices = noticeNames?.let { notices(s.accounts, s.items, s.smsApp, s.dialer, format, it, appName) }.orEmpty(),
-                            )
+                            val badges = hubBadges(s.accounts, s.items, s.smsApp, s.dialer)
+                            val notices = noticeNames?.let { notices(s.accounts, s.items, s.smsApp, s.dialer, format, it, appName) }.orEmpty()
+                            badges.appCounts.keys.forEach(drawIndicator)
+                            // The list's other apps too (an SMS app's chats count as texts, not as an app).
+                            notices.forEach { if (it is NoticeHeader && it.frame == UNREAD_OTHER) it.app?.let(drawIndicator) }
+                            HubListState(loaded = true, badges = badges, notices = notices)
                         }
                     }
                 } catch (e: RuntimeException) {

@@ -35,7 +35,16 @@ SERVICE=tech.shroyer.q25trackpadcustomizer/tech.shroyer.q25trackpadcustomizer.Ap
 SETTINGS="bold7_trackpad_off bold7_trackpad_horizontal bold7_trackpad_vertical bold7_trackpad_audible bold7_trackpad_palm_band bold7_trackpad_palm_delay"
 MODE=/proc/q20_switch_key_mouse
 
-get() { sh "settings get secure $KEY"; }
+# A read that fails ("cmd: Failure calling service settings: Failed transaction", an exception, no
+# answer) is never a value: the script stops at once, before it writes the setting or deletes its save.
+checked() {
+  case $1 in '' | cmd:* | *Failure* | *Exception*)
+    echo "The phone did not answer (${1:-nothing}): stopped, nothing more written, the save kept. Try again in a moment." >&2
+    kill -TERM $$; exit 1 ;;
+  esac
+  printf '%s\n' "$1"
+}
+get() { checked "$(sh "settings get secure $KEY")"; }
 has() { [[ ":$1:" == *":$SERVICE:"* ]]; }
 # $1 without the service, in its order.
 without() { tr ':' '\n' <<<"$1" | grep -vxF "$SERVICE" | paste -sd: - || true; }

@@ -5,7 +5,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -26,6 +25,7 @@ import dev.bold7.design.Typography
 import dev.bold7.ui.fillPaint
 import dev.bold7.ui.status
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
 
 /**
  * The player of a received video or sound, in the place of the system's app.
@@ -150,7 +150,7 @@ class PlayerActivity : Activity() {
         private val trail = fillPaint(Color.WHITE)
         private val knob = fillPaint(0xFF3CA9E6.toInt())
         private val time = textPaint(Typography.SUBTITLE, Typography.REGULAR, Color.WHITE)
-        private val bitmaps = HashMap<Int, Bitmap>()
+        private val bitmaps = HashMap<String, Bitmap>()
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
         fun bind(s: PlayerState) {
@@ -159,25 +159,25 @@ class PlayerActivity : Activity() {
             invalidate()
         }
 
-        private fun image(res: Int) = bitmaps.getOrPut(res) { BitmapFactory.decodeResource(resources, res) }
+        private fun image(res: String) = bitmaps.getOrPut(res) { themeBitmap(context, res) }
 
         override fun onDraw(canvas: Canvas) {
             val w = width.toFloat()
             val h = height.toFloat()
-            if (audio) image(R.drawable.msg_attachment_music).let { canvas.drawBitmap(it, (w - it.width) / 2, (h - it.height) / 2, paint) }
+            if (audio) image("msg_attachment_music").let { canvas.drawBitmap(it, (w - it.width) / 2, (h - it.height) / 2, paint) }
             if (!state.shown) return
             val top = h - BAR
             canvas.drawRect(0f, top, w, h, bar)
             val cell = w / 4
             for (i in 1..3) canvas.drawRect(cell * i - 1, top, cell * i, h, divider)
             val glyphs = listOf(
-                Control.PREVIOUS to if (state.focus == Control.PREVIOUS) R.drawable.msg_player_previous_focus else R.drawable.msg_player_previous,
+                Control.PREVIOUS to if (state.focus == Control.PREVIOUS) "msg_player_previous_focus" else "msg_player_previous",
                 Control.PLAY_PAUSE to when {
-                    state.playing -> if (state.focus == Control.PLAY_PAUSE) R.drawable.msg_player_pause_focus else R.drawable.msg_player_pause
-                    else -> if (state.focus == Control.PLAY_PAUSE) R.drawable.msg_player_play_focus else R.drawable.msg_player_play
+                    state.playing -> if (state.focus == Control.PLAY_PAUSE) "msg_player_pause_focus" else "msg_player_pause"
+                    else -> if (state.focus == Control.PLAY_PAUSE) "msg_player_play_focus" else "msg_player_play"
                 },
-                Control.STOP to if (state.focus == Control.STOP) R.drawable.msg_player_stop_focus else R.drawable.msg_player_stop,
-                Control.NEXT to R.drawable.msg_player_next_disabled,
+                Control.STOP to if (state.focus == Control.STOP) "msg_player_stop_focus" else "msg_player_stop",
+                Control.NEXT to "msg_player_next_disabled",
             )
             glyphs.forEachIndexed { i, (_, res) ->
                 val b = image(res)

@@ -119,7 +119,7 @@ class EditActivity : Activity() {
                 addView(caption(R.string.field_title, bold = true))
                 addView(title, LinearLayout.LayoutParams(0, wrap, 1f))
             }), FrameLayout.LayoutParams(match, TITLE_HEIGHT).apply { rightMargin = BUTTON_WIDTH + BOX_GAP })
-            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, R.drawable.tsk_save), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, TITLE_HEIGHT, Gravity.END))
+            addView(SaveButton(this@EditActivity, themeImage(this@EditActivity, "tsk_save"), getString(R.string.act_save)).apply { setOnClickListener { save() } }, FrameLayout.LayoutParams(BUTTON_WIDTH, TITLE_HEIGHT, Gravity.END))
         }
         val fields = box(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

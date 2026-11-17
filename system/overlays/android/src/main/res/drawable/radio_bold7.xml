@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The radio button of OS 7's lists (docs/BBOS7-VISUEL.md §17): 27x27 cells of
      net_rim_system_Check-icons27x27.png, grey normally, blue under the trackpad focus or the
-     finger (the row is selected or pressed), as tools/import-assets.sh dialogues cuts them.
-     Reached from the dialog themes (listChoiceIndicatorSingle), not from a layout. -->
+     finger (the row is selected or pressed, the box itself focused: sim-112, C), as tools/import-assets.sh dialogues cuts them, on the
+     framework hosts of values/dialogs.xml.
+     Reached from the dialog themes (listChoiceIndicatorSingle) and the radio button style
+     (values/widgets.xml), not from a layout. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_checked="true" android:state_pressed="true" android:drawable="@drawable/bold7_radio_on_focus" />
-    <item android:state_checked="true" android:state_selected="true" android:drawable="@drawable/bold7_radio_on_focus" />
-    <item android:state_checked="true" android:drawable="@drawable/bold7_radio_on" />
-    <item android:state_pressed="true" android:drawable="@drawable/bold7_radio_off_focus" />
-    <item android:state_selected="true" android:drawable="@drawable/bold7_radio_off_focus" />
-    <item android:drawable="@drawable/bold7_radio_off" />
+    <item android:state_checked="true" android:state_pressed="true" android:drawable="@android:drawable/status_bar_item_app_background" />
+    <item android:state_checked="true" android:state_selected="true" android:drawable="@android:drawable/status_bar_item_app_background" />
+    <item android:state_checked="true" android:state_focused="true" android:drawable="@android:drawable/status_bar_item_app_background" />
+    <item android:state_checked="true" android:drawable="@android:drawable/radiobutton_on_background" />
+    <item android:state_pressed="true" android:drawable="@android:drawable/status_bar_item_background" />
+    <item android:state_selected="true" android:drawable="@android:drawable/status_bar_item_background" />
+    <item android:state_focused="true" android:drawable="@android:drawable/status_bar_item_background" />
+    <item android:drawable="@android:drawable/radiobutton_off_background" />
 </selector>

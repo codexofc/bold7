@@ -2,11 +2,12 @@ package dev.bold7.phone
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -15,6 +16,7 @@ import android.graphics.Shader
 import android.os.Bundle
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.text.InputType
 import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.Gravity
@@ -42,6 +44,7 @@ import dev.bold7.ui.SwitchApplication
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.slate
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -78,6 +81,8 @@ class PhoneActivity : Activity() {
         /** Select Contact of Bold7's Contacts (SELECT_CONTACT, signature). */
         const val CONTACTS = "dev.bold7.contacts"
         const val SELECT_CONTACT = "$CONTACTS.SelectContactActivity"
+        const val MESSAGES = "dev.bold7.messages"
+        const val COMPOSE = "$MESSAGES.Compose"
 
         /** Options' Phone Ringtone, in the launcher (OptionsActivity.EXTRA_SCREEN, Screen.PHONE_TONES). */
         const val LAUNCHER = "dev.bold7.launcher"
@@ -141,6 +146,10 @@ class PhoneActivity : Activity() {
             // Focusable only to show its cursor (sim-141): no soft keyboard, the key events never reach it.
             isFocusableInTouchMode = true
             showSoftInputOnFocus = false
+            // Not a text editor for Android (onCheckIsTextEditor false): no input method is bound to
+            // it, so Typing never takes the keys before dispatchKeyEvent (seen under LineageOS 24:
+            // digits typed into the field behind the dialler's back, Send and Backspace lost).
+            setRawInputType(InputType.TYPE_NULL)
         }
         list = bb10List(ListView(this), 0).apply {
             adapter = this@PhoneActivity.adapter
@@ -210,10 +219,10 @@ class PhoneActivity : Activity() {
         scope = CoroutineScope(SupervisorJob() + graph.main)
         assigning = savedInstanceState?.getChar(STATE_ASSIGNING)?.takeIf { it != '\u0000' }
         scope.launch {
-            val (strip, glyph) = withContext(graph.io) { decode(R.drawable.ph_log_icons) to decode(R.drawable.ph_sm_call) }
+            val (strip, glyph) = withContext(graph.io) { decode("ph_log_icons") to decode("ph_sm_call") }
             icons = strip
             callGlyph = glyph
-            contacts.card = withContext(graph.io) { decode(R.drawable.ph_contacts) }
+            contacts.card = withContext(graph.io) { decode("ph_contacts") }
             list.invalidateViews()
             myNumber.text = getString(R.string.my_number, withContext(graph.io) { graph.log.lineNumber() })
         }
@@ -285,7 +294,7 @@ class PhoneActivity : Activity() {
         update(loaded)
     }
 
-    private fun decode(id: Int): Bitmap? = BitmapFactory.decodeResource(resources, id, BitmapFactory.Options().apply { inScaled = false })
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
     // State
 
@@ -373,6 +382,23 @@ class PhoneActivity : Activity() {
         }
     }
 
+    /**
+     * Delete (guide 7.1 p. 72, B; sim-397, C): "Delete all call logs for this item?", Delete in focus,
+     * then every call of the row's number goes (sim-398: the next row takes the focus). The log's
+     * observer reads it again once they are gone.
+     */
+    private fun delete(e: LogEntry) {
+        dialog?.dismiss()
+        dialog = Bold7Dialog(
+            this, getString(R.string.delete_question), listOf(getString(R.string.act_delete), getString(R.string.act_cancel)),
+            DialogIcon.QUESTION, onButton = { b ->
+                if (b == 0) scope.launch {
+                    if (!withContext(graph.io) { graph.log.delete(e) }) status(this@PhoneActivity, getString(R.string.not_deleted))
+                }
+            },
+        ).also { it.show() }
+    }
+
     /** Phone Ringtones: Options' Phone Ringtone screen, in the launcher; Options: its list. */
     private fun ringtones() = options(PHONE_TONES)
 
@@ -387,8 +413,14 @@ class PhoneActivity : Activity() {
     // Menus: the full menu of sim-142 (Dialer.menu); the short one is Call (sm_call.png, A; its label D).
 
     private fun menuLabel(a: PhoneAct) = when (a) {
-        PhoneAct.CALL -> state.toCall()?.let { getString(R.string.act_call_number, it) } ?: getString(R.string.act_call)
+        PhoneAct.CALL -> (logShown()?.let(::shownName) ?: state.toCall())?.let { getString(R.string.act_call_number, it) } ?: getString(R.string.act_call)
+        PhoneAct.CONTACT -> getString(R.string.act_contact, logShown()?.let(::shownName).orEmpty())
+        PhoneAct.TEXT -> getString(R.string.act_text, logShown()?.let(::shownName).orEmpty())
+        PhoneAct.COPY -> getString(R.string.act_copy, logShown()?.number.orEmpty())
+        PhoneAct.HELP -> getString(R.string.act_help)
+        PhoneAct.CLOSE -> getString(R.string.act_close)
         PhoneAct.ADD_SPEED_DIAL -> getString(R.string.act_add_speed_dial)
+        PhoneAct.DELETE -> getString(R.string.act_delete)
         PhoneAct.CALL_FROM_CONTACTS -> getString(R.string.act_call_from_contacts)
         PhoneAct.VOICE_MAIL -> getString(R.string.act_call_voice_mail)
         PhoneAct.VIEW -> getString(R.string.act_view)
@@ -399,6 +431,22 @@ class PhoneActivity : Activity() {
         PhoneAct.SWITCH -> getString(R.string.act_switch_application)
         PhoneAct.STATUS -> getString(R.string.act_status)
         PhoneAct.OPTIONS -> getString(R.string.act_options)
+    }
+
+    /** The call focused with nothing typed: what "Contact …", its submenu, Delete and Copy act on. */
+    private fun logShown(): LogEntry? = state.focused?.takeIf { state.typed.isEmpty() && it.type != LogType.CONTACT }
+
+    private fun shownName(e: LogEntry) = e.name.ifEmpty { e.number }
+
+    /** Text (sim-395, C): Messages of Bold7, a new text to the number or its conversation, as Contacts' Text. */
+    private fun text(e: LogEntry) {
+        try {
+            startActivity(Intent().setClassName(MESSAGES, COMPOSE).putExtra("to", e.number).putExtra("title", e.name))
+        } catch (x: ActivityNotFoundException) {
+            status(this, getString(R.string.no_messages_app))
+        } catch (x: SecurityException) {
+            status(this, getString(R.string.no_messages_app))
+        }
     }
 
     private fun show(m: Menu<PhoneAct>?) {
@@ -418,6 +466,12 @@ class PhoneActivity : Activity() {
             PhoneAct.ADD_SPEED_DIAL -> state.focused?.takeIf { it.number.isNotEmpty() }?.let {
                 startActivity(SpeedDialActivity.adding(this, SpeedNumber(it.number, it.name)))
             }
+            PhoneAct.DELETE -> logShown()?.let(::delete)
+            PhoneAct.CONTACT -> show(contactMenu())
+            PhoneAct.TEXT -> logShown()?.let(::text)
+            PhoneAct.COPY -> logShown()?.let { getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(it.number, it.number)) }
+            PhoneAct.HELP -> dev.bold7.ui.Help.open(this, "phone")
+            PhoneAct.CLOSE -> finish()
             PhoneAct.CALL_FROM_CONTACTS -> pickContact(PICK_CALL)
             PhoneAct.VOICE_MAIL -> callVoiceMail()
             // D: the submenu in the place of the menu, as the Calendar's View (sim-223).

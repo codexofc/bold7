@@ -54,6 +54,8 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
     private var banner = WeakReference<BannerView>(null)
     /** Which banner shows (BarKind): the two-line one, or a one-line one (OneLine); main thread only. */
     private var kind = BarKind.TWO_LINES
+    /** Told where the battery goes, true on a one-line bar: the charging bolt's place (BatteryBolt). */
+    var batteryLine: (oneLine: Boolean) -> Unit = {}
     private var clockX = Banner.TIME_X
     private var clockBaseline = Banner.TIME_BASELINE
     private var layoutBroken = false
@@ -315,6 +317,7 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         clockBaseline = Banner.TIME_BASELINE
         clock.get()?.let(::styleClock)
         battery.get()?.let { margins(it, Banner.BATTERY_X, Banner.BATTERY_Y) }
+        batteryLine(false)
         statusIcons.get()?.let { icons ->
             (icons.layoutParams as FrameLayout.LayoutParams).apply {
                 height = Banner.ICONS_HEIGHT
@@ -331,6 +334,7 @@ internal class StatusBarLayout(private val fail: (String, Exception?) -> Unit) {
         clockBaseline = OneLine.BASELINE
         clock.get()?.let(::styleClock)
         battery.get()?.let { margins(it, batteryX, OneLine.FRAME_Y) }
+        batteryLine(true)
         val width = bar.get()?.width ?: return
         statusIcons.get()?.let { icons ->
             (icons.layoutParams as FrameLayout.LayoutParams).apply {

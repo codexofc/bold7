@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- docs/logo/bold7.svg as an adaptive icon: the graphite tile is the background, the mask its
+     shape; the rest, scaled so that the 116 units of the tile span the 72 dp the mask shows. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/bold7_logo_background" />
+    <foreground android:drawable="@drawable/bold7_logo_foreground" />
+</adaptive-icon>

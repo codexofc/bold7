@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The 9900's Help (sim-440, sim-444, C). -->
+    <string name="title">Help</string>
+    <string name="search">Search</string>
+    <string name="results">Search Results (%1$d)</string>
+    <string name="extended">Extended Search</string>
+    <string name="device">Device</string>
+    <string name="device_search">Search for \"%1$s\" on Device</string>
+    <!-- The menu (D: the 9900's Help never showed a page under the simulator). -->
+    <string name="act_contents">Help Contents</string>
+    <string name="act_close">Close</string>
+    <string name="act_switch_application">Switch Application</string>
+    <!-- A link that leaves the help (a web page, another app): refused (D). -->
+    <string name="outside">This link opens outside Help.</string>
+</resources>

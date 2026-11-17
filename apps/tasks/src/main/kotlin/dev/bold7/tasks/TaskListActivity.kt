@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.os.Bundle
 import android.util.TypedValue
@@ -33,6 +32,7 @@ import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.slate
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import java.time.LocalDateTime
 
 /**
@@ -110,11 +110,10 @@ class TaskListActivity : Activity() {
         })
         opened(intent)
         graph.io.post {
-            val options = BitmapFactory.Options().apply { inScaled = false }
-            val menus = ListAct.entries.map { a -> glyphOf(a)?.let { BitmapFactory.decodeResource(resources, it, options) } }
+            val menus = ListAct.entries.map { a -> glyphOf(a)?.let { themeBitmap(applicationContext, it) } }
             // net_rim_Task_Status-icons27x27.png: five 27 px cells; net_rim_Priority-icons9x27.png: three 9 px ones.
-            val statuses = BitmapFactory.decodeResource(resources, R.drawable.tsk_status, options)
-            val priorities = BitmapFactory.decodeResource(resources, R.drawable.tsk_priority, options)
+            val statuses = themeBitmap(applicationContext, "tsk_status")
+            val priorities = themeBitmap(applicationContext, "tsk_priority")
             val pairs = Priority.entries.flatMap { p ->
                 Status.entries.map { st ->
                     Bitmap.createBitmap(STATUS_X + STATUS, STATUS, Bitmap.Config.ARGB_8888).also { b ->
@@ -210,6 +209,7 @@ class TaskListActivity : Activity() {
             ListAct.DELETE_COMPLETED -> ask(R.string.delete_completed_question) { write { it.deleteCompleted(); true } }
             ListAct.HIDE, ListAct.SHOW -> update(ListEvent.ToggleHidden)
             ListAct.OPTIONS -> startActivity(Intent(this, OptionsActivity::class.java))
+            ListAct.HELP -> dev.bold7.ui.Help.open(this, "tasks")
             ListAct.CLOSE -> finish()
             ListAct.SWITCH -> SwitchApplication.start(this)
         }
@@ -235,6 +235,7 @@ class TaskListActivity : Activity() {
         ListAct.HIDE -> R.string.act_hide
         ListAct.SHOW -> R.string.act_show
         ListAct.OPTIONS -> R.string.act_options
+        ListAct.HELP -> R.string.act_help
         ListAct.CLOSE -> R.string.act_close
         ListAct.SWITCH -> R.string.act_switch_application
     })
@@ -338,10 +339,10 @@ class TaskListActivity : Activity() {
 const val EXTRA_NEW = "dev.bold7.tasks.NEW"
 
 /** The short and full menus' image of each action (sm_*.png of the theme, A; the match D); the others have none. */
-fun glyphOf(a: ListAct): Int? = when (a) {
-    ListAct.NEW -> R.drawable.tsk_sm_new_task
-    ListAct.OPEN -> R.drawable.tsk_sm_open
-    ListAct.DELETE -> R.drawable.tsk_sm_delete
-    ListAct.COMPLETE -> R.drawable.tsk_sm_mark_completed
+fun glyphOf(a: ListAct): String? = when (a) {
+    ListAct.NEW -> "tsk_sm_new_task"
+    ListAct.OPEN -> "tsk_sm_open"
+    ListAct.DELETE -> "tsk_sm_delete"
+    ListAct.COMPLETE -> "tsk_sm_mark_completed"
     else -> null
 }

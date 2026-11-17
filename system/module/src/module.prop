@@ -1,6 +1,8 @@
 id=bold7
 name=Bold7
-version=0.1
-versionCode=1
-author=Arthur Michon
+version=0.1.0-benos
+versionCode=100
+author=codexofc
 description=The BlackBerry OS 7.1 interface for the Zinwa Q25 on BenOS. To remove: Remove, then reboot; everything is given back. Rescue: KernelSU's safe mode (Volume down during boot).
+banner=banner.png
+updateJson=https://raw.githubusercontent.com/codexofc/bold7/main/update/benos.json

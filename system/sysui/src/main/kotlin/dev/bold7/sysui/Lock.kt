@@ -36,6 +36,13 @@ fun ownerLines(text: String?): OwnerLines {
     return OwnerLines(lines.firstOrNull(), lines.drop(1).joinToString("\n").ifEmpty { null })
 }
 
+/**
+ * Message on Lock Screen's two fields, Display Owner Name and Display Information (simulator
+ * 7.1.0.318, C), as Android's one text that [ownerLines] reads back: the name, then the
+ * information; either alone when the other is empty (D).
+ */
+fun ownerText(name: String, info: String): String = listOf(name.trim(), info.trim()).filter { it.isNotEmpty() }.joinToString("\n")
+
 const val OWNER_X = 30
 const val OWNER_NAME_WIDTH = 580
 const val OWNER_INFO_WIDTH = 500

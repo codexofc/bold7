@@ -66,9 +66,29 @@ object TextRoom {
     /** What a dialog's button label gets inside a button [buttonWidth] wide. */
     fun button(buttonWidth: Int): Float = (buttonWidth - 2 * dev.bold7.design.DialogDimens.BUTTON_PAD).coerceAtLeast(0).toFloat()
 
+    /**
+     * An open choice list's width ([ChoiceListView]): [minWidth] (OS 7's 78 px, sim-66, or a screen's
+     * own), wider for a longer value of [widest] px, [LIST_PAD] each side (sim-270: "Not Started"
+     * whole, sim-271), at most [most] px (the room right of the list's left edge).
+     */
+    fun choiceList(minWidth: Int, widest: Float, most: Int): Int =
+        minOf(most, maxOf(minWidth, kotlin.math.ceil(widest).toInt() + 2 * LIST_PAD))
+
+    /** Where an open list [width] px wide starts: at [start], or further left to end on the [screen]'s right edge (sim-417, When Charging). */
+    fun choiceListLeft(start: Int, width: Int, screen: Int): Int = minOf(start, screen - width).coerceAtLeast(0)
+
+    /**
+     * How far a row stands from the screen's edge on one side, as far as its margins count it:
+     * [ListDimens.BOX_INSET] at most, the group box it lies in; a row placed further in keeps its own margins.
+     */
+    fun screenGap(gap: Int): Int = gap.coerceIn(0, ListDimens.BOX_INSET)
+
     const val VALUE_PAD = 6
 
-    /** What a choice field keeps besides its value: [VALUE_PAD] each side, the arrow's 20 px and its 13 px margin on the right (45, as Analogue's 127 px in 172, sim-170). */
-    const val CHOICE_VALUE_EXTRA = 2 * VALUE_PAD + ListDimens.CHOICE_ARROW_WIDTH + ListDimens.CHOICE_ARROW_RIGHT
+    /** An open list's value from its edges (sim-270: the panel's right at 598, the values' at 590). */
+    const val LIST_PAD = 8
+
+    /** What a choice field keeps besides its value: [VALUE_PAD] each side, the arrow's 20 px and its 17 px from the visible edge (49; sim-268 has 57 for "Not Started"). */
+    const val CHOICE_VALUE_EXTRA = 2 * VALUE_PAD + ListDimens.CHOICE_ARROW_WIDTH + ListDimens.CHOICE_ARROW_FROM_EDGE
     const val MENU_STRIP = 40
 }

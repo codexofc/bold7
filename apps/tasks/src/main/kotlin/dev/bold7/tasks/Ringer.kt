@@ -11,11 +11,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import dev.bold7.showcase.showcaseOn
 import dev.bold7.ui.Bold7Dialog
+import dev.bold7.ui.themeBitmap
 import java.time.Instant
 import java.time.ZoneId
 
@@ -189,7 +189,7 @@ class ReminderActivity : Activity() {
         super.onCreate(savedInstanceState)
         take(intent)
         graph.io.post {
-            val i = BitmapFactory.decodeResource(resources, R.drawable.tsk_reminder)
+            val i = themeBitmap(applicationContext, "tsk_reminder")
             mainExecutor.execute {
                 icon = i
                 next()

@@ -10,8 +10,8 @@ import java.util.zip.Inflater
  * stays that of the largest wanted file (a .cod of 6 MB), whatever the cabinet's size.
  */
 internal object Cabinet {
-    /** No .cod is near this: a larger wanted file is refused rather than held in memory. */
-    const val MAX_FILE = 64 shl 20
+    /** The OS image (66 MB) is the largest wanted file: a larger one is refused rather than held in memory. */
+    const val MAX_FILE = 72 shl 20
 
     private class Item(val name: String, val offset: Long, val size: Int) {
         var data: ByteArray? = null

@@ -11,6 +11,8 @@ import android.provider.MediaStore
 import android.provider.MediaStore.Images.Media
 import android.util.Log
 import android.util.Size
+import dev.bold7.showcase.showcasePictures
+import dev.bold7.showcase.showcaseScene
 import java.io.IOException
 
 internal const val TAG = "Bold7/Pictures"
@@ -45,6 +47,7 @@ class Store(private val resolver: ContentResolver) {
 
     /** A picture's square thumbnail, [side] px; null when it cannot be read. */
     fun thumbnail(p: Picture, side: Int): Bitmap? {
+        if (p.id <= SHOWCASE_BASE) return showcaseScene(SHOWCASE_BASE.toInt() - p.id.toInt(), side, side)
         if (p.id < 0) return madeUp(p.id, side)
         return try {
             resolver.loadThumbnail(uri(p.id), Size(side, side), null)
@@ -56,6 +59,7 @@ class Store(private val resolver: ContentResolver) {
 
     /** The whole picture, its longer side at most [max] px (memory bounded), its EXIF turn applied by the decoder; null when unreadable. */
     fun picture(p: Picture, max: Int): Bitmap? {
+        if (p.id <= SHOWCASE_BASE) return showcaseScene(SHOWCASE_BASE.toInt() - p.id.toInt(), max, max * 3 / 4)
         if (p.id < 0) return madeUp(p.id, max)
         return try {
             ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri(p.id))) { d, info, _ ->
@@ -77,6 +81,14 @@ class Store(private val resolver: ContentResolver) {
     }
 
     companion object {
+        /** Ids of the showcase's pictures: SHOWCASE_BASE minus their index, below every `--ei rows` one. */
+        const val SHOWCASE_BASE = -100_000L
+
+        /** The showcase's made-up library (dev.bold7.showcase), nothing read. */
+        fun showcase(now: Long): List<Picture> = showcasePictures.map {
+            Picture(SHOWCASE_BASE - it.index, it.name, it.folder.hashCode().toLong(), it.folder, it.path, now - it.minutesAgo * 60_000L, 1024, 768)
+        }
+
         fun uri(id: Long): Uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
         /** [n] made-up pictures (tools/perf.sh's `--ei rows N`), nothing read. */

@@ -10,7 +10,14 @@ import java.io.IOException
  * ported; clock and calendar without their one image cut from a capture of the simulator, and
  * sons copies the sounds as Android reads them.
  */
-internal class Assets(private val tree: File, private val out: File, private val iconTable: String, private val soundTable: String) {
+internal class Assets(
+    private val tree: File,
+    private val out: File,
+    private val iconTable: String,
+    private val soundTable: String,
+    /** Typing's AOSP lists (apps/saisie/src/main/assets/dictionary), for [saisie]; none: its word lists are not made. */
+    private val dictionaries: File? = null,
+) {
     private val theme = File(tree, "theme/net_rim_theme_BlackBerry7_640x480_b")
     private val bs1 = File(tree, "theme/net_rim_theme_BlackBerry7_640x480_bs1")
 
@@ -21,7 +28,8 @@ internal class Assets(private val tree: File, private val out: File, private val
         // import-assets.sh's order.
         val blocks = listOf(
             ::polices, ::accueil, ::profils, ::connexions, ::options, ::icones, ::sons, ::ui, ::dialogues, ::messages, ::phone,
-            ::clock, ::calendar, ::contacts, ::calculatrice, ::memopad, ::tasks, ::pictures, ::bandeau, ::systeme, ::fonds,
+            ::clock, ::calendar, ::contacts, ::calculatrice, ::memopad, ::tasks, ::pictures, ::saisie, ::bandeau, ::systeme, ::fonds,
+            ::help,
         )
         blocks.forEachIndexed { i, b -> b(); progress((i + 1f) / blocks.size) }
     }
@@ -41,6 +49,29 @@ internal class Assets(private val tree: File, private val out: File, private val
 
     /** magick -crop WxH+X+Y +repage PNG32: */
     private fun crop(src: File, rel: String, x: Int, y: Int, w: Int, h: Int) = png(image(src).crop(x, y, w, h), rel)
+
+    /**
+     * The help of the 9900 in British English (docs/BBOS7-VISUEL.md, section 39) under help/: each page
+     * decoded from RIM's YK compression against the module's side data ([YkDictionary]), as
+     * `<page>.html`; its style sheets, pictures and search index as they are; and, under help/theme/,
+     * the theme's category icons the pages name as `theme://cat_…`. Nothing of it is in a public build:
+     * it is made here, on the user's phone, from the user's file.
+     */
+    fun help() {
+        val src = File(tree, "help/$HELP/en_GB/9900_series")
+        if (!src.isDirectory) { skipped += "help"; return } // Help then shows only Bold7's own section
+        val side = try {
+            YkDictionary.load(need(File(src, "sidedata.data")).readBytes())
+        } catch (e: YkAdaptiveException) { // the simulator's help (docs/YK.md, section 7)
+            skipped += "help"; return
+        }
+        for (f in src.listFiles().orEmpty().sortedBy { it.name }) when {
+            f.name.endsWith(".html.ykz") -> put(out, "help/" + f.name.removeSuffix(".ykz"), side.decode(f.readBytes()))
+            f.name != "sidedata.data" -> copy(f, "help/${f.name}")
+        }
+        for (f in theme.listFiles { f -> f.name.startsWith("cat_") && f.name.endsWith(".png") }.orEmpty())
+            copy(f, "help/theme/${f.name}")
+    }
 
     fun polices() {
         // Unlike import-assets.sh, the fonts come out with their line metrics fixed, as the
@@ -127,6 +158,9 @@ internal class Assets(private val tree: File, private val out: File, private val
         copy(File(bs1, "net_rim_WlanSignalLevel-icons58x27.png"), "$dir/opt_wifi_signal.png")
         copy(File(theme, "wi-fi_lock_icon.png"), "$dir/opt_wifi_lock.png")
         copy(File(theme, "net_rim_bluetooth_device-icons42x42.png"), "$dir/opt_bt_devices.png")
+        // Home Screen Preferences' Downloads Folder (sim-284): Home's folder and a folder's, at 30 px.
+        png(Resize.resize(image(File(theme, "up_folder.png")), 30, 30), "$dir/opt_home_folder.png")
+        png(Resize.resize(image(File(theme, "folder.png")), 30, 30), "$dir/opt_folder.png")
     }
 
     /**
@@ -168,6 +202,10 @@ internal class Assets(private val tree: File, private val out: File, private val
         png(chosen, "$dir/bold7_chosen.9.png")
         val check = File(theme, "net_rim_system_Check-icons27x27.png")
         for ((name, x, y) in CHECKS) crop(check, "$dir/bold7_$name.png", x, y, 27, 27)
+        // The wait indicator's twelve frames (sim-111), and the text selection handle.
+        val wait = File(bs1, "net_rim_progress.png")
+        for (i in 0 until 12) crop(wait, "$dir/bold7_wait_%02d.png".format(i), i * 27, 0, 27, 27)
+        copy(File(theme, "border_trackpad_end.png"), "$dir/bold7_handle.png")
         // The permission request's overlay cannot name the framework overlay's drawables: its copy.
         for (b in listOf("bold7_button.9.png", "bold7_button_focus.9.png"))
             put(out, "permissioncontroller/res/drawable-nodpi/$b", File(out, "$dir/$b").readBytes())
@@ -187,6 +225,7 @@ internal class Assets(private val tree: File, private val out: File, private val
         copy(File(theme, "cat_app_options_sub.png"), "$dir/msg_cat_display.png")
         copy(File(theme, "cat_app_messages_inbox_settings.png"), "$dir/msg_cat_inbox.png")
         copy(File(theme, "cat_app_messages_email_acc_management.png"), "$dir/msg_cat_accounts.png")
+        copy(File(theme, "cat_app_sms_n_mms.png"), "$dir/msg_cat_texts.png")
         copy(File(tree, "images/net_rim_bb_sms/smileys_45x45.png"), "$dir/msg_smileys_45.png")
         copy(File(theme, "smiley_button_focus_indicator.png"), "$dir/msg_smiley_focus.png")
         copy(File(bs1, "sm_add_emoticon.png"), "$dir/msg_sm_add_emoticon.png")
@@ -268,7 +307,7 @@ internal class Assets(private val tree: File, private val out: File, private val
 
     fun memopad() {
         val dir = "memopad/res/drawable-nodpi"
-        pim(dir, "mem", listOf("sm_new", "sm_delete", "sm_open", "sm_edit"))
+        pim(dir, "mem", listOf("sm_new", "sm_delete", "sm_open", "sm_edit", "sm_home", "sm_switch_apps"))
         copy(File(theme, "save.png"), "$dir/mem_save.png")
     }
 
@@ -285,6 +324,23 @@ internal class Assets(private val tree: File, private val out: File, private val
         for (src in PICTURES) copy(either("$src.png"), "pictures/res/drawable-nodpi/pic_${src.lowercase().replace('.', '_')}.png")
     }
 
+    /**
+     * OS 7's part of Typing (import-assets.sh saisie): its English word substitution, and the lines
+     * of the French list that Typing's AOSP list lacks. Not the English list's part: the merged list
+     * it comes from was made from AOSP's British and American lists, which Typing's own English
+     * list (both merged) no longer gives apart.
+     */
+    fun saisie() {
+        val dir = "saisie/assets/os7"
+        val ling = File(tree, "ling")
+        put(out, "$dir/substitution/en.tsv", Typing.substitution(need(File(ling, "net_rim_tid_dynamic_ling_data_misspellings_de/misspelling_words_de.txt")).readBytes()).toByteArray())
+        val aosp = dictionaries?.let { File(it, "fr.tsv") } ?: return
+        if (!aosp.isFile) throw IOException("missing $aosp")
+        val parts = File(ling, "net_rim_tid_dynamic_ling_data_french").listFiles { f -> WRD.matches(f.name) }.orEmpty().sortedBy { it.name }
+        if (parts.isEmpty()) throw IOException("missing the French word list in the firmware")
+        put(out, "$dir/dictionary/fr.tsv", Typing.part(parts.map { it.readBytes() }, aosp.readText()).toByteArray())
+    }
+
     /** One frame of a strip (frames side by side, states in rows), and an optional crop of it. */
     private fun frame(strip: File, w: Int, h: Int, col: Int, row: Int, name: String, sub: IntArray? = null) {
         var img = image(strip).crop(col * w, row * h, w, h)
@@ -298,6 +354,7 @@ internal class Assets(private val tree: File, private val out: File, private val
             frame(battery, 50, 25, i, 0, "battery_$i")
             frame(battery, 50, 25, i, 2, "battery_charging_$i")
         }
+        for (i in 1..5) frame(File(theme, "lightning_bolt_0$i.png"), 18, 29, 0, 0, "bolt_$i")
         val signal = File(theme, "net_rim_Ribbon_SignalLevel-icons49x19.png")
         frame(signal, 49, 19, 0, 0, "signal_off")
         frame(signal, 49, 19, 1, 0, "signal_x")
@@ -317,7 +374,7 @@ internal class Assets(private val tree: File, private val out: File, private val
         for ((col, name) in listOf(1 to "vibrate", 2 to "silent", 4 to "phone_only"))
             frame(profile, 43, 43, col, 0, "profile_$name", intArrayOf(43, 33, 0, 5))
         val count = File(theme, "net_rim_Ribbon_UnreadCount-icons33x29.png")
-        for ((col, name) in listOf(0 to "email", 4 to "calendar", 6 to "sms", 14 to "missed_call"))
+        for ((col, name) in listOf(0 to "email", 4 to "calendar", 6 to "sms", 14 to "missed_call", 7 to "other"))
             frame(count, 33, 29, col, 0, "count_$name")
     }
 
@@ -353,6 +410,7 @@ internal class Assets(private val tree: File, private val out: File, private val
     }
 
     private companion object {
+        val WRD = Regex("french\\.\\d{3}\\.wrd")
         const val BLACK = 0xFF000000.toInt()
 
         // The theme's name, then the resource's: Normal is "default", Vibrate Only "discreet"...
@@ -376,6 +434,11 @@ internal class Assets(private val tree: File, private val out: File, private val
             "mobile" to "cat_mobile_network", "wifi" to "cat_connectivity_wifi", "bluetooth" to "cat_connectivity_bluetooth",
             "nfc" to "cat_app_nfc", "about" to "cat_device_about_device", "memory" to "cat_device_memory",
             "status" to "cat_device_status_info", "password" to "cat_security_password", "encryption" to "cat_security_encryption",
+            "device_advanced" to "cat_device_advanced",
+            // The Setup application's green check (sim-375), drawn by the Setup Wizard.
+            "checkmark" to "cat_toolkit_checkmark",
+            // Display > Home Screen Preferences (sim-446).
+            "home_screen" to "cat_display_home_screen_preferences",
         )
 
         // The 27x27 cells of net_rim_system_Check-icons27x27: columns normal and focus.
@@ -412,19 +475,20 @@ internal class Assets(private val tree: File, private val out: File, private val
 
         // HOME_IMAGES of import-assets.sh, in its order (its comments say what each one is).
         val HOME_IMAGES = listOf(
-            "banner_background", "banner_divider", "indicator_bar_background", "tab",
-            "tabmanager_header_line_top", "tabmanager_header_line_bottom", "background_homescreen",
+            "banner_background", "banner_divider", "indicator_bar_background",
+            "tabmanager_header_line_top", "tabmanager_header_line_bottom",
             "net_rim_Indicator_BatteryLevel-icons50x25", "net_rim_Ribbon_SignalLevel-icons49x19",
             "net_rim_Ribbon_WlanSignalLevel-icons30x24", "net_rim_Ribbon_Profile-icons43x43",
             "net_rim_Ribbon_UnreadCount-icons33x29", "net_rim_Alarm_Indicator-icons21x21",
+            "lightning_bolt_01", "lightning_bolt_02", "lightning_bolt_03", "lightning_bolt_04", "lightning_bolt_05",
             "banner_search_button", "banner_voice_button",
-            "homescreen_filter_background", "homescreen_mask_p", "folder", "net_rim_bb_ribbon_app",
-            "net_rim_Folder-icons32x32", "background_folderview", "icon_move_underlay", "new_overlay",
-            "sm_launch", "sm_delete", "sm_add_folder", "sm_edit_folder", "sm_delete_folder",
+            "homescreen_mask_p", "folder", "net_rim_bb_ribbon_app",
+            "background_folderview", "icon_move_underlay", "new_overlay",
+            "sm_launch", "sm_delete", "sm_add_folder", "sm_delete_folder",
             "bs1/banner_background~focus",
             "bs1/sm_mark_favourite", "bs1/sm_unmark_favourite", "bs1/sm_move", "bs1/sm_move_to_folder", "bs1/sm_hide",
-            "bs1/sm_unhide", "bs1/sm_full_menu", "bs1/sm_folder_open", "bs1/sm_rename_folder",
-        )
+            "bs1/sm_unhide", "bs1/sm_folder_open", "bs1/sm_rename_folder",
+        ) + (1..20).map { "bs1/folder%02d".format(it) }
 
         val MESSAGES_SM = listOf(
             "sm_open", "sm_mark_read", "sm_mark_unread", "sm_mark_prior_opened", "sm_compose", "sm_search", "sm_delete",

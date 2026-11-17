@@ -71,7 +71,7 @@ class CountsTest {
 
     // The home banner's, app bar's and lock screen's numbers: unread by kind, MMS and the SMS app's
     // own chats with SMS, the dialer's echo of a missed call, Android's own notices and every other
-    // app's notifications left out (no counter of OS 7 for them), an unknown account ignored.
+    // app's notifications left out (they count by app, unreadByApp), an unknown account ignored.
     @Test fun unreadByKindIsTheBannersCount() {
         val notes = Account(HubAccounts.NOTIFICATIONS.id, AccountKind.NOTIFICATIONS, "Notifications", position = 3)
         fun note(key: String, folder: String, sender: String = "x", preview: String = "") =
@@ -94,5 +94,29 @@ class CountsTest {
             unreadByKind(listOf(sms, calls, notes), items, smsApp = "sms.app", dialer = "dialer.app"),
         )
         assertEquals(emptyMap(), unreadByKind(listOf(sms), emptyList(), null, null))
+    }
+
+    // A third-party app's indicator in the same banners (the firmware's Facebook, Twitter and App
+    // World carry their own ribbon icon, A): one count per app, the app with the newest unread
+    // item first; Android's notices, the SMS app's chats (counted as texts), echoes, read items and
+    // unknown accounts left out.
+    @Test fun unreadByAppIsEachOtherAppsCount() {
+        val notes = Account(HubAccounts.NOTIFICATIONS.id, AccountKind.NOTIFICATIONS, "Notifications", position = 3)
+        fun note(key: String, folder: String, at: Long, sender: String = "x", read: Boolean = false) =
+            HubItem(notes.id, key, ItemKind.NOTIFICATION, timestamp = at, sender = sender, folder = folder, read = read)
+        val items = listOf(
+            note("w1", "com.whatsapp", 1_000),
+            note("w2", "com.whatsapp", 3_000),
+            note("t1", "com.twitter.android", 2_000),
+            note("t2", "com.twitter.android", 4_000, read = true),
+            note("g", "com.google.android.gm", 5_000),
+            note("d", "dialer.app", 6_000, sender = "+33600000000"),
+            note("s", "android", 7_000),
+            note("r", "sms.app", 8_000),
+            HubItem("calls", "c", ItemKind.MISSED_CALL, timestamp = 1_000, sender = "+33600000000"),
+        )
+        val byApp = unreadByApp(listOf(calls, notes), items, smsApp = "sms.app", dialer = "dialer.app")
+        assertEquals(listOf("com.google.android.gm" to 1, "com.whatsapp" to 2, "com.twitter.android" to 1), byApp.toList())
+        assertEquals(emptyMap(), unreadByApp(listOf(calls), items, "sms.app", "dialer.app"))
     }
 }

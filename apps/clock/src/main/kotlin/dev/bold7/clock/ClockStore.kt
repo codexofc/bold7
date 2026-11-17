@@ -31,7 +31,7 @@ class ClockStore(context: Context) : ClockKeep {
 
     /** The countdown timer: its duration, what is left stopped, its end while running (elapsed realtime ms). */
     override var timer: Countdown
-        get() = Countdown(prefs.getLong("timer_duration", 0), prefs.getLong("timer_remaining", 0), prefs.getLong("timer_ends", -1).takeIf { it >= 0 })
+        get() = Countdown(prefs.getLong("timer_duration", DEFAULT_TIMER_MS), prefs.getLong("timer_remaining", DEFAULT_TIMER_MS), prefs.getLong("timer_ends", -1).takeIf { it >= 0 })
         set(value) {
             prefs.edit().putLong("timer_duration", value.duration).putLong("timer_remaining", value.remaining).putLong("timer_ends", value.endsAt ?: -1).commit()
         }

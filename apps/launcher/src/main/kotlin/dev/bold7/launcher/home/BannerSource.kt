@@ -21,6 +21,7 @@ import android.telephony.TelephonyDisplayInfo
 import android.telephony.TelephonyManager
 import android.text.format.DateFormat
 import android.util.Log
+import dev.bold7.design.ChargingBolt
 import dev.bold7.design.bannerDate
 import dev.bold7.design.bannerTime
 import dev.bold7.hub.data.ItemKind
@@ -53,6 +54,7 @@ internal class BannerSource(
     private var state = BannerState()
     private var started = false
     private var counts: Map<ItemKind, Int> = emptyMap()
+    private var appCounts: Map<String, Int> = emptyMap()
 
     // Telephony's and the Wi-Fi's raw values, folded into the state by publish().
     private var level = 0
@@ -61,7 +63,7 @@ internal class BannerSource(
     private var type = NetworkType.UNKNOWN
     private var wifiLevel: Int? = null
     private var battery = -1
-    private var charging = false
+    private var status = 0
     private var alarm = false
 
     private val telephony by lazy { context.getSystemService(TelephonyManager::class.java) }
@@ -127,10 +129,11 @@ internal class BannerSource(
         }
     }
 
-    /** The Hub's unread counts (HubBadges.counts). */
-    fun counts(counts: Map<ItemKind, Int>) {
-        if (counts == this.counts) return
+    /** The Hub's unread counts (HubBadges.counts, and appCounts for the other apps). */
+    fun counts(counts: Map<ItemKind, Int>, apps: Map<String, Int>) {
+        if (counts == this.counts && apps == appCounts) return
         this.counts = counts
+        appCounts = apps
         if (started) publish()
     }
 
@@ -202,8 +205,7 @@ internal class BannerSource(
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
         val raw = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         battery = if (raw < 0) -1 else raw * 100 / scale
-        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
-        charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
     }
 
     private fun publish() {
@@ -213,15 +215,16 @@ internal class BannerSource(
         val next = BannerState(
             time = time,
             amPm = amPm,
-            date = bannerDate(now, context.resources.configuration.locales[0]),
+            date = bannerDate(now),
             network = if (inService) networkName(mask()) { telephony.networkOperatorName.orEmpty() } else "",
             coverage = if (inService) coverage(type) else "",
-            battery = batteryFrame(battery, charging),
+            battery = batteryFrame(battery, status),
+            charging = ChargingBolt.shows(status, battery),
             signal = signalFrame(level, inService, radioOff),
             wifi = wifiFrame(wifiLevel),
             profile = profileFrame(profile),
             alarm = alarm,
-            indicators = indicators(counts),
+            indicators = indicators(counts, appCounts),
         )
         if (next == state) return
         state = next

@@ -5,7 +5,7 @@
      topPanel, contentPanel, scrollView, message, textSpacerNoTitle, textSpacerNoButtons,
      customPanel, custom and buttonPanel, and AlertDialogLayout measures four of them by id.
      Positions are counted from the box's inside: the window background (values/dialogs.xml,
-     bold7_box) pads the content to the pixel after the box's border, so x 0 here is the box's
+     alert_dark_frame) pads the content to the pixel after the box's border, so x 0 here is the box's
      border pixel plus one.
      Changed: the message in BBAlpha Sans 27 px (the system font), white, lines of 32 px with
      their baseline 25 px down, 19 px from the box's left border and 20 px from its right one

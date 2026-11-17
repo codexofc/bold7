@@ -43,13 +43,13 @@ enum class Kind { CHOICE, CHECK, BUTTON }
 enum class OptionGroup { CLOCK, ALARM, BEDSIDE, STOPWATCH, TIMER }
 
 /**
- * The rows of Clock Options (sim-170 to sim-173, C), top to bottom. When Charging, Dismiss Clock
- * Automatically, Disable LED, Disable Radio and Sound Profile are not here: each needs something
- * Android keeps from an app. A face other than Analogue is offered for the clock
+ * The rows of Clock Options (sim-170 to sim-173, C), top to bottom. Disable LED, Disable Radio
+ * and Sound Profile are not here: each needs something Android keeps from an app. A face other than Analogue is offered for the clock
  * only; the stopwatch's and the timer's lists hold the one value the simulator shows.
  */
 enum class OptionRow(val group: OptionGroup, val kind: Kind) {
-    FACE(OptionGroup.CLOCK, Kind.CHOICE), HOME_ZONE(OptionGroup.CLOCK, Kind.CHOICE), SET_TIME(OptionGroup.CLOCK, Kind.BUTTON),
+    FACE(OptionGroup.CLOCK, Kind.CHOICE), HOME_ZONE(OptionGroup.CLOCK, Kind.CHOICE),
+    WHEN_CHARGING(OptionGroup.CLOCK, Kind.CHOICE), DISMISS(OptionGroup.CLOCK, Kind.CHECK), SET_TIME(OptionGroup.CLOCK, Kind.BUTTON),
     TONE(OptionGroup.ALARM, Kind.CHOICE), VOLUME(OptionGroup.ALARM, Kind.CHOICE), SNOOZE(OptionGroup.ALARM, Kind.CHOICE),
     VIBRATION(OptionGroup.ALARM, Kind.CHOICE), TRY_ALARM(OptionGroup.ALARM, Kind.BUTTON),
     DIM(OptionGroup.BEDSIDE, Kind.CHECK),
@@ -61,6 +61,7 @@ enum class OptionRow(val group: OptionGroup, val kind: Kind) {
 private val FACES = listOf("Analogue", "Digital", "Flip Clock", "LCD Digital")
 private val ONLY_ANALOGUE = listOf("Analogue")
 private val OFF_ON = listOf("Off", "On")
+private val WHEN_CHARGING = listOf("Do Nothing", "Display Clock", "Enter Bedside Mode")
 
 /** A choice row's open list: its values' texts and the one chosen now ([now] dates the zones' offsets). */
 fun choices(row: OptionRow, s: ClockSettings, now: Instant = Instant.now()): Pair<List<String>, Int> = when (row) {
@@ -72,6 +73,7 @@ fun choices(row: OptionRow, s: ClockSettings, now: Instant = Instant.now()): Pai
         (listOf(zoneLabel(own, now)) + ids.filter { it != own }.map { zoneLabel(it, now) }) to
             (if (s.display.homeZone == null) 0 else ids.filter { it != own }.indexOf(shown) + 1).coerceAtLeast(0)
     }
+    OptionRow.WHEN_CHARGING -> WHEN_CHARGING to s.display.charging.ordinal
     OptionRow.TONE -> ALARM_TONES.map { it.second } to ALARM_TONES.indexOfFirst { it.first == s.options.tone }.coerceAtLeast(0)
     OptionRow.VOLUME -> VOLUME_LIST.map(::volumeText) to VOLUME_LIST.indexOf(s.options.volume).coerceAtLeast(0)
     OptionRow.SNOOZE -> SNOOZE_LIST.map(::snoozeText) to SNOOZE_LIST.indexOf(s.options.snooze).coerceAtLeast(0)
@@ -81,7 +83,7 @@ fun choices(row: OptionRow, s: ClockSettings, now: Instant = Instant.now()): Pai
     OptionRow.TIMER_TONE -> ALARM_TONES.map { it.second } to ALARM_TONES.indexOfFirst { it.first == s.timer.tone }.coerceAtLeast(0)
     OptionRow.TIMER_VOLUME -> VOLUME_LIST.map(::volumeText) to VOLUME_LIST.indexOf(s.timer.volume).coerceAtLeast(0)
     OptionRow.TIMER_VIBRATION -> OFF_ON to if (s.timer.vibrate) 1 else 0
-    OptionRow.SET_TIME, OptionRow.TRY_ALARM, OptionRow.TRY_TIMER, OptionRow.DIM -> emptyList<String>() to 0
+    OptionRow.SET_TIME, OptionRow.TRY_ALARM, OptionRow.TRY_TIMER, OptionRow.DIM, OptionRow.DISMISS -> emptyList<String>() to 0
 }
 
 /** The settings with value [index] of [row]'s list chosen. */
@@ -91,6 +93,7 @@ fun choose(row: OptionRow, s: ClockSettings, index: Int, now: Instant = Instant.
         val own = ZoneId.systemDefault().id
         s.copy(display = s.display.copy(homeZone = if (index == 0) null else cityZones(now).filter { it != own }[index - 1]))
     }
+    OptionRow.WHEN_CHARGING -> s.copy(display = s.display.copy(charging = WhenCharging.entries[index]))
     OptionRow.TONE -> s.copy(options = s.options.copy(tone = ALARM_TONES[index].first))
     OptionRow.VOLUME -> s.copy(options = s.options.copy(volume = VOLUME_LIST[index]))
     OptionRow.SNOOZE -> s.copy(options = s.options.copy(snooze = SNOOZE_LIST[index]))
@@ -98,13 +101,21 @@ fun choose(row: OptionRow, s: ClockSettings, index: Int, now: Instant = Instant.
     OptionRow.TIMER_TONE -> s.copy(timer = s.timer.copy(tone = ALARM_TONES[index].first))
     OptionRow.TIMER_VOLUME -> s.copy(timer = s.timer.copy(volume = VOLUME_LIST[index]))
     OptionRow.TIMER_VIBRATION -> s.copy(timer = s.timer.copy(vibrate = index == 1))
-    OptionRow.STOPWATCH_FACE, OptionRow.TIMER_FACE, OptionRow.SET_TIME, OptionRow.TRY_ALARM, OptionRow.TRY_TIMER, OptionRow.DIM -> s
+    OptionRow.STOPWATCH_FACE, OptionRow.TIMER_FACE, OptionRow.SET_TIME, OptionRow.TRY_ALARM, OptionRow.TRY_TIMER, OptionRow.DIM, OptionRow.DISMISS -> s
 }
 
 /** The value a choice row shows. */
 fun shown(row: OptionRow, s: ClockSettings, now: Instant = Instant.now()): String = choices(row, s, now).let { (list, i) -> list[i] }
 
-/** The check boxes: Dim Screen. */
-fun checked(row: OptionRow, s: ClockSettings): Boolean = row == OptionRow.DIM && s.display.dim
+/** The check boxes: Dismiss Clock Automatically and Dim Screen. */
+fun checked(row: OptionRow, s: ClockSettings): Boolean = when (row) {
+    OptionRow.DIM -> s.display.dim
+    OptionRow.DISMISS -> s.display.dismiss
+    else -> false
+}
 
-fun toggle(row: OptionRow, s: ClockSettings): ClockSettings = if (row == OptionRow.DIM) s.copy(display = s.display.copy(dim = !s.display.dim)) else s
+fun toggle(row: OptionRow, s: ClockSettings): ClockSettings = when (row) {
+    OptionRow.DIM -> s.copy(display = s.display.copy(dim = !s.display.dim))
+    OptionRow.DISMISS -> s.copy(display = s.display.copy(dismiss = !s.display.dismiss))
+    else -> s
+}

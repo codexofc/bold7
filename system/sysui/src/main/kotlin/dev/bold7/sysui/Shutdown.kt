@@ -53,7 +53,7 @@ internal class ShutdownScreen(loader: ClassLoader, private val images: (Context)
         val theme = res.getIdentifier("Theme.SystemUI.Dialog.GlobalActions", "style", "com.android.systemui")
         check(theme != 0) { "shutdown: no Theme.SystemUI.Dialog.GlobalActions" }
         val text = context.getString(res.getIdentifier(words, "string", "android"))
-        val busy = images[SHUTDOWN_BUSY]
+        val busy = images.animation(SHUTDOWN_BUSY)
 
         val dialog = Dialog(context, theme)
         val window = dialog.window!!
@@ -86,8 +86,8 @@ internal class ShutdownScreen(loader: ClassLoader, private val images: (Context)
         dialog.setContentView(FrameLayout(context).apply { addView(image, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.CENTER)) })
         dialog.setCancelable(false)
         dialog.show()
-        // An animated GIF comes out of Resources as an AnimatedImageDrawable, drawn by the render
-        // thread; anything else would stay on its first frame.
+        // The GIF whole is an AnimatedImageDrawable (Images.animation), drawn by the render thread;
+        // anything else (an empty image) stays as it is.
         (busy as? Animatable)?.start()
         Log.i(TAG, "shutdown: OS 7's screen (reboot=$isReboot, ${if (busy is Animatable) "busy clock turning" else "busy clock still"})")
         return true

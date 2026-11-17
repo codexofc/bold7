@@ -15,6 +15,9 @@ echo 0 >"$MODDIR/boot_count"
 # the keyboard and the trackpad back to Android whenever it ends, and does not start while
 # bold7_trackpad_off is 1. In its own session, its output to bold7.log.
 setsid sh "$MODDIR/trackpad-start.sh" "$MODDIR" </dev/null >/dev/null 2>&1 &
+# The LED of OS 7 (bold7-led): flashes the colour the launcher writes to bold7_led, until reboot;
+# gives the LED back to Android when it ends. Its own session, its output to bold7.log.
+setsid "$MODDIR/bin/bold7-led" "$MODDIR" </dev/null >/dev/null 2>&1 &
 # Typing (dev.bold7.saisie), not directBootAware, is replaced by BBKB while the user's
 # storage is still encrypted: saisie-start.sh waits for it to open (15 minutes at most), then
 # selects Typing again if bold7_saisie is 1 and it is installed. Its output to bold7.log.

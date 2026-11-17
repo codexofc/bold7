@@ -20,6 +20,14 @@ class LockTest {
         assertEquals(OwnerLines(null, null), ownerLines(" \n "))
     }
 
+    // Options' Message on Lock Screen writes what the lock screen reads back.
+    @Test fun ownerTextRoundTrips() {
+        assertEquals(OwnerLines("Sam", "If found, call 555-0100"), ownerLines(ownerText(" Sam ", "If found, call 555-0100")))
+        assertEquals("Sam", ownerText("Sam", "  "))
+        assertEquals("", ownerText("", ""))
+        assertEquals(OwnerLines("Sam", "a\nb"), ownerLines(ownerText("Sam", "a\nb")))
+    }
+
     // The profile the launcher publishes, as the home shows it: Medium's speaker with one yellow
     // wave (sim-308), Normal's (sim-337), and every other profile's frame, whatever Android's ringer.
     @Test fun speakerIsTheProfileInUse() {

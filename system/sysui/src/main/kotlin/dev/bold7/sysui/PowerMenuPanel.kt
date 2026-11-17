@@ -50,7 +50,7 @@ internal class PowerMenuScreen(
         }
         val buttons = powerButtons(offered.keys)
         val labels = buttons.map { images.text(label(it)) }
-        val view = DialogView(images.context(dialog.context), images.text(R.string.power_question), labels, DialogIcon.QUESTION)
+        val view = DialogView(images.context, images.text(R.string.power_question), labels, DialogIcon.QUESTION)
         view.focused = powerFocus(buttons)
         val content = dialog.findViewById<ViewGroup>(android.R.id.content)
         val stock = (0 until content.childCount).map(content::getChildAt)

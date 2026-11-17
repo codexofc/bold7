@@ -28,6 +28,8 @@ dependencies {
     // Mail: IMAP, IDLE and SMTP, the accounts sealed by the Keystore.
     // This process holds the accounts and the network; Messages asks it (MailContract).
     implementation(project(":core:mail"))
+    // The Bold7 logo as its icon (Settings > Apps, its notifications).
+    implementation(project(":core:brand"))
     // runBlocking on the sources' own thread, around the store's suspend writes. Apache 2.0,
     // already in the launcher.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

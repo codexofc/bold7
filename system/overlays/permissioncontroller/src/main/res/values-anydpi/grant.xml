@@ -21,7 +21,7 @@
 
      The panel itself: PermissionGrantDialogMaterial3 draws ?android:windowBackground of
      Theme.PermissionGrantDialog, a Light.Dialog.Alert theme, which Bold7Android turns into the dark
-     box of OS 7 (border_popup.png as a 9-patch, whose padding is the inside of its border). -->
+     box of OS 7 (border_popup.png as a 9-patch on alert_dark_frame, whose padding is the inside of its border). -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingDefaultResource">
 
     <!-- The text block, as the framework's alert (alert_dialog_material.xml, sim-19, C): 18 px

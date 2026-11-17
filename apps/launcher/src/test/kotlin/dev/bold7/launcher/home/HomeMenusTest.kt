@@ -13,6 +13,7 @@ import dev.bold7.launcher.home.HomeAction.MARK_FAVOURITE
 import dev.bold7.launcher.home.HomeAction.MAXIMISE_PANEL
 import dev.bold7.launcher.home.HomeAction.MOVE
 import dev.bold7.launcher.home.HomeAction.RESTORE_PANEL
+import dev.bold7.launcher.home.HomeAction.MANAGE_PANELS
 import dev.bold7.launcher.home.HomeAction.OPTIONS
 import dev.bold7.launcher.home.HomeAction.SHOW_ALL
 import dev.bold7.launcher.home.HomeAction.SWITCH_APPLICATION
@@ -79,15 +80,15 @@ class HomeMenusTest {
         val s = loaded()
         // sim-04 without Manage Panels (not offered): Switch Application first, Maximise Panel focused.
         val home = fullMenu(s, null)
-        assertEquals(listOf(SWITCH_APPLICATION, MAXIMISE_PANEL, ADD_FOLDER, SHOW_ALL, OPTIONS), home.actions())
+        assertEquals(listOf(SWITCH_APPLICATION, MAXIMISE_PANEL, ADD_FOLDER, MANAGE_PANELS, SHOW_ALL, OPTIONS), home.actions())
         assertEquals(1, home.highlighted)
         val onIcon = fullMenu(s, 0)
-        assertEquals(listOf(SWITCH_APPLICATION, MARK_FAVOURITE, MOVE, HIDE, LAUNCH, MAXIMISE_PANEL, ADD_FOLDER, SHOW_ALL, OPTIONS), onIcon.actions())
+        assertEquals(listOf(SWITCH_APPLICATION, MARK_FAVOURITE, MOVE, HIDE, LAUNCH, MAXIMISE_PANEL, ADD_FOLDER, MANAGE_PANELS, SHOW_ALL, OPTIONS), onIcon.actions())
         assertEquals(LAUNCH, onIcon.entries[onIcon.highlighted!!].action)
         // A line above the home's actions only, after the icon's (sim-04's groups).
         assertEquals(listOf(1, 5), onIcon.entries.withIndex().filter { it.value.separatorAbove }.map { it.index })
         assertEquals(listOf(1), home.entries.withIndex().filter { it.value.separatorAbove }.map { it.index })
         // Raised, the tray is restored; all shown already, no Show All.
-        assertEquals(listOf(SWITCH_APPLICATION, RESTORE_PANEL, ADD_FOLDER, OPTIONS), fullMenu(reduce(reduce(s, HomeEvent.Expand(true)), HomeEvent.ShowAll), null).actions())
+        assertEquals(listOf(SWITCH_APPLICATION, RESTORE_PANEL, ADD_FOLDER, MANAGE_PANELS, OPTIONS), fullMenu(reduce(reduce(s, HomeEvent.Expand(true)), HomeEvent.ShowAll), null).actions())
     }
 }

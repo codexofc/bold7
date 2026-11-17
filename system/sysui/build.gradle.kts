@@ -2,26 +2,31 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins { id("com.android.application") }
 
-// Status bar images, out of git (provenance in assets-private/MANIFEST.md), copied into this
-// checkout's assets-gen by tools/import-assets.sh. The same lines serve any module with private resources:
-// assets-gen/<module>/res, added as a resource folder, the build refusing to go without it.
+// The images of the 9900's theme SystemUI draws (banner, indicators, lock screen, volume, the
+// shutdown's busy clock), out of git (provenance in assets-private/MANIFEST.md), copied into this
+// checkout's assets-gen by tools/import-assets.sh bandeau systeme. Read by name at run time
+// (Images, through core/theme): from the folder the module mounts, else from these compiled
+// resources, which only the development build carries. A public build (-Pbold7.public=true)
+// carries none of them.
 val privateRes = rootProject.file("assets-gen/sysui/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 android {
     namespace = "dev.bold7.sysui"
     buildTypes.getByName("release").proguardFiles("proguard-rules.pro")
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }
 
-// A missing image would throw in SystemUI's process: no APK unless the tests pass, among them
-// IndicatorsTest.everyImageNameHasItsDrawable, which looks for each image the code can ask for.
-// AGP only creates the debug unit tests; the logic is the same in release.
-afterEvaluate {
+// The development APK only with its tests passed, among them those that find in assets-gen each
+// image the code can ask for: a missing one is drawn empty and counted, never a throw, but
+// is a defect. AGP only creates the debug unit tests; the logic is the same in release. A public
+// build has no assets-gen to test against.
+if (!public) afterEvaluate {
     tasks.matching { it.name == "assembleDebug" || it.name == "assembleRelease" }.configureEach { dependsOn("testDebugUnitTest") }
 }
 
@@ -29,7 +34,7 @@ afterEvaluate {
 // fingerprint and hook targets against. Inputs, or a change to them alone would find the tests
 // up to date and ship anyway.
 tasks.withType<Test>().configureEach {
-    inputs.dir(privateRes)
+    if (privateRes.isDirectory) inputs.dir(privateRes)
     inputs.file(rootProject.file("stubs/device/MtkSystemUI.apk"))
     inputs.file(rootProject.file("stubs/systemui.jar"))
 }
@@ -50,6 +55,9 @@ dependencies {
     implementation(project(":core:ui"))
     // The showcase's counters, carrier and alarm (bold7_showcase), for the captures.
     implementation(project(":core:showcase"))
+    // The package to icon table and the template of the generated icon, the launcher's: the
+    // other apps' indicators in the banners SystemUI draws (AppIndicators).
+    implementation(project(":core:icons"))
     testImplementation(kotlin("test-junit"))
 }
 

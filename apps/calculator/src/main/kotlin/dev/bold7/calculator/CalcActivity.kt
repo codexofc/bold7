@@ -99,7 +99,7 @@ class CalcActivity : Activity() {
                 if (!calc.error) status(this, "$before $from = ${calc.display} $to")
             }
             // Help has no source for its text; closes the menu until one exists.
-            Item.Help -> show(null)
+            Item.Help -> { show(null); dev.bold7.ui.Help.open(this, "calculator") }
             Item.Switch -> { show(null); SwitchApplication.start(this) }
             Item.Close -> show(null)
         }

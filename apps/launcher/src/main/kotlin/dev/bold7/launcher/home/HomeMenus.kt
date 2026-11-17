@@ -10,7 +10,7 @@ import dev.bold7.ui.withSwitchApplication
 enum class HomeAction {
     LAUNCH, MARK_FAVOURITE, UNMARK_FAVOURITE, MOVE, MOVE_TO_FOLDER, HIDE, UNHIDE, DELETE,
     OPEN_FOLDER, EDIT_FOLDER, DELETE_FOLDER,
-    MAXIMISE_PANEL, RESTORE_PANEL, ADD_FOLDER, SHOW_ALL, OPTIONS, SWITCH_APPLICATION,
+    MAXIMISE_PANEL, RESTORE_PANEL, ADD_FOLDER, MANAGE_PANELS, SHOW_ALL, OPTIONS, SWITCH_APPLICATION,
 }
 
 /** Where Move to Folder can take an app: the folder at [place] of the layout, or out to the home (null). */
@@ -59,13 +59,14 @@ fun shortMenu(state: HomeState, index: Int): HomeMenu? {
 
 /**
  * The full menu (the Menu key, sim-04): Switch Application, the focused icon's
- * actions, then the home's. Of sim-04's, Manage Panels is not offered; Maximise Panel becomes Restore Panel raised (D), Show All goes once all shows.
+ * actions, then the home's, sim-04's order; Maximise Panel becomes Restore Panel raised (D), Show All (B) goes once all shows.
  */
 fun fullMenu(state: HomeState, index: Int?): HomeMenu {
     val icon = index?.let { iconActions(state, it) }.orEmpty()
     val home = buildList {
         add(if (state.expanded) HomeAction.RESTORE_PANEL else HomeAction.MAXIMISE_PANEL)
         add(HomeAction.ADD_FOLDER)
+        add(HomeAction.MANAGE_PANELS)
         if (!state.showAll) add(HomeAction.SHOW_ALL)
         add(HomeAction.OPTIONS)
     }

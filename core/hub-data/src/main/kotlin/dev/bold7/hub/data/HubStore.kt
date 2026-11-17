@@ -244,9 +244,12 @@ class HubStore(private val db: HubDatabase, private val now: () -> Long, private
             }
     }
 
-    /** The rows of [HubContract.KINDS_URI]: (kind, unread) for each kind with unread items. Blocking. */
+    /** The rows of [HubContract.KINDS_URI]: (kind, unread, null) for each kind with unread items, then (NOTIFICATION, unread, app) for each other app. Blocking. */
     fun kindRows(smsApp: String?, dialer: String?): List<Array<Any?>> = db.runInTransaction<List<Array<Any?>>> {
-        unreadByKind(dao.accountsNow(), dao.itemsNow(), smsApp, dialer).map { (kind, n) -> arrayOf(kind.name, n) }
+        val accounts = dao.accountsNow()
+        val items = dao.itemsNow()
+        unreadByKind(accounts, items, smsApp, dialer).map { (kind, n) -> arrayOf<Any?>(kind.name, n, null) } +
+            unreadByApp(accounts, items, smsApp, dialer).map { (app, n) -> arrayOf<Any?>(ItemKind.NOTIFICATION.name, n, app) }
     }
 
     /** The items of these notifications (their keys), as stored: what HubEffects judges. Blocking. */

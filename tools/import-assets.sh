@@ -24,7 +24,8 @@
 #              lists (cat_*.png of the theme, 60x60), the disabled button (border_button~disabled,
 #              as a 9-patch) and Word Substitution's text field (border_form, a 9-patch)
 #              and, for Wi-Fi Network and Bluetooth, the signal strip of _bs1, the
-#              lock and the Bluetooth device icons
+#              lock and the Bluetooth device icons; Downloads Folder's folders (up_folder,
+#              folder, 30x30)
 #   sons       sounds/<cod>/<path>: the sounds system/module/sounds.tsv names, from bbos7-9900/sounds/
 #
 #   ui         ui/res/drawable-nodpi/ui_*: what core/ui draws, the full and the short menu,
@@ -36,7 +37,9 @@
 #              dialog buttons, as 9-patches with their content band, for the framework overlay
 #              (system/overlays/android); permissioncontroller/res/drawable-nodpi/
 #              bold7_button*.9.png: the two button images again, for its overlay;
-#              bold7_check_* and bold7_radio_*.png: the lists' check boxes and radio buttons
+#              bold7_check_* and bold7_radio_*.png: the lists' check boxes and radio buttons;
+#              bold7_wait_00 to _11.png: the frames of OS 7's wait indicator, and
+#              bold7_handle.png: its text selection handle
 #
 #   messages  messages/res/drawable-nodpi/msg_*.png: what apps/messages draws, the
 #              42 px status icon strips of messages and calls, the list's scroll arrows (GIF made
@@ -44,10 +47,11 @@
 #              field (9-patch) and smiley button; the 45 px emoticons of Add Smiley; mail's
 #              send button, form field and reply, forward and draft images; the three
 #              icons of Messages Options' rows, the picker's folder and the player's controls
-#   saisie     saisie/assets/substitution/en.tsv: OS 7's English word substitution (autotext_en.tsv);
-#              saisie/assets/dictionary/fr.tsv, en.tsv: the merged word lists of AOSP and OS 7
-#              (merged_fr.tsv; merged_en.tsv, British English, the simulator's, with the words only
-#              American has), from assets-private/saisie/dictionnaires
+#   saisie     saisie/assets/os7/substitution/en.tsv: OS 7's English word substitution (autotext_en.tsv);
+#              saisie/assets/os7/dictionary/fr.tsv, en.tsv: OS 7's part of the word lists, the lines of
+#              the merged lists of AOSP and OS 7 (merged_fr.tsv; merged_en.tsv, British English with the
+#              words only American has) that AOSP's lists in git (apps/saisie/src/main/assets/dictionary)
+#              lack, from assets-private/saisie/dictionnaires
 #   phone      phone/res/drawable-nodpi/ph_*.png: what apps/phone draws, the call
 #              screen's background, avatar, bottom bar, buttons and volume, the call log's 42 px
 #              strip and the short menu's sm_* images, unchanged
@@ -72,10 +76,9 @@
 #   bandeau    sysui/res/drawable-nodpi/banner_*.png: the indicators of an app's banner (battery,
 #              signal, Wi-Fi, roaming, GPS, NFC, Bluetooth, alarm, profiles, counters), one frame
 #              of the theme's strips each
-#   indicateurs sysui/res/drawable-nodpi/status_*.png: the status icons of Android that the theme has
-#              no image for (hotspot, VPN, TTY, data saver, cast, screen recording, camera,
-#              microphone, sensors off, work profile, sync, rotation, headset, speakerphone, Wi-Fi
-#              calling, Ethernet), drawn here in the style of the Ribbon strips, D
+#   indicateurs removes sysui/res/drawable-nodpi/status_*.png, written here before: the status icons
+#              of Android that the theme has no image for are ours (D), in git under
+#              system/sysui/src/main/res/drawable-nodpi, so that the public APK carries them
 #   systeme    sysui/res/drawable-nodpi/lock_*.png: the lock screen's banner, indicator row,
 #              speaker, padlock and Emergency handset; vol_*.png: the volume overlay's
 #              background, bars and output icons; shutdown_busy.gif: the busy clock
@@ -84,11 +87,20 @@
 #              and _02b_t) and its default home image (background_homescreen.png), each cut to
 #              720x720 (cover: scaled by 1.5, centre 720 px kept; docs/BBOS7-VISUEL.md, section 24);
 #              tools/fonds.sh puts them on the phone
+#   help       help/: the help of the 9900 in British English (net_rim_bb_help_9900_series__en_GB),
+#              its pages decoded from RIM's YK compression (docs/YK.md) by core/firmware, the code
+#              the phone runs (./gradlew :core:firmware:decodeHelp), from the OS Loader in
+#              assets-private/firmware/bbos7-9900/; style sheets, pictures, search index unchanged;
+#              help/theme/cat_*.png, the theme's category icons the pages name
 #   demarrage  bootanim/logo.png: the boot screen's logo, cut from sim-01-demarrage.png
 #   bb10       nothing is copied any more: it only removes from this checkout what
 #              it used to write of BB10, the Hub's hub_* and the search's bbia_* (launcher/res), the
 #              test app's glyphs (essai/res), SystemUI's images
 #
+#   glyphes    (only when asked) draws those status icons again into system/sysui/src/main/res/
+#              drawable-nodpi (hotspot, VPN, TTY, data saver, cast, screen recording, camera,
+#              microphone, sensors off, work profile, sync, rotation, headset, speakerphone, Wi-Fi
+#              calling, Ethernet), in the style of the Ribbon strips, metadata stripped
 #   telephone  (only when asked) device/fonts.xml: adb pull of the phone's /system/etc/fonts.xml,
 #              read-only, with device/fonts.xml.source (build fingerprint and sha256); after an OTA.
 #              While a Bold7 or Cascade module is mounted, the pulled file is a derived one: kept out.
@@ -143,29 +155,32 @@ HOME_IMAGES=(
   banner_background        # 640x93, the banner (uniform columns: widens to 720)
   banner_divider           # 640x1, its bottom line
   indicator_bar_background # 640x47, the indicator row under it (uniform columns)
-  tab                      # 120x43, the view tabs' strip
   tabmanager_header_line_top tabmanager_header_line_bottom # 640x2, the strip's lines
-  background_homescreen    # 640x480, the default wallpaper (sim-02)
   # The home screen. The banner's strips (frames side by side, rows of states), lowercased with "-" as "_":
   net_rim_Indicator_BatteryLevel-icons50x25 net_rim_Ribbon_SignalLevel-icons49x19
   net_rim_Ribbon_WlanSignalLevel-icons30x24 net_rim_Ribbon_Profile-icons43x43
   net_rim_Ribbon_UnreadCount-icons33x29
   net_rim_Alarm_Indicator-icons21x21 # 21x21, the alarm set, right of the battery
+  # 18x29, the charging bolt over the battery, fading in (homescreen-banner.pme; _00 is empty)
+  lightning_bolt_01 lightning_bolt_02 lightning_bolt_03 lightning_bolt_04 lightning_bolt_05
   banner_search_button     # 43x43, the indicator row's magnifier
   banner_voice_button      # 43x43, the universal search's microphone, at the right of its field (sim-54)
-  homescreen_filter_background # 640x47, black at 40 %: under the tab and the collapsed row (C)
   homescreen_mask_p        # 640x47, the tab's dark edges over the neighbouring views' names
   folder                   # 92x92, a folder's icon in the grid
   net_rim_bb_ribbon_app    # 92x92, the Home Screen icon of the app switcher (sim-05)
-  net_rim_Folder-icons32x32 # the open folder's header icon (4 frames: closed, closed, ..., open)
   background_folderview    # 480x39, the open folder's header band
   icon_move_underlay       # 90x95, the icon being moved (arrows)
   new_overlay              # 92x92, the red star over an icon with something new (sim-15)
   # The short menu's glyphs (82x55, core/ui draws them).
-  sm_launch sm_delete sm_add_folder sm_edit_folder sm_delete_folder
+  sm_launch sm_delete sm_add_folder sm_delete_folder
   bs1/banner_background~focus # 640x92, the banner with the trackpad's focus (net_rim_theme_..._bs1)
   bs1/sm_mark_favourite bs1/sm_unmark_favourite bs1/sm_move bs1/sm_move_to_folder bs1/sm_hide
-  bs1/sm_unhide bs1/sm_full_menu bs1/sm_folder_open bs1/sm_rename_folder
+  bs1/sm_unhide bs1/sm_folder_open bs1/sm_rename_folder
+  # The folder icons of Add Folder and Edit Folder after folder (92x92, _bs1; their order in the
+  # chooser, sim-474, sim-475, C); an open folder's header shows its icon at half size (sim-482).
+  bs1/folder01 bs1/folder02 bs1/folder03 bs1/folder04 bs1/folder05 bs1/folder06 bs1/folder07
+  bs1/folder08 bs1/folder09 bs1/folder10 bs1/folder11 bs1/folder12 bs1/folder13 bs1/folder14
+  bs1/folder15 bs1/folder16 bs1/folder17 bs1/folder18 bs1/folder19 bs1/folder20
 )
 
 accueil() {
@@ -230,7 +245,9 @@ options() {
     substitution:cat_typing_input_autotext spell_check:cat_typing_input_spellcheck \
     messages:cat_app_messages reminders:cat_help_calendar mobile:cat_mobile_network wifi:cat_connectivity_wifi \
     bluetooth:cat_connectivity_bluetooth nfc:cat_app_nfc about:cat_device_about_device memory:cat_device_memory \
-    status:cat_device_status_info password:cat_security_password encryption:cat_security_encryption; do
+    status:cat_device_status_info password:cat_security_password encryption:cat_security_encryption \
+    device_advanced:cat_device_advanced checkmark:cat_toolkit_checkmark \
+    home_screen:cat_display_home_screen_preferences; do
     need "$THEME/${pair#*:}.png"
     cp "$THEME/${pair#*:}.png" "$dir/opt_${pair%%:*}.png"
   done
@@ -240,6 +257,12 @@ options() {
   # Word Substitution's Replace and With: the form's field, as Contacts' (sim-184).
   need "$THEME/border_form.png"
   ninepatch "$THEME/border_form.png" "$dir/opt_field.9.png" 4 4 4 4
+  # Home Screen Preferences' Downloads Folder (sim-284, C): the folder before the value, the
+  # theme's 92 px folders as the 9900 draws them there, 30 px (folder ink 24x23 from x 462, y 378):
+  # up_folder (a house on it) for Home, folder for a folder of the home (D, no capture of one).
+  need "$THEME/up_folder.png" "$THEME/folder.png"
+  magick "$THEME/up_folder.png" -resize 30x30 "$dir/opt_home_folder.png"
+  magick "$THEME/folder.png" -resize 30x30 "$dir/opt_folder.png"
   # Wi-Fi Network: the signal strip of _bs1 (five 58x27 frames: off, none, one to
   # three bars) and the lock of a secured network; Bluetooth's device icons (six 42x42 frames).
   local bs1=$OS7/theme/net_rim_theme_BlackBerry7_640x480_bs1
@@ -304,6 +327,8 @@ bandeau() {
     frame net_rim_Indicator_BatteryLevel-icons50x25 50 25 "$i" 0 "battery_$i"
     frame net_rim_Indicator_BatteryLevel-icons50x25 50 25 "$i" 2 "battery_charging_$i"
   done
+  # The charging bolt over the battery, fading in (banner.pme, lockscreen.pme; _00 is empty).
+  for i in 1 2 3 4 5; do frame "lightning_bolt_0$i" 18 29 0 0 "bolt_$i"; done
   # Signal: OFF, X, 0 to 5 bars, SOS.
   frame net_rim_Ribbon_SignalLevel-icons49x19 49 19 0 0 signal_off
   frame net_rim_Ribbon_SignalLevel-icons49x19 49 19 1 0 signal_x
@@ -328,11 +353,12 @@ bandeau() {
   frame net_rim_Ribbon_Profile-icons43x43 43 43 2 0 profile_silent 43x33+0+5
   frame net_rim_Ribbon_Profile-icons43x43 43 43 4 0 profile_phone_only 43x33+0+5
   # Counters of an app's banner (GridIndicators font-size=32): mail, calendar, text message,
-  # missed call.
+  # missed call, and the "?" bubble of another app without its own icon.
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 0 0 count_email
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 4 0 count_calendar
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 6 0 count_sms
   frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 14 0 count_missed_call
+  frame net_rim_Ribbon_UnreadCount-icons33x29 33 29 7 0 count_other
   echo "bandeau: $(ls "$dir"/banner_*.png | wc -l | tr -d ' ') banner images in $dir"
 }
 
@@ -445,6 +471,16 @@ dialogues() {
     IFS=: read -r name x y <<< "$cell"
     magick "$THEME/net_rim_system_Check-icons27x27.png" -crop "27x27+$x+$y" +repage "PNG32:$dir/bold7_$name.png"
   done
+  # The wait indicator of OS 7 (the green ring of sim-111, C): the twelve 27x27 frames of _bs1's
+  # net_rim_progress.png, for the framework's ProgressBar (drawable/wait_bold7.xml).
+  local bs1=$OS7/theme/net_rim_theme_BlackBerry7_640x480_bs1 i
+  need "$bs1/net_rim_progress.png"
+  for i in 00 01 02 03 04 05 06 07 08 09 10 11; do
+    magick "$bs1/net_rim_progress.png" -crop "27x27+$((10#$i * 27))+0" +repage "PNG32:$dir/bold7_wait_$i.png"
+  done
+  # The text selection handle: theme.xml names border_trackpad_end for text_selection_handle_up.
+  need "$THEME/border_trackpad_end.png"
+  cp "$THEME/border_trackpad_end.png" "$dir/bold7_handle.png"
   echo "dialogues: $(ls "$dir"/bold7_* | wc -l | tr -d ' ') theme images in $dir"
   # The permission request's buttons (system/overlays/permissioncontroller) are
   # another package's overlay, which cannot name the framework overlay's drawables: its own copy.
@@ -488,11 +524,12 @@ messages() {
   cp "$THEME/smiley_button.png" "$dir/msg_smiley.png"
   ninepatch "$THEME/border_reply_field.png" "$dir/msg_field.9.png" 13 17 13 16
   # The icons of Messages Options' rows (sim-294, sim-295, C): Message Display
-  # and Actions (cat_app_options_sub), Inbox Management, Email Account Management.
-  need "$THEME/cat_app_options_sub.png" "$THEME/cat_app_messages_inbox_settings.png" "$THEME/cat_app_messages_email_acc_management.png"
+  # and Actions (cat_app_options_sub), Inbox Management, Email Account Management, Text Messaging.
+  need "$THEME/cat_app_options_sub.png" "$THEME/cat_app_messages_inbox_settings.png" "$THEME/cat_app_messages_email_acc_management.png" "$THEME/cat_app_sms_n_mms.png"
   cp "$THEME/cat_app_options_sub.png" "$dir/msg_cat_display.png"
   cp "$THEME/cat_app_messages_inbox_settings.png" "$dir/msg_cat_inbox.png"
   cp "$THEME/cat_app_messages_email_acc_management.png" "$dir/msg_cat_accounts.png"
+  cp "$THEME/cat_app_sms_n_mms.png" "$dir/msg_cat_texts.png"
   # The 45 emoticons of the SMS app (net_rim_bb_sms), 45 px in the list Add Smiley
   # opens (gsm 024 and sim-145; the 27 px strip is core/ui's, block ui), the smiley button's focus
   # (sim-146) and Add Smiley's short menu image.
@@ -526,16 +563,19 @@ messages() {
 }
 
 saisie() {
-  # What apps/saisie reads from its assets. No French substitution list exists in the
-  # firmware: ours is in git (apps/saisie/src/main/assets/substitution/fr.tsv).
-  local src=$ASSETS/saisie/dictionnaires dir=$OUT/saisie/assets
-  need "$src/autotext_en.tsv" "$src/merged_fr.tsv" "$src/merged_en.tsv"
-  rm -rf "$dir"
+  # What apps/saisie reads of OS 7 (os7/), laid over what is in git (apps/saisie/src/main/assets):
+  # AOSP's word lists and our French substitution (no French list exists in the firmware). OS 7's
+  # part of a word list is the lines of the merged list that AOSP's lacks: laid over AOSP's, they
+  # give the merged list back.
+  local src=$ASSETS/saisie/dictionnaires dir=$OUT/saisie/assets/os7 aosp=apps/saisie/src/main/assets/dictionary lang
+  need "$src/autotext_en.tsv" "$src/merged_fr.tsv" "$src/merged_en.tsv" "$aosp/fr.tsv" "$aosp/en.tsv"
+  rm -rf "$OUT/saisie/assets"
   mkdir -p "$dir/substitution" "$dir/dictionary"
   cp "$src/autotext_en.tsv" "$dir/substitution/en.tsv"
-  cp "$src/merged_fr.tsv" "$dir/dictionary/fr.tsv"
-  cp "$src/merged_en.tsv" "$dir/dictionary/en.tsv"
-  echo "saisie: $(grep -c . "$dir/substitution/en.tsv") substitutions, $(wc -l < "$dir/dictionary/fr.tsv" | tr -d ' ') and $(wc -l < "$dir/dictionary/en.tsv" | tr -d ' ') words in $dir"
+  for lang in fr en; do
+    LC_ALL=C comm -23 <(LC_ALL=C sort "$src/merged_$lang.tsv") <(LC_ALL=C sort "$aosp/$lang.tsv") > "$dir/dictionary/$lang.tsv"
+  done
+  echo "saisie: $(grep -c . "$dir/substitution/en.tsv") substitutions, $(wc -l < "$dir/dictionary/fr.tsv" | tr -d ' ') and $(wc -l < "$dir/dictionary/en.tsv" | tr -d ' ') lines of OS 7 in $dir"
 }
 
 phone() {
@@ -588,15 +628,15 @@ clock() {
   # (border_clock_button and ~focus, 13x24: their dark rows 17 to 20 stretch, sim-153), the bar's
   # indicators (Alarm_Indicator and Snooze_Indicator, 73x48), the ring dialog's icon
   # (net_rim_alarm_reminder, 80x80), the buttons' icons (timer_start, timer_stop, timer_lap,
-  # timer_reset, 60x35); and the white "add an alarm" indicator, absent from the extraction, cut
-  # from sim-153 (x 287, y 417, 64x39) over the bar's #090909, its luminance made its alpha.
+  # timer_reset, 60x35). The white "add an alarm" indicator, absent from the extraction, is
+  # Bold7's own drawing (D), apps/clock/src/main/res/drawable-nodpi/clk_alarm_add.png.
   local dir=$OUT/clock/res/drawable-nodpi more=$OS7/theme/net_rim_theme_BlackBerry7_640x480_bs1
   local faces=$OS7/images/net_rim_bb_clock_faces_480/net/rim/device/apps/internal/clock/face/analog/images/size370
   local lib=$OS7/images/net_rim_bb_clock_lib/net/rim/device/apps/internal/clock/images/size316
-  local sim=$ASSETS/reference-bbos7/simulateur/sim-153-horloge.png i a
+  local i a
   need "$faces/face_370.png" "$lib/face_316.png" "$THEME/border_clock_button.png" "$THEME/border_clock_button~focus.png" \
     "$more/Alarm_Indicator.png" "$THEME/Snooze_Indicator.png" "$THEME/net_rim_alarm_reminder.png" \
-    "$THEME/timer_start.png" "$THEME/timer_stop.png" "$more/timer_lap.png" "$more/timer_reset.png" "$sim"
+    "$THEME/timer_start.png" "$THEME/timer_stop.png" "$more/timer_lap.png" "$more/timer_reset.png"
   mkdir -p "$dir"
   rm -f "$dir"/clk_*.png
   cp "$faces/face_370.png" "$dir/clk_face.png"
@@ -625,8 +665,6 @@ clock() {
     name=${set:-s}
     for i in 0 1 2 3 4 5 6 7 8 9 colon; do cp "$lcd/$set$i.png" "$dir/clk_lcd_${name}_$i.png"; done
   done
-  magick "$sim" -crop 64x39+287+417 +repage -colorspace gray -fx '(u-9/255)/(246/255)' \
-    \( +clone -fill white -colorize 100 \) +swap -compose CopyOpacity -composite "PNG32:$dir/clk_alarm_add.png"
   echo "clock: $(ls "$dir"/clk_*.png | wc -l | tr -d ' ') images in $dir"
 }
 
@@ -648,9 +686,8 @@ calendar() {
   magick "$OS7/images/net_rim_bb_otaupgrade/arrow_more.png" -fill '#E6E6E6' -colorize 100 "PNG32:$dir/cal_arrow_right.png"
   magick "$dir/cal_arrow_right.png" -flop "PNG32:$dir/cal_arrow_left.png"
   cp "$THEME/save.png" "$dir/cal_save.png"
-  # The Week view's all-day row marks its hours' column with a small green clock (sim-224, C: no
-  # file of the firmware matches it), cut from the capture on its flat #BBBDBF.
-  magick "$ASSETS/reference-bbos7/simulateur/sim-224-calendrier-semaine.png" -crop 29x29+19+164 +repage "PNG32:$dir/cal_allday.png"
+  # The Week view's all-day mark (a small green clock, sim-224) has no file in the firmware: it is
+  # Bold7's own drawing (D), apps/calendar/src/main/res/drawable-nodpi/cal_allday.png.
   echo "calendar: $(ls "$dir"/cal_*.png | wc -l | tr -d ' ') theme images in $dir"
 }
 
@@ -725,7 +762,7 @@ memopad() {
   # the pencil of sim-265, C) and the form's Save mark (sim-255, C).
   local dir=$OUT/memopad/res/drawable-nodpi
   need "$THEME/save.png"
-  pim_images "$dir" mem "sm_new sm_delete sm_open sm_edit"
+  pim_images "$dir" mem "sm_new sm_delete sm_open sm_edit sm_home sm_switch_apps"
   cp "$THEME/save.png" "$dir/mem_save.png"
   echo "memopad: $(ls "$dir"/mem_*.png | wc -l | tr -d ' ') theme images in $dir"
 }
@@ -809,12 +846,12 @@ systeme() {
 
 demarrage() {
   # The logo of the 9900's boot screen, cut out of the simulator's native snapshot
-  # (x 154, y 190, 332x58, docs/BBOS7-VISUEL.md section 11). The bar is drawn by tools/bootanim.py.
+  # (x 154, y 190, 332x59, docs/BBOS7-VISUEL.md section 11; on the phone, the extractor reads it from the firmware). The bar is drawn by tools/bootanim.py.
   local src=$ASSETS/reference-bbos7/simulateur/sim-01-demarrage.png dir=$OUT/bootanim
   need "$src"
   mkdir -p "$dir"
   rm -f "$dir"/logo.png
-  magick "$src" -crop 332x58+154+190 +repage -strip "$dir/logo.png"
+  magick "$src" -crop 332x59+154+190 +repage -strip "$dir/logo.png"
   echo "demarrage: logo in $dir"
 }
 
@@ -852,6 +889,13 @@ telephone() {
   cat "$OUT/device/fonts.xml.source"
 }
 
+help() {
+  local loader=$ASSETS/firmware/bbos7-9900/9900M_PBr7.1.0_rel2807_PL5.1.0.692_A7.1.0.1033_Wind.exe
+  need "$loader"
+  rm -rf "$OUT/help"
+  ./gradlew -q :core:firmware:decodeHelp -Ploader="$loader" -Pout="$PWD/$OUT"
+}
+
 fonds() {
   local out=$OUT/wallpapers f
   need "$THEME/background_homescreen.png"
@@ -873,17 +917,24 @@ fonds() {
 # One drawn glyph of the indicators block: $1 name, $2 width, $3 the ImageMagick -draw commands at
 # 1x (a 24 px high canvas, 2 px white strokes, no fill unless a command sets it), drawn at 8x and
 # scaled down for the antialiasing of the theme's own strips.
+GLYPHS=system/sysui/src/main/res/drawable-nodpi
 glyph() {
-  local dir=$OUT/sysui/res/drawable-nodpi
   magick -size "$(($2 * 8))x192" xc:none -stroke white -strokewidth 2 -fill none -draw "scale 8,8 $3" \
-    -filter Lanczos -resize "${2}x24!" "PNG32:$dir/status_$1.png"
+    -filter Lanczos -resize "${2}x24!" -strip "PNG32:$GLYPHS/status_$1.png"
 }
 
 indicateurs() {
+  # Ours, in git now (glyphes): only the copies an older run wrote here go, or the build would
+  # find each one twice.
+  rm -f "$OUT"/sysui/res/drawable-nodpi/status_*.png
+  echo "indicateurs: the status icons are in $GLYPHS (glyphes redraws them)"
+}
+
+glyphes() {
   # The status icons of Android the 9900's theme has no image for, drawn in the style
   # of the net_rim_Ribbon_* strips (white line art, 2 px strokes, about 24 px high). Not from the
   # firmware: all D (docs/BBOS7-VISUEL.md §18, "Status indicators with no image in the theme").
-  local dir=$OUT/sysui/res/drawable-nodpi
+  local dir=$GLYPHS
   mkdir -p "$dir"
   rm -f "$dir"/status_*.png
   # Access point: a dot and two arcs each side.
@@ -922,14 +973,14 @@ indicateurs() {
   glyph no_calling 26 "$fan roundrectangle 19,5 25,19 2,2 line 2,3 24,23"
   # Ethernet: a plug and its contacts.
   glyph ethernet 24 "rectangle 4,10 20,20 rectangle 9,4 15,10 line 8,14 8,17 line 12,14 12,17 line 16,14 16,17"
-  echo "indicateurs: $(ls "$dir"/status_*.png | wc -l | tr -d ' ') status images in $dir"
+  echo "glyphes: $(ls "$dir"/status_*.png | wc -l | tr -d ' ') status images in $dir"
 }
 
-BLOCKS=(polices accueil profils connexions options icones sons ui dialogues messages phone clock calendar contacts calculatrice memopad tasks pictures saisie bandeau indicateurs systeme demarrage bb10 fonds)
+BLOCKS=(polices accueil profils connexions options icones sons ui dialogues messages phone clock calendar contacts calculatrice memopad tasks pictures saisie bandeau indicateurs systeme demarrage bb10 fonds help)
 [ $# -eq 0 ] || BLOCKS=("$@")
 for b in "${BLOCKS[@]}"; do
   case $b in
-    polices|accueil|profils|connexions|options|icones|sons|ui|dialogues|messages|phone|clock|calendar|contacts|calculatrice|memopad|tasks|pictures|saisie|bandeau|indicateurs|systeme|demarrage|bb10|fonds|telephone) "$b" ;;
-    *) echo "Unknown block $b (polices accueil profils connexions options icones sons ui dialogues messages phone clock calendar contacts calculatrice memopad tasks pictures saisie bandeau indicateurs systeme demarrage bb10 fonds telephone)" >&2; exit 2 ;;
+    polices|accueil|profils|connexions|options|icones|sons|ui|dialogues|messages|phone|clock|calendar|contacts|calculatrice|memopad|tasks|pictures|saisie|bandeau|indicateurs|systeme|demarrage|bb10|fonds|help|glyphes|telephone) "$b" ;;
+    *) echo "Unknown block $b (polices accueil profils connexions options icones sons ui dialogues messages phone clock calendar contacts calculatrice memopad tasks pictures saisie bandeau indicateurs systeme demarrage bb10 fonds help glyphes telephone)" >&2; exit 2 ;;
   esac
 done

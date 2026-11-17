@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Merged into every APK that links core/brand (through core/ui, and apps/hub): its own
+         mipmap/app_icon, the app's OS 7 icon in the development build (AppIcon of the root
+         build), Android's own otherwise. The Bold7 logo (bold7_logo) is only the launcher's and
+         SystemUI's, which replace these two. -->
+    <application
+        android:icon="@mipmap/app_icon"
+        android:roundIcon="@mipmap/app_icon" />
+</manifest>

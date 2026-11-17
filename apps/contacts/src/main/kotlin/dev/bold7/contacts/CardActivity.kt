@@ -5,9 +5,9 @@ import android.content.ContentUris
 import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.text.format.DateFormat
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -21,6 +21,8 @@ import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
 import dev.bold7.ui.SwitchApplication
 import dev.bold7.ui.TitleBar
+import dev.bold7.ui.themeBitmap
+import java.time.ZoneId
 
 /**
  * A contact's card (gsm 015, C): its name as the title, then [CardView]. The trackpad walks the
@@ -45,6 +47,8 @@ class CardActivity : Activity() {
     /** The full menu a submenu was opened from. */
     private var parent: Menu<CardAct>? = null
     private var picture: Bitmap? = null
+    /** The card's Recent Activity (null: unreadable, box hidden), read with the card. */
+    private var activity: List<Recent>? = null
     private val glyphs = arrayOfNulls<Bitmap>(CardAct.entries.size)
 
     private val titles by lazy {
@@ -85,7 +89,7 @@ class CardActivity : Activity() {
             addView(menuView)
         })
         graph.io.post {
-            val images = CardAct.entries.map { a -> glyphOf(a)?.let { BitmapFactory.decodeResource(resources, it, BitmapFactory.Options().apply { inScaled = false }) } }
+            val images = CardAct.entries.map { a -> glyphOf(a)?.let { themeBitmap(applicationContext, it) } }
             runOnUiThread { images.forEachIndexed { i, b -> glyphs[i] = b } }
         }
     }
@@ -106,9 +110,11 @@ class CardActivity : Activity() {
         g.io.post {
             val card = g.store.card(contactId)
             val image = card?.photo?.let { g.store.thumbnail(it) }
+            val recent = card?.let { g.store.activity(it) }
             runOnUiThread {
                 if (card == null) return@runOnUiThread finish()
                 picture = image
+                activity = recent
                 titleBar.bind(card.name)
                 render(screen?.loaded(card) ?: CardScreen(card))
             }
@@ -117,7 +123,11 @@ class CardActivity : Activity() {
 
     private fun render(s: CardScreen) {
         screen = s
-        cardView.bind(s, titles, getString(R.string.section_groups), picture)
+        val now = System.currentTimeMillis()
+        val h24 = DateFormat.is24HourFormat(this)
+        val dayFirst = DateFormat.getDateFormatOrder(this).firstOrNull() == 'd'
+        val rows = activity?.map { getString(activityLabel(it.kind)) to activityTime(it.at, now, ZoneId.systemDefault(), h24, dayFirst) }
+        cardView.bind(s, titles, getString(R.string.section_activity), getString(R.string.activity_none), rows, picture)
         cardView.post { cardView.focusedRect()?.let { cardView.requestRectangleOnScreen(it, false) } }
     }
 
@@ -176,7 +186,7 @@ class CardActivity : Activity() {
             CardAct.SEND_EMAIL -> sendCard(contactId, byEmail = true)
             CardAct.SEND_TEXT -> sendCard(contactId, byEmail = false)
             // Help has no source for its text: it only closes the menu, as in the other apps.
-            CardAct.HELP -> Unit
+            CardAct.HELP -> dev.bold7.ui.Help.open(this, "contacts")
             CardAct.CLOSE -> finish()
         }
     }
@@ -232,12 +242,20 @@ class CardActivity : Activity() {
 }
 
 /** The short menu's image of each action of the card (sm_*.png of the theme, A; the match D). */
-fun glyphOf(a: CardAct): Int? = when (a) {
-    CardAct.CALL -> R.drawable.cnt_sm_call
-    CardAct.TEXT -> R.drawable.cnt_sm_sms
-    CardAct.EMAIL -> R.drawable.cnt_sm_compose
-    CardAct.COPY -> R.drawable.cnt_sm_copy
-    CardAct.EDIT -> R.drawable.cnt_sm_edit
-    CardAct.DELETE -> R.drawable.cnt_sm_delete
+fun glyphOf(a: CardAct): String? = when (a) {
+    CardAct.CALL -> "cnt_sm_call"
+    CardAct.TEXT -> "cnt_sm_sms"
+    CardAct.EMAIL -> "cnt_sm_compose"
+    CardAct.COPY -> "cnt_sm_copy"
+    CardAct.EDIT -> "cnt_sm_edit"
+    CardAct.DELETE -> "cnt_sm_delete"
     CardAct.SWITCH, CardAct.SEND, CardAct.SEND_EMAIL, CardAct.SEND_TEXT, CardAct.HELP, CardAct.CLOSE -> null // in the full menu only
+}
+
+private fun activityLabel(k: ActivityKind): Int = when (k) {
+    ActivityKind.CALL_IN -> R.string.activity_call_in
+    ActivityKind.CALL_OUT -> R.string.activity_call_out
+    ActivityKind.CALL_MISSED -> R.string.activity_call_missed
+    ActivityKind.TEXT_IN -> R.string.activity_text_in
+    ActivityKind.TEXT_OUT -> R.string.activity_text_out
 }

@@ -30,7 +30,16 @@ broken() { echo "$*" >&2; exit 2; }
 SAVE=${ERREURS_SAVE:-$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)/build/state/erreurs-avant.txt}
 KEY=show_first_crash_dialog
 
-get() { sh "settings get global $KEY"; }
+# A read that fails ("cmd: Failure calling service settings: Failed transaction", an exception, no
+# answer) is never a value: the script stops at once, before it writes the setting or deletes its save.
+checked() {
+  case $1 in '' | cmd:* | *Failure* | *Exception*)
+    echo "The phone did not answer (${1:-nothing}): stopped, nothing more written, the save kept. Try again in a moment." >&2
+    kill -TERM $$; exit 1 ;;
+  esac
+  printf '%s\n' "$1"
+}
+get() { checked "$(sh "settings get global $KEY")"; }
 # A value we may save and write back: unset, or a number (Settings.Global.getInt).
 valid() { [ "$1" = null ] || [[ $1 =~ ^[0-9]+$ ]]; }
 put() {

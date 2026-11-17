@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract.CommonDataKinds.Phone
@@ -51,6 +50,7 @@ import dev.bold7.ui.TextAct
 import dev.bold7.ui.Travel
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.SupervisorJob
@@ -297,24 +297,24 @@ class ConversationActivity : Activity() {
 
     private fun loadImages() = scope.launch {
         val sm = mapOf(
-            ThreadAct.SEND to R.drawable.msg_sm_chat_send, ThreadAct.CLEAR_FIELD to R.drawable.msg_sm_clear_input,
-            ThreadAct.CLEAR_CONVERSATION to R.drawable.msg_sm_cancel_generic, ThreadAct.DELETE_MESSAGE to R.drawable.msg_sm_delete,
-            ThreadAct.ADD_SMILEY to R.drawable.msg_sm_add_emoticon, ThreadAct.CHOOSE_CONTACT to R.drawable.msg_sm_address_book_app,
-            ThreadAct.ATTACH to R.drawable.msg_sm_add_attachment, ThreadAct.OPEN_ATTACHMENT to R.drawable.msg_sm_open_attachment,
-            ThreadAct.REMOVE_ATTACHMENT to R.drawable.msg_sm_delete,
+            ThreadAct.SEND to "msg_sm_chat_send", ThreadAct.CLEAR_FIELD to "msg_sm_clear_input",
+            ThreadAct.CLEAR_CONVERSATION to "msg_sm_cancel_generic", ThreadAct.DELETE_MESSAGE to "msg_sm_delete",
+            ThreadAct.ADD_SMILEY to "msg_sm_add_emoticon", ThreadAct.CHOOSE_CONTACT to "msg_sm_address_book_app",
+            ThreadAct.ATTACH to "msg_sm_add_attachment", ThreadAct.OPEN_ATTACHMENT to "msg_sm_open_attachment",
+            ThreadAct.REMOVE_ATTACHMENT to "msg_sm_delete",
         )
         val kinds = mapOf(
-            AttachIcon.PICTURE to R.drawable.msg_attachment_generic_picture, AttachIcon.VIDEO to R.drawable.msg_attachment_generic_video,
-            AttachIcon.MUSIC to R.drawable.msg_attachment_music, AttachIcon.CONTACT to R.drawable.msg_attachment_contact,
-            AttachIcon.CALENDAR to R.drawable.msg_attachment_calendar, AttachIcon.UNKNOWN to R.drawable.msg_attachment_unknown,
+            AttachIcon.PICTURE to "msg_attachment_generic_picture", AttachIcon.VIDEO to "msg_attachment_generic_video",
+            AttachIcon.MUSIC to "msg_attachment_music", AttachIcon.CONTACT to "msg_attachment_contact",
+            AttachIcon.CALENDAR to "msg_attachment_calendar", AttachIcon.UNKNOWN to "msg_attachment_unknown",
         )
         val decoded = withContext(graph.io) {
-            images.icons = decode(R.drawable.msg_thread_icons)
-            images.avatar = decode(R.drawable.msg_avatar)
-            images.smiley = decode(R.drawable.msg_smiley)
-            images.smileyFocus = decode(R.drawable.msg_smiley_focus)
+            images.icons = decode("msg_thread_icons")
+            images.avatar = decode("msg_avatar")
+            images.smiley = decode("msg_smiley")
+            images.smileyFocus = decode("msg_smiley_focus")
             EmoticonStrip.decode(this@ConversationActivity)
-            images.smileys45 = decode(R.drawable.msg_smileys_45)
+            images.smileys45 = decode("msg_smileys_45")
             format = graph.reader.format()
             sm.mapValues { decode(it.value) } to kinds.mapValues { decode(it.value) }
         }
@@ -328,7 +328,7 @@ class ConversationActivity : Activity() {
         menuView.invalidate()
     }
 
-    private fun decode(id: Int): Bitmap? = BitmapFactory.decodeResource(resources, id)
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
     // State
 
@@ -805,16 +805,11 @@ class ConversationActivity : Activity() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view = (convertView as? BubbleView) ?: BubbleView(this@ConversationActivity, images) { pictures[it] }
             val m = state.messages[position]
-            // A group's received bubble names its sender's number; one person's, the band's name (D).
-            // A new message's history (one recipient, before sending): that recipient's name.
-            val name = state.title.ifEmpty { state.recipients.singleOrNull()?.let { it.name ?: it.number }.orEmpty() }
-            val label = if (m.out) getString(R.string.thread_me) else m.from?.takeIf { name.isEmpty() || isGroup() } ?: name
+            val label = state.senderLabel(m, getString(R.string.thread_me))
             val stamp = format?.let { bubbleTime(m.time, System.currentTimeMillis(), it) }.orEmpty()
             view.bind(m, label, stamp, position == state.focus, parent.width)
             return view
         }
-
-        private fun isGroup() = state.messages.mapNotNull { it.from }.distinct().size > 1
     }
 }
 

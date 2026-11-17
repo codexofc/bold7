@@ -54,6 +54,8 @@ for k in enabled_accessibility_services enabled_notification_listeners default_i
 section saisie
 printf 'bold7_saisie='; sh 'settings get global bold7_saisie'
 printf 'bold7_saisie_style='; sh 'settings get global bold7_saisie_style'
+# PermissionController's app language (British English while Bold7 is installed).
+sh 'cmd locale get-app-locales com.google.android.permissioncontroller --user 0'
 
 section sound-settings
 for k in ringtone notification_sound alarm_alert; do printf '%s=' "$k"; sh "settings get system $k"; done

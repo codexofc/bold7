@@ -36,6 +36,11 @@ class TypingTest {
         assertEquals(listOf(TypingEffect.Open('c'), TypingEffect.Open('x')), run(shortcuts, TypingEvent.Down('c'), TypingEvent.Down('x')))
     }
 
+    @Test fun `in application shortcuts H opens Help, in universal search it searches`() {
+        assertEquals(listOf(TypingEffect.Help, TypingEffect.Help), run(shortcuts, TypingEvent.Down('h'), TypingEvent.Down('H')))
+        assertEquals(listOf(TypingEffect.Search("h")), run(search, TypingEvent.Down('h')))
+    }
+
     @Test fun `a reset forgets the letters`() {
         assertEquals(listOf(TypingEffect.Search("c"), TypingEffect.Search("e")), run(search, TypingEvent.Down('c'), TypingEvent.Reset, TypingEvent.Down('e')))
     }

@@ -63,6 +63,23 @@
         android:protectionLevel="signature" />
     <uses-permission android:name="dev.bold7.permission.READ_TEXT_CONSENT" />
     <uses-permission android:name="dev.bold7.permission.OPEN_TEXT_CONSENT" />
+    <!-- Options > Security > Password and Display > Message on Lock Screen: dev.bold7.sysui
+         (PasswordScreen) asks the device password in SystemUI's process and reads and writes the
+         owner's information there, for a broadcast only from a holder of LOCK_SETTINGS,
+         signature, declared and asked by this app alone, its identity shared. The launcher cannot
+         do either itself: LockSettingsService wants ACCESS_KEYGUARD_SECURE_STORAGE,
+         signature|setup, which no allowlist grants to a priv-app; SystemUI holds it. -->
+    <permission
+        android:name="dev.bold7.permission.LOCK_SETTINGS"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.LOCK_SETTINGS" />
+    <!-- When Charging of the Clock (ChargingClock): the charger opens the Clock through its
+         aliases, behind this signature permission, declared here and by the Clock, so that the
+         order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.CHARGING_CLOCK"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.CHARGING_CLOCK" />
     <!-- The home banner's Wi-Fi level: a network callback on the Wi-Fi, which
          ConnectivityManager allows with ACCESS_NETWORK_STATE (normal). Reads the state, never
          opens a connection. -->
@@ -95,6 +112,19 @@
          screen, 720x720, instead of the 1440x720 Launcher3 asked for; without it a wallpaper set
          from the picker is cropped to 1440 wide and shows zoomed. SET_WALLPAPER_HINTS is normal. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS" />
+    <!-- The Setup Wizard's wallpaper (setup/): the 9900's picture the user picks, on the home and
+         the lock screen, as OS 7's Set As Wallpaper. Normal. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Options > Display > Home Screen Preferences: the thumbnail of the
+         wallpaper in use, which WallpaperManager.getDrawable gives only with READ_WALLPAPER_INTERNAL
+         (signature|privileged, the privapp allowlist); Change Wallpaper asks Pictures' Select Picture
+         (SELECT_PICTURE, Bold7's signature permission, declared by Pictures too, so that the order of
+         the installs does not matter), Reset Wallpaper and Save set it with SET_WALLPAPER above. -->
+    <uses-permission android:name="android.permission.READ_WALLPAPER_INTERNAL" />
+    <permission
+        android:name="dev.bold7.permission.SELECT_PICTURE"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.SELECT_PICTURE" />
 
     <!-- The sound profiles set Android's ringer, ring volume and Do Not Disturb through
          its public APIs, from this process. ACCESS_NOTIFICATION_POLICY is normal, but the access
@@ -154,9 +184,19 @@
         </intent>
     </queries>
 
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
+    <!-- The Bold7 logo: the launcher is Bold7's settings (Options, Setup) in Android's Settings. -->
     <application
         android:name=".LauncherApp"
-        android:label="Bold7">
+        android:icon="@mipmap/bold7_logo"
+        android:label="Bold7"
+        android:roundIcon="@mipmap/bold7_logo"
+        tools:replace="android:icon,android:roundIcon">
 
         <!-- HOME, and the component config_recentsComponentName names: this name is fixed.
              Exported because the role controller and the system resolve HOME from
@@ -224,6 +264,23 @@
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:windowSoftInputMode="stateHidden" />
 
+        <!-- Setup Wizard (setup/): opened once by the home at the first unlock after an install, then
+             by the grid's Setup icon (core/icons' table names it), where OS 7 keeps its Setup.
+             Exported as every launcher activity; its extras only pick a page or write less (a dry
+             run), and every change it makes waits for the user's click. A task of its own. -->
+        <activity
+            android:name=".setup.WizardActivity"
+            android:exported="true"
+            android:label="Setup"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.bold7.launcher.setup"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Setup: the texts through Google Messages. Opened by the home once, then by Options > Device. -->
         <activity
             android:name=".setup.TextSetupActivity"
@@ -239,6 +296,21 @@
             android:taskAffinity="dev.bold7.launcher.options"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:windowSoftInputMode="stateHidden" />
+
+        <!-- The Q25's keyboard layout, read by InputManagerService from the meta-data (it queries
+             QUERY_KEYBOARD_LAYOUTS, direct boot aware or not, and sends nothing). Exported for
+             that query; STATUS_BAR_SERVICE (signature) so that no app can send to it. -->
+        <receiver
+            android:name=".keys.KeyboardLayouts"
+            android:exported="true"
+            android:permission="android.permission.STATUS_BAR_SERVICE">
+            <intent-filter>
+                <action android:name="android.hardware.input.action.QUERY_KEYBOARD_LAYOUTS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.input.metadata.KEYBOARD_LAYOUTS"
+                android:resource="@xml/keyboard_layouts" />
+        </receiver>
 
         <!-- Bound by SystemUI only: STATUS_BAR_SERVICE is signature, SystemUI holds it.
              directBootAware: SystemUI picks the recents provider before unlock, resolving

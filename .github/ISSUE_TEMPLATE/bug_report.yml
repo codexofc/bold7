@@ -7,11 +7,11 @@ body:
       value: |
         Security problems are reported privately, see SECURITY.md. Remove phone numbers, names and message contents from everything you paste.
   - type: input
-    id: benos
+    id: system
     attributes:
-      label: BenOS version
-      description: Settings, About phone, Build number (or `adb shell getprop ro.build.display.id`).
-      placeholder: BenOS-...
+      label: System and version
+      description: LineageOS 24 or BenOS, as in Settings, About phone (LineageOS version, or Build number on BenOS).
+      placeholder: 24.0-YYYYMMDD-NIGHTLY-Q25, or BenOS-...
     validations:
       required: true
   - type: input

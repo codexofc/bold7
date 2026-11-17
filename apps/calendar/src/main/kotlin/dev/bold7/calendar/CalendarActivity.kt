@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException
 import android.content.ContentUris
 import android.content.Intent
 import android.database.ContentObserver
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.view.KeyEvent
@@ -23,6 +22,7 @@ import dev.bold7.ui.SwitchApplication
 import dev.bold7.ui.Spin
 import dev.bold7.ui.SpinDialog
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -71,10 +71,10 @@ class CalendarActivity : Activity() {
         view.setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_UP) view.tap(e.x, e.y); true }
         graph.io.post {
             val images = CalendarView.Images(
-                BitmapFactory.decodeResource(resources, R.drawable.cal_bell),
-                BitmapFactory.decodeResource(resources, R.drawable.cal_arrow_left),
-                BitmapFactory.decodeResource(resources, R.drawable.cal_arrow_right),
-                BitmapFactory.decodeResource(resources, R.drawable.cal_allday),
+                themeBitmap(applicationContext, "cal_bell"),
+                themeBitmap(applicationContext, "cal_arrow_left"),
+                themeBitmap(applicationContext, "cal_arrow_right"),
+                themeBitmap(applicationContext, "cal_allday"),
             )
             mainExecutor.execute { view.images = images }
         }
@@ -177,6 +177,7 @@ class CalendarActivity : Activity() {
             Act.WEEK -> R.string.act_week
             Act.MONTH -> R.string.act_month
             Act.AGENDA -> R.string.act_agenda
+            Act.HELP -> R.string.act_help
             Act.CLOSE -> R.string.act_close
             Act.SWITCH -> R.string.act_switch_application
         },
@@ -218,6 +219,7 @@ class CalendarActivity : Activity() {
             Act.WEEK -> go(screen.show(CalView.WEEK))
             Act.MONTH -> go(screen.show(CalView.MONTH))
             Act.AGENDA -> go(screen.show(CalView.AGENDA))
+            Act.HELP -> dev.bold7.ui.Help.open(this, "calendar")
             Act.CLOSE -> finish()
             Act.SWITCH -> SwitchApplication.start(this)
         }

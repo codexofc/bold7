@@ -61,7 +61,7 @@ internal class Toasts(
         val layout = root as LinearLayout
         val message = text as TextView
         val images = images(root.context) ?: return
-        val status = DialogView(images.context(root.context), message.text.toString(), emptyList(), null)
+        val status = DialogView(images.context, message.text.toString(), emptyList(), null)
         // Both animators or neither, before anything else: Android's in animation sets the text and
         // the icon transparent and scales the whole, its own pair alone undoes it. Ours are instant.
         val androidIn = fadeIn.get(toast)

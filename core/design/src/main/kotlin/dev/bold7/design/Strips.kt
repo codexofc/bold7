@@ -17,6 +17,14 @@ object Strips {
     const val BATTERY_PLUGGED_ROW = 2
 
     /**
+     * The battery's row for BatteryManager's [status]: the plug on power once it no longer charges
+     * (full: 5, or 2 at 100 %, sim-415, C); while it charges, its own row under the bolt
+     * ([ChargingBolt], guide 7.1 p. 20, B; sim-470, C).
+     */
+    fun batteryRow(status: Int, percent: Int): Int =
+        if ((status == 2 || status == 5) && !ChargingBolt.shows(status, percent)) BATTERY_PLUGGED_ROW else 0
+
+    /**
      * net_rim_Ribbon_SignalLevel-icons49x19.png (A): OFF (radio turned off), X (no coverage), 0 to 5
      * bars, SOS (emergency calls only), as the guide names them (p. 262, B). Android's level 0 to 4
      * on the bars (D): none for 0, then 2 to 5, so a usable signal never looks like none.

@@ -36,11 +36,22 @@ class WordListTest {
         assertEquals(-1, words.frequency("th"))
     }
 
-    @Test fun theImportedListsLoad() {
-        // tools/import-assets.sh saisie (assets-private/saisie, MANIFEST.md).
+    @Test fun theFirstLineOfAWordWins() {
+        // OS 7's part is read before AOSP's list: where both have a word, OS 7's line stays.
+        val laid = WordList.parse("colour\t120\n" + "\n" + "colour\t200\ncolor\t100\n")
+        assertEquals(120, laid.frequency("colour"))
+        assertEquals(100, laid.frequency("color"))
+        assertEquals(2, laid.size)
+    }
+
+    @Test fun aospListsLoadAndOs7PartOnlyAdds() {
+        // AOSP's lists are in git; OS 7's part comes from tools/import-assets.sh saisie when this checkout has it.
         for (lang in listOf("fr", "en")) {
-            val list = java.io.File("../../assets-gen/saisie/assets/dictionary/$lang.tsv").reader().use { WordList.parse(it.readText()) }
-            assertTrue(list.size > 150_000, "$lang: ${list.size}")
+            val aosp = java.io.File("src/main/assets/dictionary/$lang.tsv").readText()
+            assertTrue(WordList.parse(aosp).size > 150_000, lang)
+            val os7 = java.io.File("../../assets-gen/saisie/assets/os7/dictionary/$lang.tsv").takeIf { it.isFile }?.readText() ?: continue
+            val both = WordList.parse(os7 + "\n" + aosp)
+            assertTrue(both.size > WordList.parse(aosp).size, lang)
         }
     }
 }

@@ -3,9 +3,9 @@
     bootanim.py build <logo.png> <out.zip>
     bootanim.py check <zip>
 
-The 9900 draws its boot screen natively, with no image file in the firmware: the source is the
+The 9900 draws its boot screen natively, from a run-length coded image of its OS (core/firmware BootScreen reads it on the phone); here the source is the
 official simulator's own screen (sim-01-demarrage.png, fen-demarrage-*.png, native snapshots,
-640x480). On black: the BlackBerry logo (332x58, grey shading kept as captured), and under it a
+640x480). On black: the BlackBerry logo (332x59, grey shading kept as captured), and under it a
 532x6 progress bar, track #313031, fill a vertical gradient from white to #A5A2A5 that grows from
 left to right. `tools/import-assets.sh demarrage` cuts the logo out of the capture (the file given
 here); the measured bar colours are named below. Placed for 720x720: logo and bar centred on x 360,
@@ -35,7 +35,7 @@ FPS = 12
 EXPECTED = 13.7
 
 # Measured on sim-01 (docs/BBOS7-VISUEL.md, section 11).
-LOGO_W, LOGO_H = 332, 58
+LOGO_W, LOGO_H = 332, 59
 BAR_W, BAR_H = 532, 6
 TRACK = (0x31, 0x30, 0x31)
 FILL = ((0xFF, 0xFF, 0xFF), (0xF7, 0xF3, 0xF7), (0xDE, 0xDF, 0xDE),  # top to bottom, one per row

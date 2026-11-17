@@ -88,6 +88,13 @@
     <string name="assign_speed_dial">Assign speed dial key %1$s?</string>
     <string name="button_yes">Yes</string>
     <string name="button_no">No</string>
+    <!-- A call's menu and Delete: simulator, sim-392 to sim-397 (C). -->
+    <string name="delete_question">Delete all call logs for this item?</string>
+    <string name="act_contact">Contact %1$s</string>
+    <string name="act_text">Text %1$s</string>
+    <string name="act_copy">Copy %1$s</string>
+    <string name="no_messages_app">Messages is not available.</string>
+    <string name="not_deleted">The call log could not be deleted.</string>
     <string name="speed_key">%1$s  %2$s</string>
     <!-- B: guide 7.1 p. 71 -->
     <string name="act_split">Split Call</string>
@@ -101,4 +108,5 @@
     <!-- D: Add Wait's question during the call -->
     <string name="send_digits">Send %1$s?</string>
     <string name="act_switch_application">Switch Application</string>
+    <string name="act_help">Help</string>
 </resources>

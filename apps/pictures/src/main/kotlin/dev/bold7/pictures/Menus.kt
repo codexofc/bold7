@@ -2,6 +2,7 @@ package dev.bold7.pictures
 
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
+import dev.bold7.ui.withHelp
 import dev.bold7.ui.withSwitchApplication
 
 // The menus of Pictures, pure (docs/BBOS7-VISUEL.md §37.4), in the simulator's order (C: sim-346 to
@@ -11,12 +12,12 @@ import dev.bold7.ui.withSwitchApplication
 // View (Thumbnails, List), Search, Media Home and Help are not there yet.
 
 /** What the menus of Pictures do. */
-enum class Act { SWITCH, OPEN, VIEW_SLIDESHOW, DELETE, SET_WALLPAPER, ASSIGN_CONTACT, SEND, SEND_TEXT, ROTATE, ZOOM, CLOSE }
+enum class Act { SWITCH, OPEN, VIEW_SLIDESHOW, DELETE, SET_WALLPAPER, ASSIGN_CONTACT, SEND, SEND_TEXT, ROTATE, ZOOM, HELP, CLOSE }
 
 /** The categories' full menu: Open (focus) and View Slide Show, then Close (sim-346, C). */
 fun categoriesMenu(): Menu<Act> =
     Menu(listOf(MenuEntry(Act.OPEN), MenuEntry(Act.VIEW_SLIDESHOW), MenuEntry(Act.CLOSE, separatorAbove = true)), highlighted = 0)
-        .withSwitchApplication(Act.SWITCH)
+        .withHelp(Act.HELP, before = Act.CLOSE).withSwitchApplication(Act.SWITCH)
 
 /** Their short menu (sim-348, C: View Slide Show first). */
 fun categoriesShortMenu(line: Int): Menu<Act> = Menu(listOf(MenuEntry(Act.VIEW_SLIDESHOW)), line = line, highlighted = 0)
@@ -34,7 +35,7 @@ private fun pictureActions(count: Int): List<MenuEntry<Act>> = buildList {
 /** The grid's full menu on a picture: Open (focus), the picture's actions, then Close (sim-349, sim-369, sim-370, C). */
 fun gridMenu(count: Int): Menu<Act> =
     Menu(listOf(MenuEntry(Act.OPEN)) + pictureActions(count) + MenuEntry(Act.CLOSE, separatorAbove = true), highlighted = 0)
-        .withSwitchApplication(Act.SWITCH)
+        .withHelp(Act.HELP, before = Act.CLOSE).withSwitchApplication(Act.SWITCH)
 
 /** The grid's short menu: Assign To Contact, Set As Wallpaper, Delete, then Send..., focused (sim-373, C). */
 fun gridShortMenu(line: Int): Menu<Act> =
@@ -43,7 +44,7 @@ fun gridShortMenu(line: Int): Menu<Act> =
 /** The viewer's full menu: the picture's actions, Rotate and Zoom (focus), then Close (sim-354, sim-355, C; ps 33263, C). */
 fun viewerMenu(count: Int): Menu<Act> {
     val entries = pictureActions(count) + MenuEntry(Act.ROTATE, separatorAbove = true) + MenuEntry(Act.ZOOM) + MenuEntry(Act.CLOSE, separatorAbove = true)
-    return Menu(entries, highlighted = entries.indexOfFirst { it.action == Act.ZOOM }).withSwitchApplication(Act.SWITCH)
+    return Menu(entries, highlighted = entries.indexOfFirst { it.action == Act.ZOOM }).withHelp(Act.HELP, before = Act.CLOSE).withSwitchApplication(Act.SWITCH)
 }
 
 /** The viewer's short menu: Assign To Contact, Set As Wallpaper, Delete, Send..., Zoom (focus), View Slide Show (ps 33262, sim-356, C). */

@@ -58,7 +58,22 @@ data class ConversationState(
     /** A message on its way to Google Messages: the field waits for its answer. */
     val sending: Boolean = false,
     val notice: Notice? = null,
+    /** A group's members' contact names, by number, for their bubbles. */
+    val names: Map<String, String> = emptyMap(),
 ) {
+    /**
+     * The name above [m]'s bubble: [me] for a sent one; in a group, its sender's contact name or
+     * number (gsm 023 names the contact, C); one person's, the band's name (D).
+     */
+    fun senderLabel(m: ThreadMessage, me: String): String {
+        if (m.out) return me
+        val name = title.ifEmpty { recipients.singleOrNull()?.let { it.name ?: it.number }.orEmpty() }
+        val from = m.from ?: return name
+        val group = messages.mapNotNullTo(HashSet()) { it.from?.let(::numberKey) }.size > 1
+        if (name.isNotEmpty() && !group) return name
+        return names.entries.firstOrNull { sameNumber(it.key, from) }?.value ?: from
+    }
+
     /** Something to send: text, or an attachment alone. */
     val hasContent: Boolean get() = draft.isNotBlank() || attachment != null
     val sendable: Boolean get() = hasContent && !sending && (threadId != null || addressed)
@@ -113,6 +128,8 @@ sealed interface ThreadEvent {
     data class Attached(val attachment: Attachment) : ThreadEvent
     data object AttachmentRemoved : ThreadEvent
     data class ContactsLoaded(val contacts: List<Contact>) : ThreadEvent
+    /** A group's members named from the contacts. */
+    data class Names(val names: Map<String, String>) : ThreadEvent
     /** A recipient chosen: a proposal, a number typed, or Choose Contact's. */
     data class Chosen(val recipient: Recipient) : ThreadEvent
     /** A touch on To's [line]. */
@@ -177,6 +194,7 @@ fun ConversationState.reduce(event: ThreadEvent): ConversationState = when (even
     is ThreadEvent.Attached -> copy(attachment = event.attachment, focus = COMPOSER)
     ThreadEvent.AttachmentRemoved -> copy(attachment = null)
     is ThreadEvent.ContactsLoaded -> copy(contacts = event.contacts, pick = -1)
+    is ThreadEvent.Names -> copy(names = event.names)
     is ThreadEvent.Chosen -> {
         val added = if (recipients.any { sameNumber(it.number, event.recipient.number) }) recipients else recipients + event.recipient
         // The field next (D): one recipient is the common case; up comes back to To.

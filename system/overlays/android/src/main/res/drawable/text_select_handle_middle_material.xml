@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The text selection handles: OS 7's, border_trackpad_end.png (40x96, A), which theme.xml names
+     for text_selection_handle_up (A), its point at the top, under the text as Android puts every
+     handle. Its point is the handle's hot spot: Editor takes half the width for the cursor's handle
+     (this one), three quarters for the start one and a quarter for the end one, hence 40 px of
+     nothing beside the image in those two (text_select_handle_left_material.xml and
+     _right_material.xml). OS 7's other handle, border_trackpad_start.png, its point at the bottom,
+     goes above the text, where Editor never puts a handle (D: the end handle's image for all three;
+     no capture shows a selection on a 9900). The image is put on ic_menu_always_landscape_portrait
+     by the fabricated overlay (ImageOverlays.HOSTS); none of the three is preloaded by the zygote. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:drawable/ic_menu_always_landscape_portrait" />
+</layer-list>

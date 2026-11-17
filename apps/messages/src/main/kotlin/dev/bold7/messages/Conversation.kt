@@ -29,6 +29,9 @@ interface ContactBook {
     /** The thumbnail's URI of the contact who has [number]; null without one. */
     fun photo(number: String): String?
 
+    /** The name of the contact who has [number]; null without one. */
+    fun name(number: String): String?
+
     /** The number Select Contact returned ([uri], a row of its data), as a recipient; null: unreadable. */
     fun chosen(uri: String): Recipient?
 }
@@ -127,12 +130,14 @@ class Conversation(
         scope.launch(io) { event(ThreadEvent.ContactsLoaded(contacts.all())) }
     }
 
-    /** The band's picture: one person's, from the contacts (gsm 023, C); a group keeps the default one. */
+    /** The band's picture: one person's, from the contacts (gsm 023, C); a group keeps the default one, and names its members. */
     private fun lookUp(thread: Long) {
         if (isMadeUp(thread)) return
         scope.launch(io) {
             val members = reader.threads()?.firstOrNull { it.first == thread }?.second ?: return@launch
             event(ThreadEvent.Photo(members.singleOrNull()?.let(contacts::photo)))
+            // A group's bubbles name their senders (gsm 023, C).
+            if (members.size > 1) event(ThreadEvent.Names(members.mapNotNull { n -> contacts.name(n)?.let { n to it } }.toMap()))
         }
     }
 
@@ -141,7 +146,7 @@ class Conversation(
      * mode, `--ei rows N`): nothing is read from Telephony nor asked of Google Messages.
      */
     fun demo(count: Int, now: Long) {
-        val texts = listOf("Salut, tu es dispo ce soir ?", "Je passe vers 20 h.", "OK", "On se voit à 18 h ? Je serai devant la gare, appelle-moi si tu es en retard.")
+        val texts = listOf("Hi, are you free tonight?", "I will stop by around 8 pm.", "OK", "See you at 6 pm? I will be in front of the station, call me if you are late.")
         val messages = List(count.coerceIn(0, DEMO_MAX)) { i ->
             val out = i % 3 != 1
             ThreadMessage("demo:$i", now - (count - i) * 7 * 60_000L, out, texts[i % texts.size], if (out) Delivery.DELIVERED else Delivery.RECEIVED)

@@ -11,9 +11,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Region
 import android.os.Handler
+import android.os.LocaleList
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -38,6 +40,7 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import java.lang.reflect.Executable
 import java.lang.reflect.Field
+import dev.bold7.design.OS7_LOCALE
 import dev.bold7.design.ShellColors
 import java.lang.reflect.Method
 import java.util.WeakHashMap
@@ -66,7 +69,8 @@ private const val FAULT_TAG = "Bold7GuardFault"
  *   9900's face draws its banner in its place (LockFace);
  * - StatusBarWifiView, StatusBarMobileView and StatusBarIconView .isIconVisible()Z: false for
  *   Android's radio icons in those two bars, which now have ours ([androidIconShown]);
- * - BatteryMeterView.onBatteryLevelChanged(IZ)V: the 9900's battery, in the status bar only;
+ * - BatteryMeterView.onBatteryLevelChanged(IZ)V: the 9900's battery, in the status bar only, and
+ *   while it charges the bolt over it (BatteryBolt);
  * - Clock.getSmallTime() and CommandQueue.onSystemBarAttributesChanged: the banner's time, no
  *   black under the keyguard, no bar of Android over the home's banner ([installStatusBar]);
  * - CentralSurfacesCommandQueueCallbacks.showTransient(IIZ)V: on the home, the bar a swipe from
@@ -145,10 +149,13 @@ class SysuiModule : XposedModule() {
     private val face = LockFace(::images, ::fail, bouncer)
     private val main by lazy { Handler(Looper.getMainLooper()) }
     private var batteryIcon: Field? = null
+    /** The dressed bar's battery with its charging bolt; replaced when SystemUI inflates the bar again. */
+    private var batteryBolt: BatteryBolt? = null
     /** The StatusIconContainer of each dressed bar, by the bar's name; weak, bars get re-inflated. */
     private val dressedIcons = WeakHashMap<ViewParent, String>()
     private val loggedHidden = HashSet<String>()
     private val layout = StatusBarLayout(::fail)
+    private val password = PasswordScreen(::images, ::fail)
 
     private var process = ModuleProcess.NONE
     private var tag = TAG
@@ -239,6 +246,7 @@ class SysuiModule : XposedModule() {
         installShade(loader, ::fail, ::after, ::instead, ::withArgs)
         installShut(loader, ::after, ::instead, ::replace)
         installHeadsUp(loader, ::after)
+        installPassword()
         diag(Log.INFO, "hooks installed=$installed failed=$failed")
     }
 
@@ -516,6 +524,18 @@ class SysuiModule : XposedModule() {
      * replaced, nothing is written to its data. Goes in on the contract ([bridgeAllowed]), not on
      * a fingerprint.
      */
+    /**
+     * Options' device password (PasswordScreen): no hook, a receiver registered once SystemUI's
+     * Application exists, which the main thread's next message finds (onPackageReady runs while
+     * the application is bound, before its onCreate).
+     */
+    private fun installPassword() = main.post {
+        guarded("password: receiver", Unit) {
+            val app = android.app.ActivityThread.currentApplication() ?: return@guarded fail("password: no Application, Options' password off")
+            password.register(app)
+        }
+    }
+
     private fun installMessagesBridge(loader: ClassLoader) {
         val service = try {
             Class.forName(MESSAGES_API_SERVICE, false, loader)
@@ -664,6 +684,7 @@ class SysuiModule : XposedModule() {
         }
         Log.i(TAG, "dressed ${bar.javaClass.simpleName}")
         statusBarBattery = WeakReference(battery)
+        boltOn(battery, images)
     }
 
     private fun find(root: View, id: String): View? {
@@ -672,11 +693,44 @@ class SysuiModule : XposedModule() {
             ?: null.also { fail("view target missing: @id/$id in ${root.javaClass.name}") }
     }
 
-    /** The 9900's battery (batteryImage), on power with its plug; [charging] is Android's "plugged in". */
-    private fun showBattery(view: View, level: Int, charging: Boolean) {
+    /**
+     * The charging bolt for the dressed bar's [battery] (BatteryBolt): its clock (BoltClock), a
+     * view of no size at the end of the BatteryMeterView, and its place on one line or two
+     * (StatusBarLayout.batteryLine). Nothing when the battery group is off: Android's battery then.
+     */
+    private fun boltOn(battery: View, images: Images) {
+        val icon = batteryIcon?.get(battery) as? ImageView ?: return
+        val bolt = BatteryBolt(images, icon)
+        (battery as? ViewGroup)?.addView(BoltClock(battery.context, bolt.ticker), 0, 0)
+            ?: return fail("view target missing: @id/battery is ${battery.javaClass.name}, not a ViewGroup")
+        batteryBolt = bolt
+        layout.batteryLine = { oneLine ->
+            bolt.oneLine = oneLine
+            icon.invalidate()
+        }
+    }
+
+    /**
+     * The 9900's battery (batteryImage) and its bolt. BatteryMeterView only tells the [level] and
+     * [plugged] (on power): whether it charges or is full is the status of the sticky
+     * ACTION_BATTERY_CHANGED, read here (a null receiver only reads it), as the home's banner and
+     * the lock screen read it. Without it, the plug on power, as before.
+     */
+    private fun showBattery(view: View, level: Int, plugged: Boolean) {
+        val images = images ?: return
         val icon = batteryIcon!!.get(view) as ImageView
-        val drawable = Indicator((images ?: return)[batteryImage(level, charging)])
+        val sticky = view.context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val image = images[if (sticky != null) batteryImage(sticky) else batteryImage(level, plugged)]
+        val bolt = batteryBolt?.takeIf { it.icon === icon }
+        val drawable = bolt?.apply {
+            battery = image
+            ticker.charging = sticky != null && charging(sticky)
+        } ?: Indicator(image)
         icon.setImageDrawable(drawable)
+        icon.invalidate()
+        // The bolt overflows the frame by BatteryBolt.ABOVE: the view goes up as much (StatusBarLayout
+        // never moves it but by its margins).
+        view.translationY = if (bolt == null) 0f else -BatteryBolt.ABOVE.toFloat()
         // BatteryMeterView sizes the icon for Android's own battery (scaleBatteryMeterViews).
         val lp = icon.layoutParams as ViewGroup.MarginLayoutParams
         if (lp.width != drawable.intrinsicWidth || lp.height != drawable.intrinsicHeight || lp.bottomMargin != 0) {
@@ -687,10 +741,15 @@ class SysuiModule : XposedModule() {
         }
     }
 
-    // Simplification: read once on SystemUI's main thread, at the first inflation (a few ms for this
-    // small APK); a background load if it ever shows in a trace.
+    // Simplification: the module's resources opened once on SystemUI's main thread, at the first
+    // inflation (a few ms for this small APK); the images themselves decode on core/theme's thread.
     private fun images(context: Context): Images? = images ?: try {
-        Images(context.packageManager.getResourcesForApplication(moduleApplicationInfo)).also { images = it }
+        // In OS 7's language, core/ui's strings included, while SystemUI and what stays
+        // Android's in it speak the phone's. Only the locales are overridden: the rest (density,
+        // night mode, font scale) follows SystemUI's configuration, its changes included.
+        val os7 = Configuration().apply { setLocales(LocaleList(OS7_LOCALE)) }
+        val res = context.packageManager.getResourcesForApplication(moduleApplicationInfo, os7)
+        Images(res, context) { fail("theme image missing: $it, drawn empty") }.also { images = it }
     } catch (e: PackageManager.NameNotFoundException) {
         fail("module resources unreadable", e)
         null

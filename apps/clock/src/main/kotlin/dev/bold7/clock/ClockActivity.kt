@@ -2,6 +2,7 @@ package dev.bold7.clock
 
 import android.app.Activity
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -47,7 +48,11 @@ import java.time.ZoneId
  * [Alarm] and [SetAlarm]'s, the watches' [Stopwatch] and [Countdown]'s; what it changes is written on
  * the io thread and handed to AlarmManager by [AlarmScheduler].
  *
- * [EXTRA_SET_ALARM] (Manage Connections' Alarm) opens Set Alarm on the clock.
+ * [EXTRA_SET_ALARM] (Manage Connections' Alarm) opens Set Alarm on the clock. [ACTION_CHARGING]
+ * (When Charging, the home of Bold7 on the charger) opens the clock or Bedside Mode over the lock
+ * screen, the screen kept on (sim-412, sim-414, sim-416): Escape goes back to the lock screen
+ * (sim-415), pulling the charger out closes it if Dismiss Clock Automatically is checked (sim-413).
+ * While the phone is locked it only shows the time: its menu and its clicks wait for the unlock.
  * When the next alarm Android holds is another app's (Android's Clock), a line at the bottom says
  * when (D): both clocks ring, neither touches the other's alarms.
  */
@@ -71,10 +76,18 @@ class ClockActivity : Activity() {
     private var settings = ClockSettings()
     private var snoozed = false
     private var stopwatch = Stopwatch()
-    private var timer = Countdown(0)
+    private var timer = Countdown(DEFAULT_TIMER_MS)
     private var loaded = false
     private var menu: Menu<Act>? = null
     private var setAlarmOnLoad = false
+    /** Opened by the charger: shown over the lock screen, kept on, closed when the charger goes. */
+    private var charging = false
+
+    private val unplugged = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (settings.display.dismiss) finish() else charge(false, null)
+        }
+    }
 
     private val tick = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -114,7 +127,7 @@ class ClockActivity : Activity() {
             addView(home, FrameLayout.LayoutParams(match, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = 80 })
             addView(menuView, FrameLayout.LayoutParams(match, match))
         })
-        face.setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_UP && face.barContains(e.x, e.y) && screen.page == Page.CLOCK) setAlarm(); true }
+        face.setOnTouchListener { _, e -> if (e.actionMasked == MotionEvent.ACTION_UP && face.barContains(e.x, e.y) && screen.page == Page.CLOCK && !locked()) setAlarm(); true }
         watch.setOnTouchListener { _, e ->
             if (e.actionMasked == MotionEvent.ACTION_UP) watch.buttonAt(e.x, e.y)?.let { b ->
                 screen = screen.copy(focus = b)
@@ -134,6 +147,7 @@ class ClockActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (charging) unregisterReceiver(unplugged)
         graph.io.post { contentResolver.unregisterContentObserver(story) }
         super.onDestroy()
     }
@@ -160,11 +174,26 @@ class ClockActivity : Activity() {
     }
 
     private fun opened(intent: Intent) {
+        charge(intent.action == ACTION_CHARGING, intent.component?.className)
         if (!intent.getBooleanExtra(EXTRA_SET_ALARM, false)) return
         intent.removeExtra(EXTRA_SET_ALARM)
         screen = screen.open(Page.CLOCK)
         if (loaded) setAlarm() else setAlarmOnLoad = true
     }
+
+    /** Into the charger's mode on its page ([alias]: When Charging's choice), or out of it. */
+    private fun charge(on: Boolean, alias: String?) {
+        if (on) screen = screen.open(chargingPage(alias))
+        if (on != charging) {
+            charging = on
+            setShowWhenLocked(on)
+            setTurnScreenOn(on)
+            if (on) registerReceiver(unplugged, IntentFilter(Intent.ACTION_POWER_DISCONNECTED), RECEIVER_NOT_EXPORTED) else unregisterReceiver(unplugged)
+        }
+        if (loaded) show()
+    }
+
+    private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     override fun onStart() {
         super.onStart()
@@ -242,7 +271,8 @@ class ClockActivity : Activity() {
         face.kind = settings.display.face
         // Dim Screen (Bedside Mode, sim-172): the screen as dim as the page says, or left as it is.
         window.attributes = window.attributes.apply { screenBrightness = if (page == Page.BEDSIDE && settings.display.dim) BEDSIDE_BRIGHTNESS else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE }
-        if (page == Page.BEDSIDE) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Bedside Mode, and the charger's clock (sim-416: still on after 90 s), keep the screen on.
+        if (page == Page.BEDSIDE || charging) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         watch.focus = screen.focus
         render()
         watch.removeCallbacks(frame)
@@ -283,6 +313,7 @@ class ClockActivity : Activity() {
             Act.RESET -> R.string.act_reset
             Act.SET_TIMER -> R.string.act_set_timer
             Act.OPTIONS -> R.string.act_options
+            Act.HELP -> R.string.act_help
             Act.CLOSE -> R.string.act_close
             Act.SWITCH -> R.string.act_switch_application
         },
@@ -308,6 +339,7 @@ class ClockActivity : Activity() {
             Act.START, Act.STOP, Act.LAP, Act.RESET -> if (screen.page == Page.TIMER) timerAct(a, t) else stopwatchAct(a, t)
             Act.SET_TIMER -> SpinDialog(this, SetAlarm.timer(timer.duration), hideStatusBar = true) { s -> setTimer(timer.set(s.duration)) }.show()
             Act.OPTIONS -> open(Intent(this, OptionsActivity::class.java))
+            Act.HELP -> dev.bold7.ui.Help.open(this, "clock")
             Act.CLOSE -> finish()
             Act.SWITCH -> SwitchApplication.start(this)
         }
@@ -411,6 +443,8 @@ class ClockActivity : Activity() {
         if (e.action != KeyEvent.ACTION_DOWN) return super.dispatchKeyEvent(e)
         val code = e.keyCode
         val click = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+        // Over the lock screen, nothing but Escape: no menu, no Set Alarm before the unlock.
+        if (charging && (click || code == KeyEvent.KEYCODE_MENU || code in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT) && locked()) return true
         val m = menu
         if (m != null) {
             when (val r = m.key(

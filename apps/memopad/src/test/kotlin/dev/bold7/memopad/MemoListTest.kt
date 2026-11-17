@@ -83,22 +83,23 @@ class MemoListTest {
 
     @Test fun theFullMenuOnAMemoIsSim260sWithEditFocused() {
         val m = loaded().menu()
-        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.EDIT, ListAct.DELETE, ListAct.OPTIONS, ListAct.CLOSE), m.entries.map { it.action })
+        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.EDIT, ListAct.DELETE, ListAct.OPTIONS, ListAct.HELP, ListAct.CLOSE), m.entries.map { it.action })
         assertEquals(2, m.highlighted)
         assertTrue(m.entries[4].separatorAbove)
     }
 
     @Test fun onNewMemoTheMenuHasNoMemoActionsAndNoShortMenu() {
         val s = loaded().reduce(ListEvent.Moved(0))
-        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.OPTIONS, ListAct.CLOSE), s.menu().entries.map { it.action })
+        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.OPTIONS, ListAct.HELP, ListAct.CLOSE), s.menu().entries.map { it.action })
         assertEquals(1, s.menu().highlighted)
         assertNull(s.shortMenu())
     }
 
-    @Test fun theShortMenuIsDeleteThenEditFocusedByFullMenu() {
+    @Test fun theShortMenuEndsOnEditFocusedByFullMenu() {
+        // sim-265 (C): Delete, Forward As, Switch Application, Show Home Screen, Edit; Forward As has no feature here yet.
         val m = loaded().shortMenu()!!
-        assertEquals(listOf(ListAct.DELETE, ListAct.EDIT), m.entries.map { it.action })
-        assertEquals(1, m.highlighted)
+        assertEquals(listOf(ListAct.DELETE, ListAct.SWITCH, ListAct.HOME, ListAct.EDIT), m.entries.map { it.action })
+        assertEquals(3, m.highlighted)
         assertEquals(1, m.line)
     }
 

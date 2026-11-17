@@ -6,7 +6,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -31,6 +30,7 @@ import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
 import dev.bold7.ui.Travel
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -98,7 +98,7 @@ class ViewerActivity : Activity() {
             val (bitmap, sm) = withContext(graph.io) {
                 // At least twice the screen, for the zoom: a power of two smaller than the part.
                 graph.threads.image(uri, side * 2) to
-                    listOf(R.drawable.msg_sm_save_image_browser, R.drawable.msg_sm_zoom_in).map { BitmapFactory.decodeResource(resources, it) }
+                    listOf("msg_sm_save_image_browser", "msg_sm_zoom_in").map { themeBitmap(applicationContext, it) }
             }
             sm.forEachIndexed { i, b -> glyphs[i] = b }
             if (bitmap == null) {

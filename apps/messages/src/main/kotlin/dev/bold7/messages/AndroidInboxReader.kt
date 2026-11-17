@@ -9,6 +9,7 @@ import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.text.format.DateFormat
 import android.util.Log
+import dev.bold7.design.OS7_NAMES
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.AccountKind
 import dev.bold7.hub.data.Box
@@ -120,7 +121,7 @@ class AndroidInboxReader(private val context: Context, private val drafts: Draft
 }
 
 /** The phone's zone, language and clock. */
-fun inboxFormat(context: Context) = InboxFormat(ZoneId.systemDefault(), context.resources.configuration.locales[0], DateFormat.is24HourFormat(context))
+fun inboxFormat(context: Context) = InboxFormat(ZoneId.systemDefault(), OS7_NAMES, DateFormat.is24HourFormat(context))
 
 /**
  * [count] made-up items, at most [DEMO_MAX], a mix of kinds over a fortnight, half unread, for the
@@ -130,7 +131,7 @@ fun inboxFormat(context: Context) = InboxFormat(ZoneId.systemDefault(), context.
 fun demoSnapshot(count: Int, now: Long): Snapshot {
     val n = count.coerceIn(0, DEMO_MAX)
     val names = listOf("Kelly Nielsen", "Emma Kinsella", "Bern Paterson", "Albert Johnson", "Alice Martin", "Paul Durand")
-    val texts = listOf("Test email", "Security Activation Required", "On se voit à 18 h ?", "Registration", "OK")
+    val texts = listOf("Test email", "Security Activation Required", "See you at 6 pm?", "Registration", "OK")
     val kinds = listOf(ItemKind.SMS, ItemKind.NOTIFICATION, ItemKind.MISSED_CALL, ItemKind.SMS, ItemKind.MMS)
     val items = List(n) { i ->
         val kind = kinds[i % kinds.size]

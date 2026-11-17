@@ -228,7 +228,7 @@ class MailAccountsActivity : Activity() {
         setTextSize(TypedValue.COMPLEX_UNIT_PX, Typography.TEXT.toFloat())
         setTextColor(ListColors.Title)
         includeFontPadding = false
-        background = themeImage(this@MailAccountsActivity, R.drawable.msg_form)
+        background = themeImage(this@MailAccountsActivity, "msg_form")
         setPadding(6, 0, 6, 0)
         minHeight = 43
         gravity = Gravity.CENTER_VERTICAL or Gravity.START

@@ -1,5 +1,6 @@
 package dev.bold7.launcher.notices
 
+import dev.bold7.design.OS7_LOCALE
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.HubItem
 import dev.bold7.hub.data.ItemKind
@@ -64,7 +65,7 @@ fun notices(
 ): List<NoticeLine> {
     val ids = accounts.mapTo(HashSet()) { it.id }
     val unread = items.filterNot { it.isSystemNotice() }.withoutEchoes(smsApp, dialer).filter { it.accountId in ids && it.isUnread() }.sortedByDescending { it.timestamp }
-    val date = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(format.locale)
+    val date = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(OS7_LOCALE)
     val lines = ArrayList<NoticeLine>()
     fun section(header: NoticeHeader, rows: List<HubItem>) {
         if (rows.isEmpty()) return

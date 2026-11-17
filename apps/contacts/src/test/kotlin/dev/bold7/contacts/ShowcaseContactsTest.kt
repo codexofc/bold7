@@ -26,12 +26,19 @@ class ShowcaseContactsTest {
         assertEquals("Project Lead, Northgate Studio", c.company)
         assertEquals(listOf("Mobile" to "+1 519-555-0101", "Work" to "+1 519-555-0151", "Email" to "olivia.bennett@example.com",
             "Work" to "48 King Street West, Waterloo"), c.ordered.map { it.label to it.value })
-        assertEquals(listOf("Work"), c.groups)
         assertEquals("showcase:avatar/1", c.photo)
         assertEquals(c.details.size, c.details.map { it.dataId }.toSet().size)
         assertEquals(listOf("Home" to "12 Maple Crescent, Guelph"), store.card(5)!!.details.filter { it.kind == Kind.ADDRESS }.map { it.label to it.value })
         assertEquals("", store.card(2)!!.company)
         assertNull(store.card(999))
+    }
+
+    @Test
+    fun theActivityIsTheContactsCallsAndTexts() {
+        val a = store.activity(store.card(1)!!)!!
+        assertTrue(a.isNotEmpty() && a.size <= RECENT_MAX)
+        assertEquals(a.sortedByDescending { it.at }, a)
+        assertEquals(ActivityKind.CALL_IN, a.first { it.kind != ActivityKind.TEXT_IN && it.kind != ActivityKind.TEXT_OUT }.kind)
     }
 
     @Test

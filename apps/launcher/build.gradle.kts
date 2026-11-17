@@ -3,14 +3,18 @@ plugins { id("com.android.application") }
 // App icons and home images, out of git (provenance in assets-private/MANIFEST.md), copied into
 // this checkout's assets-gen by tools/import-assets.sh
 // from the table of core/icons (res/raw/bbos7_icons.tsv); the same lines as system/sysui/build.gradle.kts.
+// Read by name at run time (core/theme): from the folder the module mounts, else from these
+// compiled resources, which only the development build carries. A public build
+// (-Pbold7.public=true) carries none of them.
 val privateRes = rootProject.file("assets-gen/launcher/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 android {
     namespace = "dev.bold7.launcher"
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }
@@ -21,7 +25,7 @@ tasks.named("preBuild") {
 // up to date and ship anyway.
 tasks.withType<Test>().configureEach {
     inputs.file(rootProject.file("core/icons/src/main/res/raw/bbos7_icons.tsv"))
-    inputs.dir(privateRes)
+    inputs.files(fileTree(privateRes))
 }
 
 afterEvaluate {
@@ -40,6 +44,9 @@ dependencies {
     implementation(project(":core:hub-data"))
     // The made-up data shown while the showcase is on (bold7_showcase): the inbox, the search, the alarm.
     implementation(project(":core:showcase"))
+    // @Keep on ImageOverlays, which only app_process calls (system/module overlays.sh). Annotation
+    // only: the artifact is already in the APK through Room, and its R8 rule with it. Apache 2.0.
+    compileOnly("androidx.annotation:annotation:1.9.1")
     // StateFlow of the quickstep state the home collects (docs/ARCHITECTURE.md §3). Apache 2.0.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     testImplementation(kotlin("test-junit"))

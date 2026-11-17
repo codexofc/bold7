@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The wait dialog of the framework (ProgressDialog, its spinning style), as Android 14's (android-34): the
+     same views, ids, paddings and wait indicator (progressBarStyle, OS 7's ring: values/widgets.xml).
+     Changed: the message in the dialogs' text, BBAlpha Sans 27 px (sim-19, sim-42, C), instead of
+     the theme's small grey; in the dialog theme's primary text colour, not white as in
+     alert_dialog_material.xml: an AppCompat app shows this dialog in its own light box. The private
+     ids (id/body, dimen/dialog_padding_top_material) are android.jar's: BenOS's com.android.internal.R
+     (framework.jar, stubs/device) gives the same body, and its dimens all match android.jar's. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@*android:id/body"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+        android:paddingStart="?android:attr/dialogPreferredPadding"
+        android:paddingTop="@*android:dimen/dialog_padding_top_material"
+        android:paddingEnd="?android:attr/dialogPreferredPadding"
+        android:paddingBottom="@*android:dimen/dialog_padding_top_material">
+
+        <ProgressBar
+            android:id="@android:id/progress"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:max="10000"
+            android:layout_marginEnd="?android:attr/dialogPreferredPadding" />
+
+        <TextView
+            android:id="@android:id/message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:textSize="27px"
+            android:fontFamily="sans-serif"
+            android:textColor="?android:attr/textColorPrimary" />
+    </LinearLayout>
+</FrameLayout>

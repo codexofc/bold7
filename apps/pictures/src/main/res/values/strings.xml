@@ -4,6 +4,8 @@
 <resources>
     <string name="app_name">Pictures</string>
     <string name="title">Pictures</string>
+    <!-- Select Picture, as Setup's Wallpaper opens it (sim-387, C). -->
+    <string name="select_picture">Select Picture</string>
     <!-- The first screen's rows (sim-344, C). -->
     <string name="camera">Camera</string>
     <string name="camera_pictures">Camera Pictures</string>
@@ -33,4 +35,5 @@
     <string name="unreadable">Unable to open the picture.</string>
     <string name="no_messages">Messages is not installed.</string>
     <string name="no_camera">No camera application.</string>
+    <string name="act_help">Help</string>
 </resources>

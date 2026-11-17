@@ -4,7 +4,7 @@
 #   tools/showcase-capture.sh [screen…]
 #
 # Screens, by the names public/README.md expects under media/screens/: home notifications drawer
-# search messages thread phone calendar clock options lock menu connections (all by default). Each is captured at
+# search messages thread phone calendar clock pictures options lock menu connections (all by default). Each is captured at
 # the Q25's native 720x720 into $OUT/media/screens/<screen>.png (OUT: build/showcase of the main
 # checkout, also from a worktree).
 #
@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 MAIN=$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)
 OUT=${OUT:-$MAIN/build/showcase}/media/screens
-ALL="home notifications drawer search messages thread phone calendar clock options lock menu connections"
+ALL="home notifications drawer search messages thread phone calendar clock pictures options lock menu connections"
 screens=${*:-$ALL}
 for s in $screens; do [[ " $ALL " == *" $s "* ]] || { echo "Unknown screen: $s (one of: $ALL)" >&2; exit 2; }; done
 
@@ -124,6 +124,7 @@ for s in $order; do
       if [ $n -lt 0 ]; then n=$((-n)); dir=KEYCODE_DPAD_DOWN; fi
       while [ $n -gt 0 ]; do key CalendarActivity $dir; n=$((n - 1)); done
       shoot calendar 1.5 ;;
+    pictures) app pictures dev.bold7.pictures/.PicturesActivity; shoot pictures 2 ;;
     clock) app clock dev.bold7.clock/.ClockActivity; shoot clock 2 ;;
     # In the launcher's process: started, never force-stopped.
     options) sh am start -W -n dev.bold7.launcher/.options.OptionsActivity >/dev/null; expect OptionsActivity; shoot options 2; home ;;

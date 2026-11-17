@@ -148,6 +148,7 @@ internal class HomeKeys(
         when (effect) {
             is TypingEffect.Search -> search(effect.text)
             is TypingEffect.Open -> open(effect.letter)
+            TypingEffect.Help -> dev.bold7.ui.Help.open(context)
             null -> Unit
         }
     }
@@ -282,7 +283,7 @@ internal class HomeKeys(
         val m = move(focus, dir, count(), expanded, lastIcon)
         if (m.panel != 0) {
             lastIcon = 0 // another view: its first icon (D)
-            dispatch(HomeEvent.ShowPanel(homeState().panel.next(m.panel)))
+            dispatch(HomeEvent.ShowPanel(homeState().let { it.panel.next(m.panel, it.hiddenPanels) }))
         }
         // Down from the lowered row: the tray rises (its 250 ms, as Maximise Panel), the focus stays.
         if (m.expand) dispatch(HomeEvent.Expand(true))

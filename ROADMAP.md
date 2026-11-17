@@ -1,6 +1,6 @@
 # Roadmap
 
-Bold7 works today on a Q25 installed from source. The next milestone is the public installer, so that any Q25 owner can install Bold7 from the KernelSU manager with two downloads and a reboot. After that, the work continues on everything that still shows Android.
+Bold7 0.1 installs from the KernelSU manager on the official LineageOS 24 and on BenOS, with two downloads and a reboot. The work continues on everything that still shows Android.
 
 ## Done
 
@@ -21,23 +21,21 @@ Bold7 works today on a Q25 installed from source. The next milestone is the publ
 - Phone, Contacts, Calendar, Clock, Calculator, MemoPad, Tasks, Pictures, Options, Flashlight.
 - Typing: Direct and Predictive styles, word substitution, word learning, Sym, keyboard selection, cut, copy and paste.
 
-**Installer groundwork**
-- Feasibility proven on the device: removal script run by KernelSU, nested module install, app install from the module, fabricated overlays carrying an extracted file, manager update flow.
-- Logo and module banner.
-- Extractor in pure Kotlin for the official OS Loader, byte-identical to the reference extraction for fonts, home screen, icons, interface and Messages resources.
-- Runtime image store: OS 7 images read by name from the extracted resources, with a clean fallback; Calculator, Flashlight and the shared components already use it.
-- Public build that fails if any release APK contains a BlackBerry file.
-- Ed25519 signing key for release zips.
+**Installer and releases**
+- Install from the KernelSU manager on the phone: device and system checked, the official 9900 file (OS Loader or simulator) recognised by its SHA-256 and extracted on the phone, apps and Vector installed, nothing changed when a check fails.
+- Every OS 7 image, sound, font, the boot animation and the help pages read from the extracted resources at runtime; the public build and every release zip are checked against the 9900 file, by bytes and by pixels.
+- Module scripts: settings backed up in `/data/adb`, two-step removal that gives everything back, boot-loop and SystemUI guards.
+- First boot sets home screen, phone app, input method, permissions, sounds, silences and End key; the OS 7 Setup Wizard at first unlock.
+- One signed release per line (LineageOS 24 and BenOS), each with its own update file, so the KernelSU manager only offers updates of the line installed.
 
-## Next: the public installer
+**LineageOS 24**
+- Bold7 on the official LineageOS 24 (Android 17): SDK 37, quickstep interfaces of Android 17, hooks guarded group by group, fonts, sounds and density of the 9900's pixel.
+- OS 7 lock screen face, volume window, battery, charging bolt, palette, notification cards and transitions redone for Android 17's SystemUI.
+- Notification LED as on the 9900; Bold7 Camera, a fork of BenOS Camera; Android 17's permission requests in OS 7 dialogs.
 
-1. **Extraction on the phone.** Finish `core/firmware`: the official simulator as a second accepted file, the remaining resource blocks, sounds. Run by `customize.sh` in root through `app_process`, so no app needs `su`. If a full extraction takes more than a minute on the Q25, the slow decompressor moves to Rust behind the same API.
-2. **Everything on the runtime store.** Move the launcher, icons, SystemUI, Clock, Messages, Phone, Contacts, Pictures, Tasks, Calendar, MemoPad and the test app from compiled resources to runtime reads, then sounds, fonts and the typing dictionaries.
-3. **Module scripts.** Port the developer install and uninstall scripts into the module: device and BenOS checks by file hashes, apps, Vector, permissions, roles, settings backups in `/data/adb`, and a two-step removal (files at the next boot, Android settings once boot completes).
-4. **Overlays without images.** Replace the overlays that carry firmware images with image-free overlays plus fabricated overlays built from the extracted files; fonts and sounds placed from the store.
-5. **First boot.** Home, phone app, input method, permissions, sounds, silences and End key set automatically; a single OS 7 screen at first unlock for the Google Messages consent.
-6. **Setup wizard.** The OS 7 Setup Wizard, sourced from the firmware and the simulator.
-7. **Signed publication.** Release page, `updateJson` with a changelog, signed zips, complete `NOTICE` (including Vector under GPL-3.0), and a full clean install and removal verified on a Q25.
+## Next
+
+- **Bold7 Setup**, a desktop app that takes a Q25 from stock to LineageOS 24, root and Bold7 in one go, backing up the phone's data on the way.
 
 ## Next: what still shows Android
 
@@ -55,7 +53,8 @@ Bold7 works today on a Q25 installed from source. The next milestone is the publ
 - Android's screen when rebooting to recovery, and `system_server`'s shutdown box when SystemUI does not answer.
 - The emergency dialer behind Emergency on the lock screen and in the power-off dialog.
 - The sound dose warning (CSD) wording.
-- Notification cards under the lock screen face, the exit animation after a correct code, the pattern unlock view.
+- Notification cards under the lock screen face (BenOS), the exit animation after a correct code, the pattern unlock view of a pattern set before Bold7 (Bold7 offers passwords only, as the 9900 did).
+- On LineageOS 24: the starting window of apps, the Call key on the lock screen, and Android's notification that asks to set up the physical keyboard.
 
 **Apps**
 - Calendar: the OS 7 reminder (vibration in Normal) in place of Google Calendar's sound; multiple alarms.
@@ -65,7 +64,7 @@ Bold7 works today on a Q25 installed from source. The next milestone is the publ
 - Phone: call settings and the emergency dialer.
 - Contacts: adding to an existing contact from another app.
 - Android Settings pages still opened from Options: Sounds for Contacts, Call Management, Message on Lock Screen, custom dictionary, spell check.
-- Camera and Music still open Android apps.
+- Music still opens an Android app; on BenOS, Camera too.
 
 **Profiles and sounds**
 - One ringtone, notifier and reminder tone per profile; personal profiles; per-contact sounds.

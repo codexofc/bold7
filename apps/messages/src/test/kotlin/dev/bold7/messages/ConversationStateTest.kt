@@ -11,7 +11,24 @@ class ConversationStateTest {
     private fun msg(id: Long, out: Boolean = false) = ThreadMessage("content://sms/$id", id, out, "t$id", Delivery.RECEIVED)
     private val thread = ConversationState(threadId = 8, title = "513").reduce(ThreadEvent.Loaded(listOf(msg(1), msg(2, out = true), msg(3))))
 
-    @Test fun theFieldHasTheFocusAtFirst() {
+    @Test fun aBubbleNamesItsSender() {
+        fun from(id: Long, number: String) = msg(id).copy(from = number)
+        // One person: the band's name on every received bubble, "Me" on the sent ones.
+        assertEquals("513", thread.senderLabel(thread.messages[0], "Me"))
+        assertEquals("Me", thread.senderLabel(thread.messages[1], "Me"))
+        // A group (two senders): each received bubble its sender's contact name, the number when
+        // not a contact (gsm 023 names the contact, C).
+        val group = ConversationState(threadId = 9, title = "Alice, 0611")
+            .reduce(ThreadEvent.Loaded(listOf(from(1, "+33 6 12 34 56 78"), from(2, "0699999999"))))
+            .reduce(ThreadEvent.Names(mapOf("0612345678" to "Alice")))
+        assertEquals("Alice", group.senderLabel(group.messages[0], "Me"))
+        assertEquals("0699999999", group.senderLabel(group.messages[1], "Me"))
+        // A new message's history: its one recipient's name.
+        val fresh = ConversationState(recipients = listOf(Recipient("555", "Bob"))).reduce(ThreadEvent.Loaded(listOf(msg(4))))
+        assertEquals("Bob", fresh.senderLabel(fresh.messages[0], "Me"))
+    }
+
+        @Test fun theFieldHasTheFocusAtFirst() {
         assertEquals(COMPOSER, thread.focus)
         assertTrue(thread.loaded)
         assertEquals(TO, ConversationState().focus)

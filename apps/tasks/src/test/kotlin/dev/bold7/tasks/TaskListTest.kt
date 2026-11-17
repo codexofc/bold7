@@ -68,11 +68,11 @@ class TaskListTest {
     @Test fun theFullMenuOnANotStartedTaskIsSim281sWithOpenFocusedAndCloseLast() {
         val m = loaded().reduce(ListEvent.Moved(5)).menu()
         assertEquals(
-            listOf(ListAct.SWITCH, ListAct.NEW, ListAct.OPEN, ListAct.DELETE, ListAct.DELETE_COMPLETED, ListAct.COMPLETE, ListAct.PROGRESS, ListAct.HIDE, ListAct.OPTIONS, ListAct.CLOSE),
+            listOf(ListAct.SWITCH, ListAct.NEW, ListAct.OPEN, ListAct.DELETE, ListAct.DELETE_COMPLETED, ListAct.COMPLETE, ListAct.PROGRESS, ListAct.HIDE, ListAct.OPTIONS, ListAct.HELP, ListAct.CLOSE),
             m.entries.map { it.action },
         )
         assertEquals(2, m.highlighted)
-        assertTrue(m.entries[m.entries.size - 2].separatorAbove)
+        assertTrue(m.entries[m.entries.size - 3].separatorAbove)
     }
 
     @Test fun aCompletedTaskCannotBeMarkedCompletedAndOneInProgressNotInProgress() {
@@ -87,7 +87,7 @@ class TaskListTest {
 
     @Test fun onAddTaskTheMenuHasNoTaskActionsAndNoShortMenu() {
         val s = loaded().reduce(ListEvent.Moved(0))
-        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.DELETE_COMPLETED, ListAct.HIDE, ListAct.OPTIONS, ListAct.CLOSE), s.menu().entries.map { it.action })
+        assertEquals(listOf(ListAct.SWITCH, ListAct.NEW, ListAct.DELETE_COMPLETED, ListAct.HIDE, ListAct.OPTIONS, ListAct.HELP, ListAct.CLOSE), s.menu().entries.map { it.action })
         assertEquals(1, s.menu().highlighted)
         assertEquals(listOf(ListAct.SHOW), s.reduce(ListEvent.ToggleHidden).menu().entries.map { it.action }.filter { it == ListAct.SHOW })
         assertNull(s.shortMenu())

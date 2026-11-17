@@ -8,3 +8,4 @@ deckers.thibault.aves.libre	app_name	ar,az,b+zxx+Shaw,be,bg,bn,ca,ckb,cs,da,de,e
 com.google.android.keep	keep_app_name	en-rAU,en-rGB,en-rIN,fr,fr-rFR
 com.google.android.apps.messaging	app_name	en-rAU,en-rGB,en-rIN,fr,fr-rFR
 com.google.android.apps.messaging	share_intent_label	en-rAU,en-rGB,en-rIN,fr,fr-rFR
+com.twitter.android	APP_NAME	fr,fr-rFR

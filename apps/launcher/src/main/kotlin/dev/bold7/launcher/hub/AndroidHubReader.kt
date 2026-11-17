@@ -10,6 +10,7 @@ import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.text.format.DateFormat
 import android.util.Log
+import dev.bold7.design.OS7_NAMES
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.AccountColor
 import dev.bold7.hub.data.AccountKind
@@ -97,7 +98,7 @@ class AndroidHubReader(private val context: Context) : HubReader {
         else -> c.getString(i)
     }
 
-    override fun format() = HubFormat(ZoneId.systemDefault(), context.resources.configuration.locales[0], DateFormat.is24HourFormat(context))
+    override fun format() = HubFormat(ZoneId.systemDefault(), OS7_NAMES, DateFormat.is24HourFormat(context))
 
     // The made-up items of the measure are written nowhere: the Hub's database is never touched.
     override fun write(method: String, keys: List<ItemKey>) {
@@ -142,7 +143,7 @@ fun demoSnapshot(count: Int, now: Long): HubSnapshot {
     val texts = listOf(
         "Eco & Innovation at CES with Looptworks",
         "All 4K Channel Plays Everywhere at CES Especially At Home",
-        "On se voit à 18 h ?",
+        "See you at 6 pm?",
         "Earn 50% more award miles when you exchange gift cards",
         "OK",
     )

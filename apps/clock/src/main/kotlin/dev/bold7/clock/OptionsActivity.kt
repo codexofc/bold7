@@ -22,10 +22,11 @@ import dev.bold7.design.DialogColors
 import dev.bold7.design.ListColors
 import dev.bold7.design.ListDimens
 import dev.bold7.design.Typography
+import dev.bold7.platform.hideStatusBar
 import dev.bold7.ui.Bold7Dialog
+import dev.bold7.ui.CheckBoxView
 import dev.bold7.ui.ChoiceList
 import dev.bold7.ui.ChoiceListView
-import dev.bold7.ui.CheckBoxView
 import dev.bold7.ui.ChoiceView
 import dev.bold7.ui.DialogIcon
 import dev.bold7.ui.Menu
@@ -34,17 +35,18 @@ import dev.bold7.ui.MenuKey
 import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
 import dev.bold7.ui.SwitchApplication
-import dev.bold7.ui.withSwitchApplication
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.fillPaint
 import dev.bold7.ui.fit
 import dev.bold7.ui.textPaint
 import dev.bold7.ui.themeImage
+import dev.bold7.ui.withSwitchApplication
 
 /**
  * Clock Options (sim-170 to sim-177, C), drawn as the trackpad's options screen (title
  * bar, group boxes and their grey titles, the choice fields, check box and buttons of core/ui) and
- * scrolled, since it has five groups: Clock (Clock Face, Home Time Zone, Set Time), Alarm (Alarm
+ * scrolled, since it has five groups: Clock (Clock Face, Home Time Zone, When Charging, Dismiss Clock
+ * Automatically, Set Time), Alarm (Alarm
  * Tone, Volume, Snooze Time, Vibration, Try it), Bedside Mode (Dim Screen), Stopwatch (Stopwatch
  * Face), Countdown Timer (Timer Face, Timer Tone, Volume, Vibration, Try it) ([OptionRow]). Saved by
  * Menu > Save, or Save when leaving with changes ("Changes made!", sim-47), as every options screen
@@ -110,6 +112,8 @@ class OptionsActivity : Activity() {
             addView(listView, FrameLayout.LayoutParams(match, match))
             addView(menuView, FrameLayout.LayoutParams(match, match))
         })
+        // No status bar: the 9900 shows its title bar alone (sim-170), as Tasks Options.
+        window.hideStatusBar()
         render()
         graph.io.post {
             val read = graph.keep.settings
@@ -138,6 +142,8 @@ class OptionsActivity : Activity() {
         when (r) {
             OptionRow.FACE -> R.string.opt_face
             OptionRow.HOME_ZONE -> R.string.opt_home_zone
+            OptionRow.WHEN_CHARGING -> R.string.opt_when_charging
+            OptionRow.DISMISS -> R.string.opt_dismiss
             OptionRow.SET_TIME -> R.string.act_set_time
             OptionRow.TONE -> R.string.opt_alarm_tone
             OptionRow.VOLUME, OptionRow.TIMER_VOLUME -> R.string.opt_volume
@@ -278,6 +284,7 @@ class OptionsActivity : Activity() {
             // Only what Options edits: the alarm itself is Set Alarm's.
             val keep = graph.keep
             keep.settings = keep.settings.copy(options = o.options, timer = o.timer, display = o.display)
+            applyCharging(this, o.display.charging)
             mainExecutor.execute {
                 saved = o
                 finish()

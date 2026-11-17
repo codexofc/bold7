@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The end handle: OS 7's (text_select_handle_middle_material.xml), its point at a quarter of the
+     width, Editor's hot spot for it. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:right="40px" android:drawable="@android:drawable/ic_menu_always_landscape_portrait" />
+</layer-list>

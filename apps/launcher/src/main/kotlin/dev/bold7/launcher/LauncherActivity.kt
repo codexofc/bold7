@@ -6,11 +6,6 @@ import android.app.WallpaperManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.UserManager
-import dev.bold7.launcher.setup.Consent
-import dev.bold7.launcher.setup.Launch
-import dev.bold7.launcher.setup.TextSetupActivity
-import dev.bold7.launcher.setup.TextSetupDevice
-import dev.bold7.launcher.setup.launch
 import android.content.ActivityNotFoundException
 import android.provider.AlarmClock
 import android.provider.Settings
@@ -34,9 +29,14 @@ import dev.bold7.launcher.hub.HubWatch
 import dev.bold7.launcher.hub.ItemOpener
 import dev.bold7.launcher.notices.NoticesView
 import dev.bold7.launcher.keys.HomeKeys
+import dev.bold7.launcher.setup.Opening
+import dev.bold7.launcher.setup.WizardActivity
+import dev.bold7.launcher.setup.WizardDevice
+import dev.bold7.launcher.setup.opening
 import dev.bold7.launcher.options.EXTRA_MANAGE_CONNECTIONS
 import dev.bold7.launcher.options.OptionsActivity
 import dev.bold7.launcher.options.Screen
+import dev.bold7.launcher.quickstep.WindowZoom
 import dev.bold7.launcher.options.WifiActivity
 import dev.bold7.launcher.profiles.ProfilePopup
 import dev.bold7.launcher.search.SearchPanel
@@ -87,12 +87,14 @@ class LauncherActivity : Activity() {
         keys = HomeKeys(this, home, { graph.home.state.value }, graph.home::dispatch, ::openSearch, ::bannerClicked) { graph.typingMode.mode }
         home.addView(keys.view, 0)
         home.onBannerTap = ::bannerClicked
-        home.onOptions = { OptionsActivity.start(this, Screen.HOME) }
+        home.onOptions = { zoomTo(OptionsActivity.intent(this, Screen.HOME)) }
+        home.onManagePanels = { zoomTo(OptionsActivity.intent(this, Screen.PANELS)) }
         // The list of notifications, over the tray, under the menus.
-        val opener = ItemOpener(this, graph.hubReader, graph.ioDispatcher, scope, home::start)
-        notices = NoticesView(this, home, opener, graph.hub::markRead, graph.ioDispatcher, scope, keys::refocus)
+        val opener = ItemOpener(this, graph.hubReader, graph.ioDispatcher, scope, home::start) { graph.launches.activityOptions(WindowZoom.open) }
+        notices = NoticesView(this, home, opener, graph.hub::markRead, graph.apps::iconOf, graph.ioDispatcher, scope, keys::refocus)
         home.addView(notices, home.indexOfChild(home.banner) + 1, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { topMargin = NoticeDimens.TOP })
         home.onBannerPull = notices::open
+        home.banner.indicatorIcon = graph.apps::indicator
         keys.list = notices
         // Undispatched: the current state is drawn by the first frame, not one post later.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -117,9 +119,11 @@ class LauncherActivity : Activity() {
         // Manage Connections: the phone's connections read once, off the main thread, before a first click.
         graph.connections
         hubWatch = HubWatch(this, graph.hub, graph.hubThread)
+        // The LED: from the first home on, for the life of the process (posted, nothing here waits).
+        graph.led.start()
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             graph.hub.state.collect {
-                bannerSource.counts(it.badges.counts)
+                bannerSource.counts(it.badges.counts, it.badges.appCounts)
                 home.showBadges(it.badges)
                 notices.render(it.notices)
             }
@@ -153,7 +157,7 @@ class LauncherActivity : Activity() {
 
     // "Change Sounds and Alerts" opens Options' list of the same name (sim-30, C).
     private fun openSoundSettings() {
-        OptionsActivity.start(this, Screen.SOUNDS)
+        zoomTo(OptionsActivity.intent(this, Screen.SOUNDS))
         keys.reset()
     }
 
@@ -171,15 +175,15 @@ class LauncherActivity : Activity() {
 
     /** Options, or Android's page for what Manage Connections and Options cannot do themselves. */
     private fun openPage(page: Page) {
-        if (page == Page.OPTIONS) return OptionsActivity.start(this)
+        if (page == Page.OPTIONS) return zoomTo(OptionsActivity.intent(this))
         // Alarm opens Bold7's Clock on Set Alarm; Android's alarms only without it.
         if (page == Page.ALARMS) try {
-            return startActivity(bold7Clock().putExtra("dev.bold7.clock.SET_ALARM", true))
+            return zoomTo(bold7Clock().putExtra("dev.bold7.clock.SET_ALARM", true))
         } catch (e: ActivityNotFoundException) {
             Log.w("Bold7/Connections", "Bold7's Clock is not installed: Android's alarms", e)
         }
         // Wi-Fi Network is Options' own screen, in Options' task.
-        if (page == Page.WIFI_NETWORKS) return startActivity(Intent(this, WifiActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        if (page == Page.WIFI_NETWORKS) return zoomTo(Intent(this, WifiActivity::class.java))
         val action = when (page) {
             Page.AIRPLANE -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
             Page.MOBILE -> Settings.ACTION_NETWORK_OPERATOR_SETTINGS
@@ -192,11 +196,18 @@ class LauncherActivity : Activity() {
             Page.OPTIONS -> return
         }
         try {
-            startActivity(Intent(action))
+            zoomTo(Intent(action))
         } catch (e: ActivityNotFoundException) {
             Log.w("Bold7/Connections", "no page for $page", e)
         }
     }
+
+    /**
+     * Leaves the home for [intent]'s screen with OS 7's zoom, as an app of the grid: the theme's
+     * homescreen rule holds for any screen it leaves to (theme.xml, A), Options and the pages of
+     * Manage Connections included. Throws ActivityNotFoundException as startActivity does.
+     */
+    private fun zoomTo(intent: Intent) = graph.launches.start(this, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), WindowZoom.open)
 
     private fun openSearch(typed: String) {
         // Nothing of the phone is searched while it is locked (the home under the keyguard).
@@ -250,6 +261,8 @@ class LauncherActivity : Activity() {
         super.onStart()
         bannerSource.start()
         hubWatch.shown(true)
+        graph.apps.refreshUserIcons() // the user's icons may have changed while away
+        graph.chargingClock.homeShown = true
     }
 
     /**
@@ -296,22 +309,22 @@ class LauncherActivity : Activity() {
         notices.close()
         bannerSource.stop()
         hubWatch.shown(false)
+        graph.chargingClock.homeShown = false
         super.onStop()
     }
 
-    // The first unlock: the one Setup screen, once (TextSetup.kt). Off the main thread; a locked phone is tried again at the next resume.
+    // The first unlock after an install: the Setup Wizard, once (Wizard.kt). Off the main thread, once a
+    // process; a locked phone is tried again at the next resume.
     override fun onResume() {
         super.onResume()
         if (setupDone || !getSystemService(UserManager::class.java).isUserUnlocked) return
         setupDone = true
         graph.io.post {
-            val device = TextSetupDevice(applicationContext)
-            val asked = device.asked()
-            val installed = !asked && device.messagesInstalled()
-            when (launch(asked, installed, if (installed) device.consent() else Consent.OFF)) {
-                Launch.SHOW -> runOnUiThread { if (!isDestroyed) startActivity(Intent(this, TextSetupActivity::class.java)) }
-                Launch.FINISH -> device.markAsked()
-                Launch.SKIP -> {}
+            val device = WizardDevice(applicationContext, dryRun = false)
+            when (opening(device.done(), device.textScreenAsked())) {
+                Opening.SHOW -> runOnUiThread { if (!isDestroyed) startActivity(Intent(this, WizardActivity::class.java)) }
+                Opening.MARK_DONE -> device.markDone()
+                Opening.NOTHING -> {}
             }
         }
     }

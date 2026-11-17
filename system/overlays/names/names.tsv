@@ -18,6 +18,9 @@
 # - Gmail: keeps its own name, in the launcher too, as the 9900 named a mail
 #   account's icon after the account (gsm 020, C); Messages is Bold7's own app.
 #
+# X (com.twitter.android, Play Store) keeps the 9900's Twitter name of the grid (bbos7_apps.tsv):
+# its label is string/APP_NAME, "X" in its default value only.
+#
 # Google Messages, hidden from the grid behind Bold7's Messages, is named Text
 # Messages outside the launcher, so that no second "Messages" shows (share sheet, recents,
 # permission dialogs, its notifications' header, as the 9900's list of notifications names texts,
@@ -35,3 +38,4 @@ pictures	deckers.thibault.aves.libre	app_name	Pictures
 memopad	com.google.android.keep	keep_app_name	MemoPad
 textmessages	com.google.android.apps.messaging	app_name	Text Messages
 textmessages	com.google.android.apps.messaging	share_intent_label	Text Messages
+twitter	com.twitter.android	APP_NAME	Twitter

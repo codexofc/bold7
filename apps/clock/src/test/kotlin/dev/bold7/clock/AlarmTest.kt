@@ -103,12 +103,12 @@ class AlarmTest {
     @Test fun theTimerAndDisplayOptionsAreKeptToo() {
         val s = ClockSettings(
             Alarm(6, 45, AlarmRepeat.WEEKDAYS), AlarmOptions("Seaside.m4a", ESCALATING, 15, vibrate = true),
-            TimerOptions("Dream.m4a", SILENT, vibrate = true), DisplayOptions(ClockFace.DIGITAL, "Africa/Casablanca", dim = false),
+            TimerOptions("Dream.m4a", SILENT, vibrate = true), DisplayOptions(ClockFace.DIGITAL, "Africa/Casablanca", dim = false, charging = WhenCharging.BEDSIDE, dismiss = false),
         )
         assertEquals(s, ClockSettings.read(s.write()::get))
         // An old store without these keys, or with broken ones, reads the defaults.
         assertEquals(ClockSettings().timer, ClockSettings.read(s.write().filterKeys { !it.startsWith("timer") }::get).timer)
-        assertEquals(ClockSettings().display, ClockSettings.read((s.write() + ("face" to "ROUND") + ("home_zone" to "Nowhere/Land") + ("dim" to "maybe"))::get).display)
+        assertEquals(ClockSettings().display, ClockSettings.read((s.write() + ("face" to "ROUND") + ("home_zone" to "Nowhere/Land") + ("dim" to "maybe") + ("when_charging" to "ALWAYS") + ("dismiss_clock" to "1"))::get).display)
     }
 
     @Test fun theTimerRingsAsBeforeUnlessOptionsSaysOtherwise() {

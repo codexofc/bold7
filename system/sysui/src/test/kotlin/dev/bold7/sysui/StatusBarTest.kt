@@ -102,9 +102,17 @@ class StatusBarTest {
     }
 
     // Every image the counters can name, so that none is missing at run time.
+    // Another app's counter after the kinds', the Hub's order kept, the "?" bubble as its image until its own icon is drawn.
+    @Test fun otherAppsCountAfterTheKinds() {
+        assertEquals(
+            listOf(Counter(OTHER_APP_IMAGE, 2, "com.whatsapp"), Counter(OTHER_APP_IMAGE, 1, "dev.bold7.essai")),
+            appCounters(linkedMapOf("com.whatsapp" to 2, "dev.bold7.essai" to 1, "gone" to 0)),
+        )
+    }
+
     @Test fun everyCounterImageIsThere() {
-        val names = KIND_IMAGES.values.toSet()
-        assertEquals(4, names.size)
+        val names = KIND_IMAGES.values.toSet() + OTHER_APP_IMAGE
+        assertEquals(5, names.size)
         for (name in names) assertTrue(File("../../assets-gen/sysui/res/drawable-nodpi/$name.png").exists(), name)
     }
 }

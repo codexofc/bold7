@@ -10,16 +10,20 @@ plugins { id("com.android.application") }
 
 // BB10 glyphs of the demo of core/ui (DemoActivity), out of git (provenance in
 // assets-private/MANIFEST.md), copied into this checkout's assets-gen by tools/import-assets.sh; the same lines as apps/launcher/build.gradle.kts.
+// Read by name at run time: from the folder the module mounts, else from these compiled
+// resources, which only the development build carries. A public build (-Pbold7.public=true)
+// carries none of them.
 val privateRes = rootProject.file("assets-gen/essai/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 // The test app, never part of the module: what a change shows on the phone may need an ordinary
 // app to trigger it. Installed by hand during a test session, removed after.
 android {
     namespace = "dev.bold7.essai"
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }
@@ -27,6 +31,11 @@ tasks.named("preBuild") {
 dependencies {
     // The demo of core/ui's components in views.
     implementation(project(":core:ui"))
+    // The widgets ordinary apps embed rather than take from the framework (WidgetsActivity), all
+    // Apache 2.0; this app is never part of the module.
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
 
 // The demo's baseline profile (src/main/baseline-prof.txt) as ART on Android 14 reads it for an

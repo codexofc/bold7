@@ -49,8 +49,8 @@ fun HubItem.isSystemNotice() = kind == ItemKind.NOTIFICATION && (isSystemNotific
  * Every unread item by kind, seen in the Hub or not: the numbers of the home banner's indicator
  * row, of an app's status bar and of the lock screen (BBOS7-VISUEL §1, sim-03, sim-43, sim-64: the
  * same counters everywhere, C). A text counts as SMS, an MMS or a chat of the SMS app [smsApp]
- * alike ([isText]). Any other notification counts nowhere: OS 7 has a counter for mail, texts,
- * missed calls and invitations, none for an app of Android. A notification that only repeats an
+ * alike ([isText]). Any other app's notifications count by app ([unreadByApp]), with the app's own
+ * icon. A notification that only repeats an
  * SMS or a missed call is left out too ([withoutEchoes]): one call, one count.
  */
 fun unreadByKind(accounts: List<Account>, items: List<HubItem>, smsApp: String?, dialer: String?): Map<ItemKind, Int> {
@@ -59,4 +59,19 @@ fun unreadByKind(accounts: List<Account>, items: List<HubItem>, smsApp: String?,
         .filter { it.accountId in ids && it.isUnread() }
         .mapNotNull { if (it.isText(smsApp)) ItemKind.SMS else it.kind.takeIf { k -> k != ItemKind.NOTIFICATION } }
         .groupingBy { it }.eachCount()
+}
+
+/**
+ * Every other app's unread notifications, by package, the app with the newest unread item first:
+ * its own indicator in the banners, after the counters of [unreadByKind] (the firmware's Facebook,
+ * Twitter and App World carry their own ribbon icon, so OS 7 showed a third-party app's indicator
+ * beside its own, A; the order is D). What [unreadByKind] counts or leaves out stays out here: the
+ * SMS app's chats, echoes, Android's own notices.
+ */
+fun unreadByApp(accounts: List<Account>, items: List<HubItem>, smsApp: String?, dialer: String?): Map<String, Int> {
+    val ids = accounts.mapTo(HashSet()) { it.id }
+    return items.filterNot { it.isSystemNotice() }.withoutEchoes(smsApp, dialer)
+        .filter { it.accountId in ids && it.isUnread() && it.kind == ItemKind.NOTIFICATION && it.folder != null && !it.isText(smsApp) }
+        .sortedByDescending { it.timestamp }
+        .groupingBy { it.folder!! }.eachCount()
 }

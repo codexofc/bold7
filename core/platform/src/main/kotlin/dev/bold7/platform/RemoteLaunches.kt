@@ -32,6 +32,12 @@ interface OpeningWindow {
     /** Uniform [scale], then offset ([x], [y]) from the window's top-left corner, at [alpha]. */
     fun place(scale: Float, x: Float, y: Float, alpha: Float)
 
+    /** A translucent window (the switcher) leaves with the app's: kept above it for [fadeLeaving]. */
+    val leaves: Boolean
+
+    /** The translucent windows that leave, above the app's, at [alpha]. */
+    fun fadeLeaving(alpha: Float)
+
     /** Ends the transition, the window left whole by the system. Once; nothing may be called after. */
     fun finish()
 
@@ -66,8 +72,12 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
         private set
 
     /** Options handing the opening to [animation]: one transition each, for one start. No splash style, as [plain]. */
-    fun options(animation: OpeningAnimation): Bundle =
-        ActivityOptions.makeRemoteTransition(RemoteTransition(Remote(animation), appThread, "Bold7Open")).toBundle()
+    fun options(animation: OpeningAnimation): Bundle = activityOptions(animation).toBundle()
+
+    /** The same, to add to (a PendingIntent's start); plain ones once the system refused them. */
+    fun activityOptions(animation: OpeningAnimation): ActivityOptions =
+        if (refused) ActivityOptions.makeBasic()
+        else ActivityOptions.makeRemoteTransition(RemoteTransition(Remote(animation), appThread, "Bold7Open"))
 
     /**
      * [Context.startActivity] with [animation]; started again without it if the system refused
@@ -104,6 +114,11 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
     fun animateReturnsHome(shell: IBinder?, home: ComponentName, animation: OpeningAnimation) {
         if (shell == null) return failed("no shell transitions, returns to the home animated by Android", null)
         val remote = homeRemote ?: RemoteTransition(Remote(animation, closing = true), appThread, "Bold7Home").also { homeRemote = it }
+        // No CONTAINER_ORDER_TOP on the home, unlike Launcher3: it asks for the home at index 0 of the
+        // changes, which holds for the home key (home on top) but not for Back or Escape, where the app
+        // that finishes is listed first and the home under it (TransitionFilter.Requirement.matches,
+        // the same in Android 14; measured on the Q25 under LineageOS 24): those returns fell to the
+        // shell's default handler.
         val filter = TransitionFilter().apply {
             mNotFlags = WindowManager.TRANSIT_FLAG_KEYGUARD_GOING_AWAY // the unlock is not a return
             mRequirements = arrayOf(
@@ -111,7 +126,6 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
                     mActivityType = WindowConfiguration.ACTIVITY_TYPE_HOME
                     mTopActivity = home
                     mModes = intArrayOf(WindowManager.TRANSIT_OPEN, WindowManager.TRANSIT_TO_FRONT)
-                    mOrder = TransitionFilter.CONTAINER_ORDER_TOP
                 },
                 TransitionFilter.Requirement().apply {
                     mActivityType = WindowConfiguration.ACTIVITY_TYPE_STANDARD
@@ -199,6 +213,13 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
         private val apps = info.changes.filter {
             it.taskInfo != null && if (closing) isClosing(it.mode) && !it.hasFlags(TransitionInfo.FLAG_TRANSLUCENT) else isOpening(it.mode)
         }
+        // A translucent window sent away with an app's (the switcher an app or the home was chosen
+        // in) stays above until the animation lets it go: OS 7 fades the switcher out (vid-04, C).
+        // Closing with no app's window (the switcher over the home, already faded by its view), none.
+        private val leaving = info.changes.filter {
+            it.taskInfo != null && isClosing(it.mode) && it.hasFlags(TransitionInfo.FLAG_TRANSLUCENT)
+        }.takeIf { apps.isNotEmpty() }.orEmpty()
+        override val leaves = leaving.isNotEmpty()
         override val width = apps.firstOrNull()?.endAbsBounds?.width() ?: 0
         override val height = apps.firstOrNull()?.endAbsBounds?.height() ?: 0
         private val t = SurfaceControl.Transaction()
@@ -217,6 +238,7 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
                 }
                 for (i in apps.indices) startT.setLayer(apps[i].leash, info.changes.size * 3 - i)
             }
+            for (i in leaving.indices) startT.show(leaving[i].leash).setAlpha(leaving[i].leash, 1f).setLayer(leaving[i].leash, info.changes.size * 3 + 1 + i)
             if (apps.isEmpty()) {
                 // Closing, only a translucent window left (the switcher over the home): expected.
                 if (!closing) Log.w(TAG, "opening without an app window (type ${info.type}): none")
@@ -252,6 +274,13 @@ class RemoteLaunches(context: Context, private val handler: Handler) {
             } finally {
                 Trace.endSection()
             }
+        }
+
+        override fun fadeLeaving(alpha: Float) {
+            if (done || !leaves) return
+            val tx = if (started) t else startT
+            for (i in leaving.indices) tx.setAlpha(leaving[i].leash, alpha)
+            if (started) t.apply()
         }
 
         override fun fail(e: Throwable) {

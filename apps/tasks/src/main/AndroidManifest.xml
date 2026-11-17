@@ -25,6 +25,12 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- No backup: the tasks stay on the phone, in the app's private storage. -->
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
     <application
         android:name=".TasksApp"
         android:allowBackup="false"

@@ -27,6 +27,10 @@ data class SavedHome(
     val layout: List<Tile> = emptyList(),
     val favourites: List<String> = emptyList(),
     val frequent: List<String> = emptyList(),
+    /** Downloads Folder of Home Screen Preferences: a folder's name, null for Home. */
+    val downloads: String? = null,
+    /** The views Manage Panels hides. */
+    val hiddenPanels: Set<Panel> = emptySet(),
 )
 
 /**
@@ -35,9 +39,11 @@ data class SavedHome(
  * one of a package with an icon in All itself comes right after it (Text Messages beside
  * Messages, sim-03, C); the others go to the end, in the order of [installed]. Nothing is
  * removed. An app [hides] leaves out is not placed, and still launchable: one of the layout keeps
- * its place.
+ * its place. With [downloads], the name of a folder of [layout], an app the user installed
+ * ([App.removable]) that would go to the end goes to the end of that folder instead (Downloads
+ * Folder, guide 7.1 p. 23, B).
  */
-fun placed(layout: List<Tile>, installed: List<App>, hides: (App) -> Boolean = { false }): List<Tile> {
+fun placed(layout: List<Tile>, installed: List<App>, hides: (App) -> Boolean = { false }, downloads: String? = null): List<Tile> {
     val launchable = installed.mapTo(HashSet()) { it.component }
     var tiles = layout
     val known = layout.flatMapTo(HashSet()) { tile -> tile.apps().map { it.component } }
@@ -48,7 +54,10 @@ fun placed(layout: List<Tile>, installed: List<App>, hides: (App) -> Boolean = {
         tiles = when {
             stale != null -> tiles.map { it.withApp(stale, app.key()) }
             beside >= 0 -> tiles.toMutableList().apply { add(beside + 1, app.key()) }
-            else -> tiles + app.key()
+            else -> {
+                val into = if (app.removable && downloads != null) tiles.indexOfFirst { it is Folder && it.name == downloads } else -1
+                if (into < 0) tiles + app.key() else tiles.mapIndexed { i, t -> if (i == into) (t as Folder).copy(apps = t.apps + app.key()) else t }
+            }
         }
     }
     return tiles
@@ -91,24 +100,34 @@ fun shown(layout: List<Tile>, installed: List<App>): Shown {
     return Shown(tiles, places)
 }
 
+private const val ICON = "icon="
+
 /** A folder name as the layout keeps it: one line, no tab, trimmed. */
 fun folderName(typed: String): String = typed.replace(Regex("\\s+"), " ").trim()
 
 /**
  * One line per tile, favourite and frequent app, tab-separated: `app  package/class`,
- * `folder  name  package/class…`, `favourite  package/class`, `frequent  package/class`.
+ * `folder  name  [icon=n]  package/class…` (the icon only when not the plain folder's: never a
+ * component, a file without it reads the same), `favourite  package/class`, `frequent  package/class`; then
+ * Home Screen Preferences' `downloads  name` and one `hidden-panel  PANEL` per view hidden.
  * Labels are not kept: they come from LauncherApps.
  */
 fun encodeHome(home: SavedHome): String = buildString {
     for (tile in home.layout) {
         when (tile) {
             is App -> append("app\t").append(tile.component)
-            is Folder -> append("folder\t").append(tile.name).append(tile.apps.joinToString("") { "\t" + it.component })
+            is Folder -> {
+                append("folder\t").append(tile.name)
+                if (tile.icon != 0) append("\t$ICON").append(tile.icon)
+                append(tile.apps.joinToString("") { "\t" + it.component })
+            }
         }
         append('\n')
     }
     for (c in home.favourites) append("favourite\t").append(c).append('\n')
     for (c in home.frequent) append("frequent\t").append(c).append('\n')
+    home.downloads?.let { append("downloads\t").append(it).append('\n') }
+    for (p in home.hiddenPanels.sorted()) append("hidden-panel\t").append(p.name).append('\n')
 }
 
 /**
@@ -120,17 +139,24 @@ fun decodeHome(text: String): SavedHome {
     val layout = mutableListOf<Tile>()
     val favourites = mutableListOf<String>()
     val frequent = mutableListOf<String>()
+    var downloads: String? = null
+    val hidden = mutableSetOf<Panel>()
     fun app(component: String) = component.split('/').takeIf { it.size == 2 && it.none(String::isEmpty) }?.let { App(it[0], it[1], "") }
     for (line in text.lines()) {
         val fields = line.split('\t')
         when (fields[0]) {
             "app" -> fields.getOrNull(1)?.let(::app)?.let { layout += it }
-            "folder" -> if (fields.size > 1) layout += Folder(fields[1], fields.drop(2).mapNotNull(::app))
+            "folder" -> if (fields.size > 1) {
+                val icon = fields.getOrNull(2)?.removePrefix(ICON)?.takeIf { fields[2].startsWith(ICON) }?.toIntOrNull()?.takeIf { it in 0 until FOLDER_ICONS } ?: 0
+                layout += Folder(fields[1], fields.drop(2).mapNotNull(::app), icon)
+            }
             "favourite" -> fields.getOrNull(1)?.let(::app)?.let { favourites += it.component }
             "frequent" -> fields.getOrNull(1)?.let(::app)?.let { frequent += it.component }
+            "downloads" -> downloads = fields.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            "hidden-panel" -> Panel.entries.firstOrNull { it.name == fields.getOrNull(1) }?.let { hidden += it }
         }
     }
-    return SavedHome(layout, favourites, frequent)
+    return SavedHome(layout, favourites, frequent, downloads, hidden)
 }
 
 /**

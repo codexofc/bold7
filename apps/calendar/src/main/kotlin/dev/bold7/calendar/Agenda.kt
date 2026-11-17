@@ -170,3 +170,6 @@ fun range(view: CalView, day: LocalDate, zone: ZoneId, options: DisplayOptions):
 
 /** How many days the Agenda view lists from its day (D). */
 const val AGENDA_DAYS = 14
+
+/** Whether a Month cell draws the appointments' mark: only the focused day with some (sim-243); sim-225 has none anywhere else. */
+fun monthMark(busy: Boolean, focused: Boolean): Boolean = busy && focused

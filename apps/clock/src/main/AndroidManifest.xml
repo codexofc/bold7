@@ -5,8 +5,9 @@
   alarm clock of AlarmManager, foreground service for the sound, full-screen notification and a
   screen over the lock screen, armed again at every boot before the first unlock (the alarm's
   components are directBootAware and keep their state in the device protected storage).
-  Exported: the launcher's activity (the home and Manage Connections open it) and BootReceiver,
-  whose actions are all protected broadcasts only Android may send (see Receivers.kt).
+  Exported: the launcher's activity (the home and Manage Connections open it), BootReceiver,
+  whose actions are all protected broadcasts only Android may send (see Receivers.kt), and the two
+  aliases of When Charging, behind Bold7's signature permission.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -17,6 +18,13 @@
         android:name="dev.bold7.permission.SWITCH_APPLICATION"
         android:protectionLevel="signature" />
     <uses-permission android:name="dev.bold7.permission.SWITCH_APPLICATION" />
+
+    <!-- When Charging (Charging.kt): the home of Bold7 starts the Clock on the charger through one
+         of the two aliases below, behind this signature permission, declared here and by the
+         launcher, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.CHARGING_CLOCK"
+        android:protectionLevel="signature" />
 
     <!-- Exact alarms for an alarm clock app: granted at install, never revoked by the user (API 33+). -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -38,6 +46,12 @@
     <!-- Its app-op, allowed by tools/install.sh, lets the ring screen open over an app at once. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Help of the menus (dev.bold7.ui.Help): Help's signature permission, declared here and by
+         Help, so that the order of the installs does not matter. -->
+    <permission
+        android:name="dev.bold7.permission.HELP"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="dev.bold7.permission.HELP" />
     <application
         android:name=".ClockApp"
         android:allowBackup="false"
@@ -55,6 +69,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- When Charging (sim-417): Display Clock (sim-170's default, enabled here) or Enter
+             Bedside Mode; Clock Options enables the one chosen, neither for Do Nothing. -->
+        <activity-alias
+            android:name=".ChargingClock"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="dev.bold7.permission.CHARGING_CLOCK"
+            android:targetActivity=".ClockActivity">
+            <intent-filter>
+                <action android:name="dev.bold7.clock.CHARGING" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".ChargingBedside"
+            android:enabled="false"
+            android:exported="true"
+            android:permission="dev.bold7.permission.CHARGING_CLOCK"
+            android:targetActivity=".ClockActivity">
+            <intent-filter>
+                <action android:name="dev.bold7.clock.CHARGING" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
 
         <activity
             android:name=".OptionsActivity"

@@ -1,6 +1,7 @@
 package dev.bold7.launcher.options
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.Layout
@@ -13,7 +14,6 @@ import dev.bold7.design.ListColors
 import dev.bold7.design.ListDimens
 import dev.bold7.design.Palette
 import dev.bold7.design.Typography
-import dev.bold7.launcher.R
 import dev.bold7.launcher.connections.ConnectionsLayout
 import dev.bold7.ui.fit
 import dev.bold7.ui.focusPaint
@@ -29,8 +29,8 @@ import dev.bold7.ui.themeImage
  * right under its shade, as on sim-91a (edge at 171, next box at 174).
  */
 internal class GroupBox(context: Context, private val title: String) : LinearLayout(context) {
-    private val box = themeImage(context, R.drawable.connections_box)
-    private val titleBar = themeImage(context, R.drawable.connections_title)
+    private val box = themeImage(context, "connections_box")
+    private val titleBar = themeImage(context, "connections_title")
     private val text = textPaint(Typography.SUBTITLE, Typography.BOLD, ListColors.GroupTitle)
 
     init {
@@ -124,13 +124,19 @@ internal class NoteView(context: Context) : View(context) {
 internal class ButtonRowView(context: Context) : View(context) {
     private val normal = themeImage(context, "ui_button")
     private val focused = themeImage(context, "ui_button_focus")
-    private val disabled = themeImage(context, R.drawable.opt_button_disabled)
+    private val disabled = themeImage(context, "opt_button_disabled")
     private val text = textPaint(Typography.TEXT, Typography.REGULAR, DialogColors.ButtonText, align = Paint.Align.CENTER)
     private val textLit = textPaint(Typography.TEXT, Typography.REGULAR, DialogColors.ButtonTextFocused, align = Paint.Align.CENTER)
     private val textOff = textPaint(Typography.TEXT, Typography.REGULAR, ListColors.Subtitle, align = Paint.Align.CENTER)
     private var label = ""
     private var lit = false
     private var on = true
+
+    /**
+     * Wallpaper Settings' two buttons, stacked right of the thumbnail (sim-284, C: visible tops 196 and
+     * 253, 57 apart, as a choice row's field): the choice row's height and field. Set before the first draw.
+     */
+    var stacked = false
 
     fun bind(label: String, lit: Boolean, enabled: Boolean) {
         if (label == this.label && lit == this.lit && enabled == on) return
@@ -140,7 +146,8 @@ internal class ButtonRowView(context: Context) : View(context) {
         invalidate()
     }
 
-    override fun onMeasure(widthSpec: Int, heightSpec: Int) = setMeasuredDimension(MeasureSpec.getSize(widthSpec), ConnectionsLayout.BUTTON_ROW)
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) =
+        setMeasuredDimension(MeasureSpec.getSize(widthSpec), if (stacked) ListDimens.CHECK_ROW else ConnectionsLayout.BUTTON_ROW)
 
     override fun onDraw(canvas: Canvas) {
         val right = width - RIGHT
@@ -151,13 +158,41 @@ internal class ButtonRowView(context: Context) : View(context) {
             lit -> focused
             else -> normal
         }
-        image.setBounds(left, TOP, right, TOP + ConnectionsLayout.BUTTON_HEIGHT)
+        val top = if (stacked) ListDimens.CHOICE_FIELD_TOP else TOP
+        image.setBounds(left, top, right, top + ConnectionsLayout.BUTTON_HEIGHT)
         image.draw(canvas)
-        canvas.drawText(shown, (left + right) / 2f, (TOP + ListDimens.CHECK_BASELINE - ListDimens.CHOICE_FIELD_TOP).toFloat(), if (!on) textOff else if (lit) textLit else text)
+        canvas.drawText(shown, (left + right) / 2f, (top + ListDimens.CHECK_BASELINE - ListDimens.CHOICE_FIELD_TOP).toFloat(), if (!on) textOff else if (lit) textLit else text)
     }
 
     private companion object {
         const val RIGHT = 13
         const val TOP = 6
+    }
+}
+
+/**
+ * Wallpaper Settings' thumbnail (sim-284, C: the wallpaper whole, 150x113 at x 9 on the 9900's
+ * 640x480, its top level with the first button's row): on the square screen the wallpaper is square,
+ * [SIDE] px, the height of the 9900's (D). Nothing drawn until its picture is decoded.
+ */
+internal class WallpaperThumbView(context: Context) : View(context) {
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private var picture: Bitmap? = null
+    private val box = android.graphics.Rect(0, 0, SIDE, SIDE)
+
+    fun bind(b: Bitmap?) {
+        if (b === picture) return
+        picture = b
+        invalidate()
+    }
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) = setMeasuredDimension(SIDE, SIDE)
+
+    override fun onDraw(canvas: Canvas) {
+        picture?.let { canvas.drawBitmap(it, null, box, paint) }
+    }
+
+    companion object {
+        const val SIDE = 113
     }
 }

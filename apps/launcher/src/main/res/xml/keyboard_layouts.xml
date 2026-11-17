@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Q25's keyboard (Q25_keyboard, vendor 1, product 1): see res/raw/keyboard_layout_q25.kcm.
+     vendorId and productId are private attributes of the framework, named through its private
+     namespace; their ids in android-34 (0x01120137, 0x011200f7) are those of BenOS's framework-res. -->
+<keyboard-layouts
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:priv="http://schemas.android.com/apk/prv/res/android">
+    <keyboard-layout
+        android:name="keyboard_layout_q25"
+        android:label="Q25"
+        android:keyboardLayout="@raw/keyboard_layout_q25"
+        priv:vendorId="1"
+        priv:productId="1" />
+</keyboard-layouts>

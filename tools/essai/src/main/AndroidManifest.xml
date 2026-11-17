@@ -39,5 +39,27 @@
             android:name=".KeyLatencyActivity"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <!-- The common widgets, in the framework's themes and in the libraries an
+             ordinary app embeds (AppCompat, Material Components). -->
+        <activity
+            android:name=".WidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+        <activity
+            android:name=".MaterialWidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light" />
+        <activity
+            android:name=".DarkWidgetsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault" />
+        <activity
+            android:name=".CompatWidgetsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light" />
+        <activity
+            android:name=".M3WidgetsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.Light" />
     </application>
 </manifest>

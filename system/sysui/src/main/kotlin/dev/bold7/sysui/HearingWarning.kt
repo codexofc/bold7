@@ -91,7 +91,7 @@ internal class HearingWarnings(
             return
         }
         val labels = face.buttons.map { it.label }
-        val view = DialogView(images.context(dialog.context), face.text, labels, DialogIcon.QUESTION)
+        val view = DialogView(images.context, face.text, labels, DialogIcon.QUESTION)
         view.focused = face.focused
         val content = dialog.findViewById<ViewGroup>(android.R.id.content)
         val stock = (0 until content.childCount).map(content::getChildAt)

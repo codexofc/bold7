@@ -2,6 +2,7 @@ package dev.bold7.hub
 
 import android.app.Application
 import dev.bold7.platform.enableStrictModeIfDebuggable
+import dev.bold7.platform.speakOs7Language
 
 /**
  * Not direct boot aware: the process, its sources and its listener only start after the first
@@ -16,6 +17,7 @@ class HubApp : Application() {
 
     override fun onCreate() {
         enableStrictModeIfDebuggable()
+        speakOs7Language()
         super.onCreate()
         graph = HubGraph(this).also { it.start() }
     }

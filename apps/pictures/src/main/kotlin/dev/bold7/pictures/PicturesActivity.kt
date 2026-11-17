@@ -3,7 +3,6 @@ package dev.bold7.pictures
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -23,6 +22,7 @@ import dev.bold7.ui.SwitchApplication
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 
 /** A page of Pictures: the categories, or a category's thumbnails. */
 sealed interface Page {
@@ -41,7 +41,10 @@ sealed interface Page {
  * `su -c 'am start -n dev.bold7.pictures/.PicturesActivity --ei rows 500'`: a category of 500 made-up
  * pictures, open on its grid, nothing read (tools/perf.sh, APP mode).
  */
-class PicturesActivity : Activity() {
+open class PicturesActivity : Activity() {
+    /** Select Picture ([SelectPictureActivity]): a picture's click gives it back instead of opening it. */
+    protected open val selecting = false
+
     companion object {
         private const val EXTRA_ROWS = "rows"
         private const val DEMO_MAX = 5000
@@ -134,13 +137,13 @@ class PicturesActivity : Activity() {
         }
         g.io.post {
             val images = mapOf(
-                Act.VIEW_SLIDESHOW to R.drawable.pic_sm_play, Act.SET_WALLPAPER to R.drawable.pic_sm_set_as_wallpaper,
-                Act.ASSIGN_CONTACT to R.drawable.pic_sm_set_as_caller_id, Act.SEND to R.drawable.pic_sm_send_or_share_image,
-                Act.DELETE to R.drawable.pic_sm_delete, Act.ZOOM to R.drawable.pic_sm_zoom_in, Act.ROTATE to R.drawable.pic_sm_rotate,
+                Act.VIEW_SLIDESHOW to "pic_sm_play", Act.SET_WALLPAPER to "pic_sm_set_as_wallpaper",
+                Act.ASSIGN_CONTACT to "pic_sm_set_as_caller_id", Act.SEND to "pic_sm_send_or_share_image",
+                Act.DELETE to "pic_sm_delete", Act.ZOOM to "pic_sm_zoom_in", Act.ROTATE to "pic_sm_rotate",
             ).mapValues { decode(it.value) }
-            val none = decode(R.drawable.pic_noart_picture_icon)
-            val thumb = decode(R.drawable.pic_noart_picture_icon_thumbnail)
-            val camera = decode(R.drawable.pic_net_rim_bb_camera_camera)
+            val none = decode("pic_noart_picture_icon")
+            val thumb = decode("pic_noart_picture_icon_thumbnail")
+            val camera = decode("pic_net_rim_bb_camera_camera")
             runOnUiThread {
                 glyphs.putAll(images)
                 noPicture = none
@@ -152,7 +155,7 @@ class PicturesActivity : Activity() {
         render()
     }
 
-    private fun decode(id: Int): Bitmap = BitmapFactory.decodeResource(resources, id, BitmapFactory.Options().apply { inScaled = false })
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
     override fun onStart() {
         super.onStart()
@@ -180,7 +183,7 @@ class PicturesActivity : Activity() {
         cats = categoriesNow()
         when (val p = pages.top) {
             is Page.Categories -> {
-                title.bind(getString(R.string.title))
+                title.bind(getString(if (selecting) R.string.select_picture else R.string.title))
                 list.visibility = View.VISIBLE
                 gridPage.visibility = View.GONE
                 if (p.focus > cats.size) pages = replace(p.copy(focus = cats.size))
@@ -271,8 +274,19 @@ class PicturesActivity : Activity() {
                 pages = pages.push(Page.Thumbnails(c.source, c.title))
                 render()
             }
-            is Page.Thumbnails -> if (p.focus == -1) openCamera() else view(p, p.focus, slideshow = false)
+            is Page.Thumbnails -> when {
+                p.focus == -1 -> openCamera()
+                selecting -> shown.getOrNull(p.focus)?.let(::select)
+                else -> view(p, p.focus, slideshow = false)
+            }
         }
+    }
+
+    /** Select Picture: [p] to the screen that asked for it, which may read it, and Pictures closes. */
+    private fun select(p: Picture) {
+        if (p.id < 0) return // made-up picture
+        setResult(RESULT_OK, Intent().setData(Store.uri(p.id)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        finish()
     }
 
     private fun openCamera() {
@@ -300,6 +314,7 @@ class PicturesActivity : Activity() {
             Act.ASSIGN_CONTACT -> picture?.let(acts::assignToContact)
             Act.SEND -> show(sendMenu())
             Act.SEND_TEXT -> picture?.let(acts::sendAsText)
+            Act.HELP -> dev.bold7.ui.Help.open(this, "pictures")
             Act.CLOSE -> finish()
             Act.SWITCH -> SwitchApplication.start(this)
             Act.ROTATE, Act.ZOOM -> Unit
@@ -332,6 +347,7 @@ class PicturesActivity : Activity() {
         Act.SEND_TEXT -> R.string.act_send_text
         Act.ROTATE -> R.string.act_rotate
         Act.ZOOM -> R.string.act_zoom
+        Act.HELP -> R.string.act_help
         Act.CLOSE -> R.string.act_close
         Act.SWITCH -> R.string.act_switch_application
     })

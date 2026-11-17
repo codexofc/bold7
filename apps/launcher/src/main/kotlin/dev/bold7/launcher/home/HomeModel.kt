@@ -28,7 +28,7 @@ interface AppSource {
 }
 
 /** What of the state is saved. */
-private val HomeState.saved get() = SavedHome(layout, favourites, frequent)
+private val HomeState.saved get() = SavedHome(layout, favourites, frequent, downloadsFolder, hiddenPanels)
 
 /**
  * The home's state, its loading and its updates. Every [source] and [layout] call runs on [io],

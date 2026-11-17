@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.NinePatch
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
@@ -19,7 +18,7 @@ import dev.bold7.ui.fit
 import dev.bold7.ui.typeface
 
 /** The tab's images of the theme (home_*.png, A). */
-internal class TabImages(val lineTop: Bitmap, val lineBottom: Bitmap, val focus: NinePatch, val mask: Bitmap)
+internal class TabImages(val lineTop: Bitmap, val lineBottom: Bitmap, val focus: FocusPatch, val mask: Bitmap)
 
 /**
  * The room the tab's texts get, pure (TabRoomTest): a view's name sits between its neighbours' (half a
@@ -108,6 +107,15 @@ internal class TabView(context: Context, private val label: (Panel) -> String) :
         invalidate()
     }
 
+    private var hidden = emptySet<Panel>()
+
+    /** The views Manage Panels hides: the names round the tab are the others'. */
+    fun hidden(views: Set<Panel>) {
+        if (views == hidden) return
+        hidden = views
+        invalidate()
+    }
+
     /** Shows [next], its name centred; [slideIn] or [setShift] move the names. */
     fun show(next: Panel) {
         if (next == panel) return
@@ -165,7 +173,9 @@ internal class TabView(context: Context, private val label: (Panel) -> String) :
         text.alpha = viewsAlpha
         if (viewsAlpha > 0) {
             val centre = w / 2f + shift
-            for (k in -2..2) canvas.drawText(shownLabels.getValue(panel.next(k)), centre + k * w / 2f, base, text)
+            // A view alone has no neighbours (D: Manage Panels leaving All only).
+            val around = if (panel.next(1, hidden) == panel) 0 else 2
+            for (k in -around..around) canvas.drawText(shownLabels.getValue(panel.next(k, hidden)), centre + k * w / 2f, base, text)
         }
         if (nameAlpha > 0f) {
             text.alpha = (nameAlpha * 255).toInt()

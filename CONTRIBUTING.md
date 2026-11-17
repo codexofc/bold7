@@ -42,11 +42,11 @@ The firmware files in circulation are often carrier builds. A file taken from on
 - **No animation depends on a busy thread.** What follows the finger ends on a spring that keeps the release velocity. Windows move with `SurfaceControl` transactions on a dedicated thread.
 - **No gestures.** OS 7 had none.
 - **No accessibility service.**
-- **Resource overlays before hooks.** A SystemUI hook is accepted only when an overlay cannot do it. Hooks target the exact SystemUI of BenOS, are checked against its fingerprint, and switch off cleanly when it changes. No silent `catch (Throwable)`: a hook that fails is counted and visible in the diagnostics.
+- **Resource overlays before hooks.** A SystemUI hook is accepted only when an overlay cannot do it. On BenOS, hooks target its exact SystemUI, are checked against its fingerprint, and switch off cleanly when it changes; on LineageOS 24, each group of hooks checks its own targets at startup and switches off cleanly when one has moved. No silent `catch (Throwable)`: a hook that fails is counted and visible in the diagnostics.
 - **`core/platform` is the only module that touches hidden APIs**, through functions that return a typed result or count the failure.
 - **Smallest diff that works.** No abstraction for a single implementation, except the interface in front of a system service, whose second implementation is the test fake.
 - **No periodic screenshot, polling or background wake-up** without a measurement that justifies it.
-- Kotlin, `minSdk = targetSdk = compileSdk = 34`, no compatibility branches. Code identifiers and comments in English. Root package `dev.bold7`.
+- Kotlin, `minSdk = targetSdk = compileSdk = 37` on LineageOS 24 (`main`) and `34` on BenOS (`benos`), no compatibility branches. A fix that applies to both lines is made on `benos` when it compiles there, then merged into `main`. Code identifiers and comments in English. Root package `dev.bold7`.
 
 ## Tests first
 
@@ -105,7 +105,7 @@ Do not link to unofficial copies of BlackBerry files in issues or pull requests.
 
 ## Reporting a bug
 
-Use the bug report template and give the BenOS version, the Bold7 module version, the steps and what you expected. Logs from `adb logcat -s Bold7` help. Remove phone numbers, names and message contents before attaching anything.
+Use the bug report template and give the system and its version (LineageOS 24 build or BenOS), the Bold7 module version, the steps and what you expected. Logs from `adb logcat -s Bold7` help. Remove phone numbers, names and message contents before attaching anything.
 
 Security issues are reported privately: see [SECURITY.md](SECURITY.md).
 

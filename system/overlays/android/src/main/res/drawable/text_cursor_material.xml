@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The text cursor of every framework text field (Theme.Material's textCursorDrawable): OS 7's
+     block, 7 px wide, the line's height, a gradient from #088FF0 at the top to #1666DC at the
+     bottom (sim-111, after "music", C; sim-61, an empty field, 9 px; the theme's blue_gradient,
+     #088EEF to #1766DB, A). Drawn under the text, as Android draws its cursor. No image: the zygote
+     preloads this drawable. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <size android:width="7px" />
+    <gradient android:angle="270" android:startColor="#ff088ff0" android:endColor="#ff1666dc" />
+</shape>

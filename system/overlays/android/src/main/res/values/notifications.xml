@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The 9900's message LED: "Red: a new message has arrived and your
-         selected profile is set to notify you using the flashing LED" (user guide 7.1, p. 15,
-         M); the simulator's LED is red too (0x3f0000 in its controller's log, C). Android lights
-         its notification LED only with this true: false on the Q25, whose lights HAL has the
-         notification light (id 4 in dumpsys lights). NotificationManagerService
-         reads it at boot, flashes the LED for a notification whose channel asks for lights, with
-         this colour when the channel gives none (Google Messages' "Incoming messages"), screen
-         off only, and until the notification is gone or its effects cleared. -->
-    <bool name="config_intrusiveNotificationLed">true</bool>
-    <color name="config_defaultNotificationColor">#ffff0000</color>
-    <!-- On 170 ms, off 2040 ms: the blink of the simulator's LED for an incoming call, timed from
-         its controller's log (C); the same for a message is my deduction (D). Android's: 500, 2000. -->
-    <integer name="config_defaultNotificationLedOn">170</integer>
-    <integer name="config_defaultNotificationLedOff">2040</integer>
+    <!-- Android's notification LED off: the LED is bold7-led's (system/module/led),
+         which flashes it as the 9900 does, in the colour the launcher chooses (red for a new
+         message whatever the screen, user guide 7.1 p. 15, M). Android would light it screen off
+         only, per channel, in the channel's colour, and its lights HAL writing 0 to brightness
+         would end a flash. NotificationManagerService reads this at boot; with it false it never
+         asks the HAL for the notification light. -->
+    <bool name="config_intrusiveNotificationLed">false</bool>
 </resources>

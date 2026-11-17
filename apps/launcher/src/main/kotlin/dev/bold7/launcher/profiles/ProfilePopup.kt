@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import dev.bold7.design.DialogColors
 import dev.bold7.design.Focus
@@ -16,6 +15,7 @@ import dev.bold7.ui.fillPaint
 import dev.bold7.ui.fit
 import dev.bold7.ui.focusPaint
 import dev.bold7.ui.textPaint
+import dev.bold7.ui.themeBitmap
 import dev.bold7.ui.themeImage
 
 /** The name of a profile (strings), and its icon: net_rim_bb_profiles_app.* and its ~focus (A), scaled to the row. */
@@ -30,23 +30,23 @@ private fun Profile.name() = when (this) {
 }
 
 private fun Profile.icon() = when (this) {
-    Profile.NORMAL -> R.drawable.profile_normal
-    Profile.VIBRATE -> R.drawable.profile_vibrate
-    Profile.SILENT -> R.drawable.profile_silent
-    Profile.LOUD -> R.drawable.profile_loud
-    Profile.PHONE_ONLY -> R.drawable.profile_phone_only
-    Profile.ALERTS_OFF -> R.drawable.profile_alerts_off
-    Profile.MEDIUM -> R.drawable.profile_medium
+    Profile.NORMAL -> "profile_normal"
+    Profile.VIBRATE -> "profile_vibrate"
+    Profile.SILENT -> "profile_silent"
+    Profile.LOUD -> "profile_loud"
+    Profile.PHONE_ONLY -> "profile_phone_only"
+    Profile.ALERTS_OFF -> "profile_alerts_off"
+    Profile.MEDIUM -> "profile_medium"
 }
 
 private fun Profile.iconFocused() = when (this) {
-    Profile.NORMAL -> R.drawable.profile_normal_focus
-    Profile.VIBRATE -> R.drawable.profile_vibrate_focus
-    Profile.SILENT -> R.drawable.profile_silent_focus
-    Profile.LOUD -> R.drawable.profile_loud_focus
-    Profile.PHONE_ONLY -> R.drawable.profile_phone_only_focus
-    Profile.ALERTS_OFF -> R.drawable.profile_alerts_off_focus
-    Profile.MEDIUM -> R.drawable.profile_medium_focus
+    Profile.NORMAL -> "profile_normal_focus"
+    Profile.VIBRATE -> "profile_vibrate_focus"
+    Profile.SILENT -> "profile_silent_focus"
+    Profile.LOUD -> "profile_loud_focus"
+    Profile.PHONE_ONLY -> "profile_phone_only_focus"
+    Profile.ALERTS_OFF -> "profile_alerts_off_focus"
+    Profile.MEDIUM -> "profile_medium_focus"
 }
 
 /**
@@ -66,8 +66,8 @@ internal class ProfilePopupView(context: Context, private val current: Profile) 
     private val popup = themeImage(context, "ui_popup")
     private val button = themeImage(context, "ui_button")
     private val buttonFocused = themeImage(context, "ui_button_focus")
-    private val icons = Profile.LIST.map { (themeImage(context, it.icon()) as BitmapDrawable).bitmap }
-    private val iconsFocused = Profile.LIST.map { (themeImage(context, it.iconFocused()) as BitmapDrawable).bitmap }
+    private val icons = Profile.LIST.map { themeBitmap(context, it.icon()) }
+    private val iconsFocused = Profile.LIST.map { themeBitmap(context, it.iconFocused()) }
     private val names = Profile.LIST.map { context.getString(it.name()) }
     private val buttonText = context.getString(R.string.profile_change_sounds)
     private val title = textPaint(Typography.TEXT, Typography.BOLD, DialogColors.Text)

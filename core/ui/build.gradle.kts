@@ -24,5 +24,7 @@ dependencies {
     api(project(":core:design"))
     // The images of OS 7 by name: api, so that an app preloads its own through the same store.
     api(project(":core:theme"))
+    // The Bold7 logo as the icon of every APK that links core/ui.
+    implementation(project(":core:brand"))
     testImplementation(kotlin("test-junit"))
 }

@@ -28,6 +28,7 @@ private object Tripwire : ThreadReader, ContactBook, MessagingApi, AttachmentSto
     override fun all() = real()
     override fun photo(number: String) = real()
     override fun chosen(uri: String) = real()
+    override fun name(number: String) = real()
     override fun state() = real()
     override fun create(to: String) = real()
     override fun createGroup(to: List<String>) = real()

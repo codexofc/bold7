@@ -31,7 +31,7 @@ object ShowcaseClock : ClockKeep {
         get() = Stopwatch()
         set(_) = Unit
     override var timer: Countdown
-        get() = Countdown(0)
+        get() = Countdown(DEFAULT_TIMER_MS)
         set(_) = Unit
 }
 

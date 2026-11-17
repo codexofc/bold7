@@ -27,8 +27,6 @@ internal object Eyeballed {
     const val BANNER_FOCUS_SQUARE = 45
     // Between the time and its AM/PM: no 12-hour capture.
     const val AM_PM_GAP = 4
-    // The open folder's header icon: the last frame of net_rim_Folder-icons32x32.png.
-    const val FOLDER_OPEN_FRAME = 3
 
     // Legacy value, still read by the trackpad (core/ui); not sourced from a device or firmware capture.
     const val TRACKPAD_STEP = 30f

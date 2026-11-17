@@ -52,6 +52,13 @@ Source: frameworks/base/data/keyboards/Generic.kl, as BenOS ships it in
 Modified: line "key 172 HOME" changed to "key 172 ENDCALL" (the End key of the 9900):
   system/module/src/layer/product/usr/keylayout/Q25_keyboard.kl
 
+LineageOS device tree of the Q25, Apache License 2.0, unmodified, original headers kept
+Copyright (C) 2010 The Android Open Source Project
+Source: https://github.com/LineageOS/android_device_xelex_Q25, configs/ (identical to the
+files BenOS ships). Read by Typing's tests only, to check its table of the Q25's keys:
+  apps/saisie/src/test/resources/q25/Q25_keyboard.kl
+  apps/saisie/src/test/resources/q25/Q25_keyboard.kcm
+
 Barlow Semi Condensed Bold, SIL Open Font License 1.1
 Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
 Source: https://github.com/google/fonts/tree/main/ofl/barlowsemicondensed
@@ -64,3 +71,19 @@ Source: https://github.com/ImageMagick/ImageMagick, tag 7.1.2-31, MagickCore/res
 The ten coefficients of SincFast (by Nicolas Robidoux and Chantal Racette, for 16-bit quanta),
 reproduced as constants, and the order of its Lanczos resize, rewritten in Kotlin:
   core/firmware/src/main/kotlin/dev/bold7/firmware/Resize.kt
+
+AOSP LatinIME word lists, Apache License 2.0
+Copyright (C) 2008 The Android Open Source Project; LatinIME's NOTICE adds "Includes Dictionaries
+(c) Lexiteria LLC. Used by permission."
+Source: https://android.googlesource.com/platform/packages/inputmethods/LatinIME, branch main,
+dictionaries/fr_wordlist.combined.gz, en_GB_wordlist.combined.gz and en_US_wordlist.combined.gz
+Modified: each word and its frequency (f) on one line, "word TAB frequency", not_a_word entries
+left out; English is en_GB's list with the words only en_US has, at half their frequency:
+  apps/saisie/src/main/assets/dictionary/fr.tsv
+  apps/saisie/src/main/assets/dictionary/en.tsv
+
+Vector v2.2 (3080), by JingMatrix, GNU General Public License v3.0, unmodified
+Source: https://github.com/JingMatrix/Vector (commit 88f8e1fa, release v2.2)
+  Shipped as-is inside the module zip (vector/vector.zip, sha256 checked by the build) and
+  installed by the module only when Vector is missing. It is a separate program: Bold7 does not
+  link to it. Its license: https://www.gnu.org/licenses/gpl-3.0.html

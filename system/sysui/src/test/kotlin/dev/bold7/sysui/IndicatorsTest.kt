@@ -61,10 +61,23 @@ class IndicatorsTest {
 
     // The column is Strips' (core/design StripsTest), "?" for an unknown level included.
     @Test fun batteryImageIsItsColumn() =
-        assertEquals(listOf("banner_battery_0", "banner_battery_6", "banner_battery_10", "banner_battery_11"), listOf(0, 55, 100, -1).map { batteryImage(it, charging = false) })
+        assertEquals(listOf("banner_battery_0", "banner_battery_6", "banner_battery_10", "banner_battery_11"), listOf(0, 55, 100, -1).map { batteryImage(it, plugged = false) })
 
     @Test fun batteryOnPowerTakesThePluggedRow() =
-        assertEquals("banner_battery_charging_5", batteryImage(42, charging = true))
+        assertEquals("banner_battery_charging_5", batteryImage(42, plugged = true))
+
+    // ACTION_BATTERY_CHANGED's extras, which the bar reads under BenOS too (BatteryMeterView only
+    // tells the level and "plugged in"): level on its scale; the plug when full on power (5, or 2
+    // at 100 %), the battery's own row under the bolt while charging (2), as the home's banner.
+    @Test fun batteryBroadcastReadAsTheBanner() = assertEquals(
+        listOf("banner_battery_charging_10", "banner_battery_charging_10", "banner_battery_5", "banner_battery_5", "banner_battery_5", "banner_battery_11"),
+        listOf(batteryImage(99, 100, 5), batteryImage(50, 50, 2), batteryImage(21, 50, 2), batteryImage(42, 100, 3), batteryImage(42, 100, 4), batteryImage(-1, 100, 3)),
+    )
+
+    @Test fun theBoltWhileChargingUnderAHundred() {
+        assertEquals(listOf(true, false, false, false), listOf(charging(21, 50, 2), charging(50, 50, 2), charging(99, 100, 5), charging(42, 100, 3)))
+        assertEquals(listOf(null, "banner_bolt_1", "banner_bolt_5"), listOf(0, 1, 5).map(::boltImage))
+    }
 
     @Test fun radioSlotsBlockedOnlyInDressedBars() {
         for (slot in listOf("wifi", "mobile", "airplane")) {
@@ -101,7 +114,7 @@ class IndicatorsTest {
             .flatMap { r -> (0..4).map { edge.copy(radio = r, signalLevel = it, roaming = true) } }
         val names = states.map(::signalImage) + states.mapNotNull(::roamingImage) +
             (-100..-30).mapNotNull(::wifiImage) +
-            (-1..100).flatMap { listOf(batteryImage(it, false), batteryImage(it, true)) }
+            (-1..100).flatMap { listOf(batteryImage(it, false), batteryImage(it, true)) } + (0..5).mapNotNull(::boltImage)
         assertEquals(emptyList(), names.distinct().filterNot { File("../../assets-gen/sysui/res/drawable-nodpi/$it.png").exists() })
     }
 }

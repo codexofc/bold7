@@ -297,8 +297,19 @@ val KIND_IMAGES = linkedMapOf(
 internal fun unreadRows(showcase: Boolean, event: ShowcaseEvent? = null, hub: () -> Map<String, Int>): Map<String, Int> =
     pick(showcase, hub) { Showcase.unread(event) }
 
-/** A counter: its image of the strip and its count. */
-data class Counter(val image: String, val count: Int)
+/** A counter: its image of the strip and its count; another [app]'s own icon in its image's place when it has one (AppIndicators). */
+data class Counter(val image: String, val count: Int, val app: String? = null)
+
+/** The strip's "?" bubble: another app's counter while its own icon is not drawn. */
+const val OTHER_APP_IMAGE = "banner_count_other"
+
+/**
+ * Each other app's counter after the kinds' (HubContract.KINDS_URI's rows with an app, newest
+ * first), as the home's banner does: the firmware's third-party apps carry their own ribbon icon
+ * (App World, Facebook, Twitter, A).
+ */
+fun appCounters(unread: Map<String, Int>): List<Counter> =
+    unread.mapNotNull { (app, n) -> n.takeIf { it > 0 }?.let { Counter(OTHER_APP_IMAGE, it, app) } }
 
 /**
  * The counters of the banner's second line (sim-43, gsm 022) and of the lock screen's row (sim-64),

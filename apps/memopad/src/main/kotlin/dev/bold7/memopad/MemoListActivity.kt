@@ -3,7 +3,6 @@ package dev.bold7.memopad
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -26,11 +25,13 @@ import dev.bold7.ui.MenuKey
 import dev.bold7.ui.MenuResult
 import dev.bold7.ui.MenuView
 import dev.bold7.ui.SwitchApplication
+import dev.bold7.ui.themeBitmap
 import dev.bold7.ui.SearchField
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
 import dev.bold7.ui.slate
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 
 /**
  * The memo list of BBOS 7.1 (docs/BBOS7-VISUEL.md §32, §34.2): the title "MemoPad", the Search
@@ -99,7 +100,7 @@ class MemoListActivity : Activity() {
             addView(menuView)
         })
         graph.io.post {
-            val images = ListAct.entries.map { a -> glyphOf(a)?.let { BitmapFactory.decodeResource(resources, it, BitmapFactory.Options().apply { inScaled = false }) } }
+            val images = ListAct.entries.map { a -> glyphOf(a)?.let { themeBitmap(applicationContext, it) } }
             runOnUiThread { images.forEachIndexed { i, b -> glyphs[i] = b } }
         }
     }
@@ -152,8 +153,10 @@ class MemoListActivity : Activity() {
             ListAct.EDIT -> m?.let { startActivity(Intent(this, EditActivity::class.java).putExtra(EditActivity.EXTRA_ID, it.id)) }
             ListAct.DELETE -> m?.let(::delete)
             ListAct.OPTIONS -> startActivity(Intent(this, OptionsActivity::class.java))
+            ListAct.HELP -> dev.bold7.ui.Help.open(this, "memopad")
             ListAct.CLOSE -> finish()
             ListAct.SWITCH -> SwitchApplication.start(this)
+            ListAct.HOME -> startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
@@ -183,8 +186,10 @@ class MemoListActivity : Activity() {
         ListAct.EDIT -> R.string.act_edit
         ListAct.DELETE -> R.string.act_delete
         ListAct.OPTIONS -> R.string.act_options
+        ListAct.HELP -> R.string.act_help
         ListAct.CLOSE -> R.string.act_close
         ListAct.SWITCH -> R.string.act_switch_application
+            ListAct.HOME -> R.string.act_show_home
     })
 
     private fun show(m: Menu<ListAct>?) {
@@ -269,10 +274,11 @@ class MemoListActivity : Activity() {
 }
 
 /** The short menu's image of each action (sm_*.png of the theme, A; the match D, Edit's pencil C: sim-265); the others have none. */
-fun glyphOf(a: ListAct): Int? = when (a) {
-    ListAct.NEW -> R.drawable.mem_sm_new
-    ListAct.EDIT -> R.drawable.mem_sm_edit
-    ListAct.DELETE -> R.drawable.mem_sm_delete
-    ListAct.SWITCH -> null // in the full menu only
+fun glyphOf(a: ListAct): String? = when (a) {
+    ListAct.NEW -> "mem_sm_new"
+    ListAct.EDIT -> "mem_sm_edit"
+    ListAct.DELETE -> "mem_sm_delete"
+    ListAct.SWITCH -> "mem_sm_switch_apps"
+    ListAct.HOME -> "mem_sm_home"
     else -> null
 }

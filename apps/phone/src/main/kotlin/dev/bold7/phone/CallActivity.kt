@@ -5,7 +5,6 @@ import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
@@ -22,6 +21,7 @@ import dev.bold7.ui.SwitchApplication
 import dev.bold7.showcase.showcaseOn
 import dev.bold7.ui.setContentUnderBar
 import dev.bold7.ui.status
+import dev.bold7.ui.themeBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.SupervisorJob
@@ -385,29 +385,29 @@ class CallActivity : Activity() {
 
     private fun loadImages() = scope.launch {
         val sm = mapOf(
-            Action.ANSWER to R.drawable.ph_sm_call, Action.ANSWER_HOLD to R.drawable.ph_sm_call, Action.ANSWER_DROP to R.drawable.ph_sm_call,
-            Action.IGNORE to R.drawable.ph_sm_drop_call, Action.END to R.drawable.ph_sm_drop_call,
-            Action.MUTE to R.drawable.ph_sm_mute, Action.UNMUTE to R.drawable.ph_sm_unmute,
-            Action.SPEAKER to R.drawable.ph_sm_speaker_on, Action.HANDSET to R.drawable.ph_sm_speaker_off,
-            Action.ADD to R.drawable.ph_sm_new_call,
+            Action.ANSWER to "ph_sm_call", Action.ANSWER_HOLD to "ph_sm_call", Action.ANSWER_DROP to "ph_sm_call",
+            Action.IGNORE to "ph_sm_drop_call", Action.END to "ph_sm_drop_call",
+            Action.MUTE to "ph_sm_mute", Action.UNMUTE to "ph_sm_unmute",
+            Action.SPEAKER to "ph_sm_speaker_on", Action.HANDSET to "ph_sm_speaker_off",
+            Action.ADD to "ph_sm_new_call",
         )
         val buttons = mapOf(
-            Action.SPEAKER to R.drawable.ph_speaker, Action.HANDSET to R.drawable.ph_handset,
-            Action.MUTE to R.drawable.ph_mute, Action.UNMUTE to R.drawable.ph_unmute,
-            Action.HOLD to R.drawable.ph_hold, Action.RESUME to R.drawable.ph_resume,
-            Action.ADD to R.drawable.ph_add, Action.RINGER_OFF to R.drawable.ph_ringer_off,
+            Action.SPEAKER to "ph_speaker", Action.HANDSET to "ph_handset",
+            Action.MUTE to "ph_mute", Action.UNMUTE to "ph_unmute",
+            Action.HOLD to "ph_hold", Action.RESUME to "ph_resume",
+            Action.ADD to "ph_add", Action.RINGER_OFF to "ph_ringer_off",
         )
         val (images, menuImages) = withContext(graph.io) {
             CallImages(
-                background = decode(R.drawable.ph_background),
-                avatar = decode(R.drawable.ph_avatar),
-                bar = decode(R.drawable.ph_bar),
-                barFocus = decode(R.drawable.ph_bar_focus),
+                background = decode("ph_background"),
+                avatar = decode("ph_avatar"),
+                bar = decode("ph_bar"),
+                barFocus = decode("ph_bar_focus"),
                 buttons = buttons.mapValues { decode(it.value) },
-                volumeIcon = decode(R.drawable.ph_volume_icon),
-                receiver = decode(R.drawable.ph_receiver),
-                muteOn = decode(R.drawable.ph_mute_on),
-                volume = decode(R.drawable.ph_volume),
+                volumeIcon = decode("ph_volume_icon"),
+                receiver = decode("ph_receiver"),
+                muteOn = decode("ph_mute_on"),
+                volume = decode("ph_volume"),
             ) to sm.mapValues { decode(it.value) }
         }
         glyphs.putAll(menuImages)
@@ -415,7 +415,7 @@ class CallActivity : Activity() {
         menuView.invalidate()
     }
 
-    private fun decode(id: Int): Bitmap? = BitmapFactory.decodeResource(resources, id, BitmapFactory.Options().apply { inScaled = false })
+    private fun decode(name: String): Bitmap = themeBitmap(applicationContext, name)
 
 
     private fun loadVolume() = scope.launch {

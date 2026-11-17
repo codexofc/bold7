@@ -94,7 +94,7 @@ object Look {
     // The Month view (sim-225, sim-243): the days' names on #6F7173, 33 px; cells 60 px high on the
     // 9900, their lines #D9DCDE, the number black 27 at the top right, the other months' days grey on
     // #C8CACC, the weekend #F7F7F7; a day with appointments a bar 11x4 at its bottom left (white with
-    // a #044C80 frame on the focus; black elsewhere, D).
+    // a #044C80 frame, on the focused day only: sim-225 and sim-243 draw none elsewhere).
     const val NAMES = 33
     const val NAMES_COLOR = 0xFF6F7173.toInt()
     const val MONTH_LINE = 0xFFD9DCDE.toInt()

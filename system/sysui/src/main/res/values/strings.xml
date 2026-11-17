@@ -26,4 +26,15 @@
     <string name="hearing_warning">WARNING: You are about to activate Audioboost and exceed the recommended safe output volume limits of the BlackBerry smartphone. Damage to your hearing may result. Consult the website before proceeding.\nIMPORTANT REMINDER: Hearing experts warn against the use of portable media players at a high volume. If you experience ringing in your ears or any discomfort, immediately discontinue use of the media player and consult with a physician.</string>
     <string name="hearing_proceed">Proceed</string>
     <string name="hearing_cancel">Cancel</string>
+    <!-- The device password's boxes over Options > Security > Password (PasswordScreen), as the
+         simulator 7.1.0.318 writes them: Change Password asks "Enter Password:", "New Password:"
+         (sim-61), "Verify New Password:"; a sequence (sim-62) and two passwords that differ have
+         their message and OK. "The password was not changed." when Android refuses is mine (D). -->
+    <string name="password_current">Enter Password:</string>
+    <string name="password_new">New Password:</string>
+    <string name="password_confirm">Verify New Password:</string>
+    <string name="password_sequence">The password cannot be a sequence.</string>
+    <string name="password_mismatch">The passwords that you typed are not the same.</string>
+    <string name="password_not_set">The password was not changed.</string>
+    <string name="password_ok">OK</string>
 </resources>

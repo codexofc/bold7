@@ -23,6 +23,9 @@ object Focus {
     val RowTop = opaque(0x088FF0)
     val RowBottom = opaque(0x1666DC)
 
+    /** A text selected in a field on a dark box: Edit Folder's name (sim-481, C). */
+    val TextSelection = opaque(0x2B8FFF)
+
     /** A dialog's button: border_button~focus.png (A; sim-19, C). */
     val Button = opaque(0x1766DB)
     val ButtonBorder = opaque(0x004099)
@@ -106,6 +109,8 @@ object DialogColors {
     val ButtonText = opaque(0x202121)
     /** On a focused button ([Focus.Button]). */
     val ButtonTextFocused = opaque(0xFFFFFF)
+    /** The rules of a box with a title, Add Folder's (sim-472, C). */
+    val Rule = opaque(0x878787)
 }
 
 /** Manage Connections under the home's banner (BBOS7-VISUEL §6); its boxes are theme images, its other colors [ListColors]'. */

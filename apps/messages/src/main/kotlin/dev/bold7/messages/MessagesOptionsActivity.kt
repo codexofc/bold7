@@ -1,11 +1,13 @@
 package dev.bold7.messages
 
 import android.app.Activity
+import android.app.Notification
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -28,20 +30,25 @@ import dev.bold7.ui.MenuView
 import dev.bold7.ui.SwitchApplication
 import dev.bold7.ui.TitleBar
 import dev.bold7.ui.bb10List
+import dev.bold7.ui.status
 import dev.bold7.ui.withSwitchApplication
+import dev.bold7.ui.themeBitmap
 
 /**
  * Messages Options (Messages > Menu > Options): "Messages Options" in an Options band, the rows of
  * sim-294 and sim-295 (C) that do something in Bold7: Message Display and Actions (Hide Sent
  * Messages, Confirm Delete, Confirm Mark Prior Read, guide 7.1 p. 87-89, B), Inbox Management
- * (a check box per mail account, then Text Messages, p. 87) and Email Account Management (its
- * own screen). The others (Email Preferences, Email Filters, Email Reconciliation,
- * Recent Contact Management, Spell Check, Text Messaging, Emergency Alert Messages) change nothing
+ * (a check box per mail account, then Text Messages, p. 87), Email Account Management (its
+ * own screen) and Text Messaging (sim-295), which opens the settings of Google Messages, the engine of
+ * the texts and of their chat features (D). The others (Email Preferences, Email Filters, Email
+ * Reconciliation, Recent Contact Management, Spell Check, Emergency Alert Messages) change nothing
  * in Bold7 and are not there; no Search field above the three rows. Check boxes as Tasks Options
  * (sim-263, C), saved by Menu > Save, or Save when leaving with changes ("Changes made!", sim-47):
  * nothing but what the list shows changes, no message is deleted. Rows, words and form layout are
  * mine where no capture shows them (D).
  */
+private const val GOOGLE_MESSAGES = "com.google.android.apps.messaging"
+
 class MessagesOptionsActivity : Activity() {
     private enum class Act { SWITCH, SAVE, CLOSE }
 
@@ -52,7 +59,7 @@ class MessagesOptionsActivity : Activity() {
     private var accounts: List<MailAccountInfo> = emptyList()
     private var focus = 0
     private var menu: Menu<Act>? = null
-    private val icons = arrayOfNulls<Bitmap>(3)
+    private val icons = arrayOfNulls<Bitmap>(4)
 
     private lateinit var title: TitleBar
     private lateinit var list: ListView
@@ -105,7 +112,7 @@ class MessagesOptionsActivity : Activity() {
         graph.ioThread.post {
             val read = graph.store.options
             val mail = graph.mail.accounts()?.list.orEmpty()
-            val images = intArrayOf(R.drawable.msg_cat_display, R.drawable.msg_cat_inbox, R.drawable.msg_cat_accounts).map { BitmapFactory.decodeResource(resources, it) }
+            val images = listOf("msg_cat_display", "msg_cat_inbox", "msg_cat_accounts", "msg_cat_texts").map { themeBitmap(applicationContext, it) }
             runOnUiThread {
                 saved = read
                 options = read
@@ -144,7 +151,7 @@ class MessagesOptionsActivity : Activity() {
     }
 
     private fun count() = when (screen) {
-        OptionsScreen.LIST -> 3
+        OptionsScreen.LIST -> 4
         OptionsScreen.DISPLAY -> 3
         OptionsScreen.INBOX -> accounts.size + 1
     }
@@ -160,7 +167,8 @@ class MessagesOptionsActivity : Activity() {
             OptionsScreen.LIST -> when (focus) {
                 0 -> open(OptionsScreen.DISPLAY)
                 1 -> open(OptionsScreen.INBOX)
-                else -> if (!locked()) startActivity(Intent(this, MailAccountsActivity::class.java))
+                2 -> if (!locked()) startActivity(Intent(this, MailAccountsActivity::class.java))
+                else -> if (!locked()) textSettings()
             }
             else -> toggle()
         }
@@ -208,6 +216,17 @@ class MessagesOptionsActivity : Activity() {
         }
     }
 
+    /** Text Messaging: Google Messages' own settings (its notification preferences entry, exported), chats and RCS among them. */
+    private fun textSettings() {
+        val settings = Intent(Intent.ACTION_MAIN).addCategory(Notification.INTENT_CATEGORY_NOTIFICATION_PREFERENCES).setPackage(GOOGLE_MESSAGES)
+        try {
+            startActivity(settings)
+        } catch (e: ActivityNotFoundException) {
+            Log.w("Bold7/MessagesOptions", "Google Messages has no settings to open", e)
+            status(this, getString(R.string.no_options))
+        }
+    }
+
     private fun locked() = getSystemService(android.app.KeyguardManager::class.java).isKeyguardLocked
 
     override fun dispatchKeyEvent(e: KeyEvent): Boolean {
@@ -252,6 +271,7 @@ class MessagesOptionsActivity : Activity() {
             R.string.options_display to R.string.options_display_hint,
             R.string.options_inbox to R.string.options_inbox_hint,
             R.string.accounts_title to R.string.options_accounts_hint,
+            R.string.options_texts to R.string.options_texts_hint,
         )
 
         override fun getCount() = texts.size

@@ -2,17 +2,21 @@ plugins { id("com.android.application") }
 
 // The icon strips, scroll arrows and short menu images of Messages, out of git (provenance in
 // assets-private/MANIFEST.md), copied into this checkout's assets-gen by tools/import-assets.sh messages.
+// Read by name at run time: from the folder the module mounts, else from these compiled
+// resources, which only the development build carries. A public build (-Pbold7.public=true)
+// carries none of them.
 val privateRes = rootProject.file("assets-gen/messages/res")
+val public = providers.gradleProperty("bold7.public").orNull == "true"
 
 // Messages of BBOS 7.1, the unified inbox (docs/BBOS7-VISUEL.md §15): an
 // ordinary app reading the Hub's store of apps/hub (READ_HUB, a signature permission).
 android {
     namespace = "dev.bold7.messages"
-    sourceSets.getByName("main").res.srcDir(privateRes)
+    if (!public) sourceSets.getByName("main").res.srcDir(privateRes)
     buildTypes.getByName("release").proguardFiles("proguard-rules.pro")
 }
 
-tasks.named("preBuild") {
+if (!public) tasks.named("preBuild") {
     val dir = privateRes
     doFirst { check(dir.isDirectory) { "Missing $dir: run tools/import-assets.sh" } }
 }

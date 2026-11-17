@@ -77,11 +77,14 @@ class StatusIconsTest {
     // Notification icons go through StatusBarIconView too, their slot being the notification's key.
     @Test fun notificationKeysAreNoSlot() = assertNull(statusIconImage("0|com.android.alarm|1|null|10123"))
 
-    // A name without its drawable would throw in SystemUI's process (counted, Android's icon kept).
+    // A name without its drawable is drawn empty (counted, Android's icon kept): the theme's images in
+    // assets-gen, ours (status_*, D) in git, where the public APK has them too.
     @Test fun everyStatusIconImageIsThere() = assertEquals(
         emptyList(),
-        (STATUS_ICON_IMAGES.values + SLOT_STATES.values.flatMap { it.toList() })
-            .filterNot { File("../../assets-gen/sysui/res/drawable-nodpi/$it.png").exists() },
+        (STATUS_ICON_IMAGES.values + SLOT_STATES.values.flatMap { it.toList() }).filterNot {
+            if (it.startsWith("status_")) File("src/main/res/drawable-nodpi/$it.png").exists()
+            else File("../../assets-gen/sysui/res/drawable-nodpi/$it.png").exists()
+        },
     )
 
     /** config_statusBarIcons of the framework overlay, which sets the order of Android's icons. */

@@ -8,6 +8,7 @@
 com.android.chrome	*	bbos7_browser	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_browser_daemon.browser.png	A theme; C sim-06
 com.android.settings	*	bbos7_options	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_options_app.png	A theme
 dev.bold7.launcher	dev.bold7.launcher.options.OptionsActivity	bbos7_options	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_options_app.png	A theme
+dev.bold7.launcher	dev.bold7.launcher.setup.WizardActivity	bbos7_setup	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_setupwizard_app.SetupWizard.png	A theme
 com.android.soundrecorder	*	bbos7_voice_notes_recorder	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_bb_voicenotesrecorder.VoiceNotesRecorder.png	A theme
 com.android.stk	*	bbos7_sim_toolkit	bbos7-9900/theme/net_rim_theme_BlackBerry7_640x480_b/net_rim_SIMToolKit.png	A theme
 com.android.vending	*	bbos7_app_world	bbos7-9900/images/net_rim_bb_appworld_img_dither/res/img/bbaw_icon.png	A firmware, .cod of App World, 100x100; D the circle BlackBerry logo of sim-06 looks like it
