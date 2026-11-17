@@ -11,6 +11,8 @@
     <string name="act_mark_prior_read">Mark Prior Read</string>
     <string name="act_delete">Delete</string>
     <string name="act_delete_prior">Delete Prior</string>
+    <!-- Over a range (Shift and the trackpad): guide 7.1, "Delete a message" (M) -->
+    <string name="act_delete_messages">Delete Messages</string>
     <string name="act_compose">Compose Text Message</string>
     <string name="act_compose_other">Compose Other</string>
     <string name="act_text_message">Text Message</string>
@@ -48,6 +50,8 @@
 
     <!-- The confirmations of Confirm Delete and Confirm Mark Prior Read (B p. 89); their wording S -->
     <string name="confirm_delete">Delete message?</string>
+    <!-- Delete Messages' question: D, no source for its wording -->
+    <string name="confirm_delete_range">Delete selected messages?</string>
     <string name="confirm_delete_prior">Delete all messages prior to and including this date?</string>
     <string name="confirm_mark_prior_read">Mark all messages prior to and including this date as read?</string>
     <string name="button_delete">Delete</string>
@@ -178,6 +182,8 @@
     <string name="setup_done">Your email address %1$s is set up. Its messages will arrive in Messages.</string>
     <string name="setup_invalid">Type your email address and its password.</string>
     <string name="setup_auth">The email address or the password is incorrect.</string>
+    <string name="setup_auth_gmail">Gmail refused the password. Gmail needs an app password: turn on 2-Step Verification, then make one at myaccount.google.com/apppasswords.</string>
+    <string name="setup_auth_icloud">iCloud refused the password. iCloud needs an app-specific password: make one at account.apple.com, Sign-In and Security.</string>
     <string name="setup_certificate">The server\'s certificate cannot be trusted. Nothing was kept.</string>
     <string name="setup_network">Unable to reach the server. Check your connection and the server names.</string>
     <string name="setup_refused">This email address is already set up, or cannot be added.</string>

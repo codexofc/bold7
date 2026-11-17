@@ -112,7 +112,13 @@ private fun LogEntry.matches(all: String): Boolean {
     val typed = number(all)
     if (typed.all { it in DIAL_SYMBOLS }) {
         val digits = typed.filter { it.isDigit() }
-        return number.contains(typed) || (digits.isNotEmpty() && number.filter { it.isDigit() }.contains(digits))
+        if (digits.isEmpty()) return number.contains(typed)
+        val own = number.filter { it.isDigit() }
+        // "06 12 34 56 78" typed finds "+33 6 12 34 56 78": the national form is a 0 before the last 9 digits
+        // (numberKey's rule, D).
+        // "+33 6 12 34 56 78" typed finds "06 12 34 56 78": a country code is 1 to 3 digits.
+        return number.contains(typed) || own.contains(digits) || "0${numberKey(number)}".contains(digits) ||
+            typed.startsWith('+') && (1..3).any { digits.length > it && own.contains("0" + digits.drop(it)) }
     }
     // A name: Contacts' rule, each word typed starts a word of the name.
     return matchesWords(name, typed)

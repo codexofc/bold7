@@ -1,5 +1,6 @@
 package dev.bold7.mail
 
+import com.fsck.k9.mail.AuthenticationFailedException
 import com.fsck.k9.mail.DefaultBodyFactory
 import com.fsck.k9.mail.FetchProfile
 import com.fsck.k9.mail.FolderType
@@ -15,6 +16,7 @@ import com.fsck.k9.mail.store.imap.ImapFolder
 import com.fsck.k9.mail.store.imap.ImapFolderIdler
 import com.fsck.k9.mail.store.imap.ImapStore
 import com.fsck.k9.mail.store.imap.ImapStoreConfig
+import com.fsck.k9.mail.store.imap.NegativeImapResponseException
 import com.fsck.k9.mail.store.imap.OpenMode
 import com.fsck.k9.mail.store.imap.RealImapFolder
 import com.fsck.k9.mail.transport.smtp.SmtpTransport
@@ -144,9 +146,18 @@ class Mailbox(
 
     fun close() = imap.closeAllConnections()
 
-    /** Logs in to both servers, as the account's setup checks it: throws what refuses it. */
+    /**
+     * Logs in to both servers, as the account's setup checks it: throws what refuses it. An IMAP
+     * server that answers NO or BAD with a response code other than AUTHENTICATIONFAILED (Gmail's
+     * [ALERT] for a Google password, its refusals after a few wrong ones) still refused the account:
+     * it is reported as a refused password, with the server's words, never as the network.
+     */
     fun check() {
-        imap.checkSettings()
+        try {
+            imap.checkSettings()
+        } catch (e: NegativeImapResponseException) {
+            throw AuthenticationFailedException("Refused by the server", e, e.alertText ?: e.responseText)
+        }
         SmtpTransport(account.smtpSettings(), sockets, oauthTokenProvider = oauthTokens).checkSettings()
     }
 

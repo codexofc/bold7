@@ -88,6 +88,72 @@ class InboxStateTest {
         assertNull(s3.back())
     }
 
+    // A range (guide 7.1, "Delete a message", M: "Press and hold the Shift key. On the trackpad, slide your
+    // finger up or down"): the messages between the anchor and the focus, never a date field.
+
+    private fun shift(s: InboxState, down: Boolean, times: Int): InboxState {
+        var r = s
+        repeat(times) { r = r.reduce(InboxEvent.Step(down, shift = true)) }
+        return r
+    }
+
+    private fun keysOf(s: InboxState) = s.range().map { it.item.sourceKey }
+
+    @Test fun shiftDownSelectsTheMessagesItCrossesSkippingTheDateFields() {
+        val s = shift(shown.reduce(InboxEvent.Moved(1)), down = true, times = 3)
+        assertEquals(4, s.focus)
+        assertEquals(listOf("a", "b", "c"), keysOf(s))
+        assertEquals(1..4, s.span())
+    }
+
+    @Test fun shiftUpSelectsTheSameInTheListsOrder() {
+        val s = shift(shown.reduce(InboxEvent.Moved(4)), down = false, times = 2)
+        assertEquals(2, s.focus)
+        assertEquals(listOf("b", "c"), keysOf(s))
+        // Started on a date field: it anchors, and stays out.
+        assertEquals(listOf("a", "b"), keysOf(shift(shown, down = true, times = 2)))
+    }
+
+    @Test fun backOnTheAnchorThereIsNoRange() {
+        val s = shift(shift(shown.reduce(InboxEvent.Moved(1)), down = true, times = 2), down = false, times = 2)
+        assertEquals(1, s.focus)
+        assertEquals(emptyList(), s.range())
+        assertNull(s.span())
+        // The next Shift move starts from there.
+        assertEquals(listOf("a", "b"), keysOf(shift(s, down = true, times = 1)))
+    }
+
+    @Test fun aMoveWithoutShiftOrEscapeDropsTheRange() {
+        val s = shift(shown.reduce(InboxEvent.Moved(1)), down = true, times = 3)
+        assertEquals(emptyList(), s.reduce(InboxEvent.Step(down = false)).range())
+        assertEquals(emptyList(), s.reduce(InboxEvent.Moved(2)).range())
+        assertEquals(emptyList(), s.reduce(InboxEvent.SearchOpened).range())
+        // Escape drops the range first, the view stays; then Escape leaves as before.
+        val escaped = s.back()!!
+        assertEquals(emptyList(), escaped.range())
+        assertEquals(4, escaped.focus)
+        assertNull(escaped.back())
+    }
+
+    @Test fun aReloadKeepsTheRangeWhileItsAnchorIsThere() {
+        val s = shift(shown.reduce(InboxEvent.Moved(1)), down = true, times = 3)
+        val newer = inboxLines(snapshot(sms("n", 12, 10), sms("a", 12, 9), sms("b", 12, 8), sms("c", 11, 9)), Filter.ALL, null, format)
+        assertEquals(listOf("a", "b", "c"), keysOf(s.reduce(InboxEvent.Shown(newer))))
+        // The anchor's message gone (deleted): no range, nothing left pointing at it.
+        val gone = s.reduce(InboxEvent.Shown(inboxLines(snapshot(sms("b", 12, 8), sms("c", 11, 9)), Filter.ALL, null, format)))
+        assertNull(gone.anchor)
+        assertEquals(emptyList(), gone.range())
+        assertEquals(emptyList(), s.reduce(InboxEvent.Shown(emptyList())).range())
+    }
+
+    @Test fun onTheSearchFieldThereIsNoRange() {
+        val searching = shown.reduce(InboxEvent.SearchOpened).reduce(InboxEvent.Shown(rows))
+        assertEquals(FIELD, searching.focus)
+        val s = shift(searching, down = true, times = 3)
+        assertEquals(listOf("a", "b"), keysOf(s))
+        assertEquals(emptyList(), shift(s, down = false, times = 3).range())
+    }
+
     @Test fun theSearchEditorTakesWhatTypesTheListTheRest() {
         for (k in listOf(FieldKey.TEXT, FieldKey.DELETE, FieldKey.LEFT, FieldKey.RIGHT)) assertTrue(searchTakes(k), "$k")
         for (k in listOf(FieldKey.UP, FieldKey.DOWN, FieldKey.CLICK, FieldKey.BACK, FieldKey.MENU)) assertFalse(searchTakes(k), "$k")

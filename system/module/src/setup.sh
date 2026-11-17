@@ -2,9 +2,10 @@
 # Bold7: what tools/install.sh and tools/uninstall.sh did from the Mac, done on the phone by the
 # module itself. POSIX sh: KernelSU runs it with its busybox.
 #
-#   sh setup.sh check <moddir>     customize.sh: a Q25 under BenOS, no metamodule, nothing of the BB10
-#                                  build, no removal still being finished, the stock keylayout the
-#                                  module's copy was made from. Reads only; fails saying why.
+#   sh setup.sh check <moddir>     customize.sh: a Q25 under BenOS (any version), no metamodule,
+#                                  nothing of the BB10 build, no removal still being finished; then
+#                                  the module's keylayout, made from the phone's own. Writes only in
+#                                  <moddir>; fails saying why.
 #   sh setup.sh save <moddir>      customize.sh: the values Bold7 changes, saved once in $S
 #   sh setup.sh install <moddir>   customize.sh: Vector if missing, then the apps (pm install)
 #   sh setup.sh apply <moddir>     boot-completed.sh, in the background, at each boot: once the user's
@@ -237,21 +238,36 @@ without_service() {
 }
 
 # --- check ---------------------------------------------------------------------------------------
+# keylayout <moddir>: the module's Q25_keyboard.kl is the phone's own with End (key 172) as ENDCALL,
+# made here from it, so that a BenOS update that changes the file keeps its changes and installs.
+# Without the stock file, or without key 172 as HOME in it, the module places none: End keeps what
+# Android gives it, and the log says so.
+keylayout() {
+    local own=$1/layer/product/usr/keylayout/Q25_keyboard.kl
+    if [ -f "$KL" ] && grep -qE '^key[[:space:]]+172[[:space:]]+HOME[[:space:]]*$' "$KL"; then
+        sed -E 's/^(key[[:space:]]+172[[:space:]]+)HOME([[:space:]]*)$/\1ENDCALL\2/' "$KL" >"$own" ||
+            die "Bold7 could not write its keyboard file. Nothing was changed on your phone."
+    else
+        rm -f "$own"
+        "$TOOLS/log" -p w -t Bold7 "no key 172 HOME in $KL: End left as Android has it" 2>/dev/null
+    fi
+}
+
 do_check() {
     local d id
     d=$(gp ro.product.device)
     [ "$d" = Q25 ] || die "Bold7 is made for the Zinwa Q25 only, and this phone is a '$d'."
     id=$(gp ro.build.display.id)
-    case $id in BenOS*) ;; *) die "Bold7 needs BenOS on your Q25, and this one runs '$id'. Install BenOS first, then install Bold7 again." ;; esac
+    # Any BenOS: its builds name themselves BenOS-Valarie_stablePublicRel, main.BenOS-Valarie_stable-<commit>...;
+    # ro.benos_timestamp is BenOS's own.
+    case $id in *[Bb][Ee][Nn][Oo][Ss]*) ;; *) [ -n "$(gp ro.benos_timestamp)" ] ||
+        die "This is Bold7 for BenOS, and your Q25 runs '$id'. On LineageOS 24, install Bold7 for LineageOS 24 (bold7-<version>-lineage24.zip) from the releases page." ;; esac
     [ ! -e "$ADB/metamodule" ] || die "A metamodule is installed ($ADB/metamodule), and Bold7 places its files itself. Remove that module in Modules, restart, then install Bold7 again."
     [ ! -e "$WRAPPER" ] || die "Bold7 is still finishing its removal. Unlock your phone, wait a minute, then install Bold7 again."
     if [ -e "$ADB/modules/cascade" ] || [ -e "$ADB/modules_update/cascade" ] || "$TOOLS/pm" list packages -u dev.cascade 2>/dev/null | grep -q .; then
         die "The BB10 build of this project (cascade) is still installed. Remove it first (tools/uninstall.sh of its tag bb10-final), restart, then install Bold7 again."
     fi
-    # The module's Q25_keyboard.kl is the stock one with End as ENDCALL: over another
-    # stock file it would hide what changed.
-    [ "$(sed 's/^key 172   ENDCALL$/key 172   HOME/' "$1/layer/product/usr/keylayout/Q25_keyboard.kl")" = "$(cat "$KL" 2>/dev/null)" ] ||
-        die "This version of BenOS ($id) is not supported yet: its keyboard file is not the one Bold7 knows. Wait for a Bold7 update."
+    keylayout "$1"
     # One line: customize.sh shows it after "Checking your phone...". The version's date for the log only.
     "$TOOLS/log" -p i -t Bold7 "install on $id, ro.benos_timestamp=$(gp ro.benos_timestamp)" 2>/dev/null
     echo "OK, Zinwa Q25 on $id"
@@ -557,6 +573,9 @@ do_access() {
         grant $HUB READ_SMS READ_CALL_LOG READ_CALENDAR READ_CONTACTS || r=1
         "$TOOLS/cmd" notification allow_listener $HUB_LISTENER >/dev/null 2>&1
         poll listener_on || { say "! $HUB: notification access not recorded"; r=1; }
+        # A history restored at the phone's setup, restricted to the SMS app by Android 17 (lift.sh).
+        # Tried again with the rest at the next boot while rows stay restricted.
+        [ -z "$1" ] || sh "$1/lift.sh" "$1" || r=1
         "$TOOLS/dumpsys" deviceidle whitelist +$HUB >/dev/null 2>&1
         dozing_exempt || { say "! $HUB: not exempted from Doze"; r=1; }
     fi
@@ -607,7 +626,7 @@ do_apply() {
         fi
     done
     if [ ! -e "$S/acces.fait" ]; then
-        if do_access; then touch "$S/acces.fait"; else fails=$((fails + 1)); say "! access: tried again at the next boot"; fi
+        if do_access "$1"; then touch "$S/acces.fait"; else fails=$((fails + 1)); say "! access: tried again at the next boot"; fi
     fi
     [ $fails = 0 ] && return 0
     # What the manager shows on the module's card until the next boot (override.description).

@@ -5,6 +5,7 @@ import dev.bold7.launcher.home.FOLDER_ICONS
 import dev.bold7.launcher.home.folderIcon
 import dev.bold7.platform.enableStrictModeIfDebuggable
 import dev.bold7.platform.speakOs7Language
+import dev.bold7.platform.stopOrphanKeyReleases
 import dev.bold7.theme.ThemeImages
 import dev.bold7.ui.MENU_IMAGES
 
@@ -14,6 +15,7 @@ class LauncherApp : Application() {
     override fun onCreate() {
         enableStrictModeIfDebuggable()
         speakOs7Language()
+        stopOrphanKeyReleases()
         super.onCreate()
         // Decoded off the main thread before a view asks for them: the home's (its io shares the
         // work) and those the switcher, the profiles and Manage Connections open on the main thread.

@@ -22,6 +22,19 @@ class EchoesTest {
         assertEquals(listOf(text), shown(text, notification(MESSAGES, t + 2_000, "See you at 6 pm?")))
     }
 
+    @Test fun theNotificationNamingTheNumberOfANamedTextIsAnEchoToo() {
+        // The Hub names the text by its contact; Google Messages may show the number (its own
+        // contact cache not yet refreshed), in its national form.
+        val text = sms(t, "Salut", sender = "Lisa")
+        assertEquals(listOf(text), shown(text, notification(MESSAGES, t + 1_000, "Salut", sender = "06 00 00 00 00")))
+    }
+
+    @Test fun anotherNumberIsNotAnEcho() {
+        val text = sms(t, "Salut", sender = "Lisa")
+        val other = notification(MESSAGES, t + 1_000, "Salut", sender = "06 99 99 99 99")
+        assertEquals(listOf(text, other), shown(text, other))
+    }
+
     @Test fun theNotificationCanComeBeforeTheProviderWritesTheSms() {
         val text = sms(t, "ok")
         assertEquals(listOf(text), shown(text, notification(MESSAGES, t - 2_000, "ok")))

@@ -7,6 +7,7 @@ import android.os.Process
 import android.util.Log
 import dev.bold7.platform.enableStrictModeIfDebuggable
 import dev.bold7.platform.speakOs7Language
+import dev.bold7.platform.stopOrphanKeyReleases
 import dev.bold7.showcase.showcaseEvent
 import dev.bold7.showcase.showcaseOn
 import java.util.concurrent.Executor
@@ -22,6 +23,7 @@ class MessagesApp : Application() {
     override fun onCreate() {
         enableStrictModeIfDebuggable()
         speakOs7Language()
+        stopOrphanKeyReleases()
         super.onCreate()
     }
 }

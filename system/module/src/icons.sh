@@ -9,7 +9,8 @@
 #
 # Only a file named <package>.png, with a PNG signature, of at most 1 MB, is copied; a file already
 # in Bold7/icons/ is never replaced (the user's own choice). The copies get the owner, group and
-# label of Download/, as the files the user puts there himself. Prints one line for the manager
+# label of Download/, as the files the user puts there himself, with a .nomedia beside them (no
+# album in Pictures). Prints one line for the manager
 # when a pack was found, nothing otherwise; never fails the install. Removing Bold7 leaves
 # Bold7/icons/ alone: the user's files.
 MOD=$1
@@ -55,6 +56,17 @@ for f in "$DOWNLOAD/Bold7-icons"/* "$DOWNLOAD"/*/Bold7-icons/* "$T/zip"/*; do
     fi
 done
 rm -rf "$T"
+# Not pictures: .nomedia keeps MediaStore, and so Pictures, out of Bold7/icons (the launcher reads
+# the files themselves). Owner and label as the icons'.
+if [ -d "$DEST" ] && [ ! -e "$DEST/.nomedia" ]; then
+    if : >"$DEST/.nomedia" && chmod 0660 "$DEST/.nomedia" && chown "$owner" "$DEST/.nomedia" && /system/bin/chcon "$label" "$DEST/.nomedia"; then
+        # The icons MediaStore already holds (installs before this) go at once: a scan of the folder.
+        case $DEST in /data/media/0/*) /system/bin/content call --uri content://media --method scan_file \
+            --arg "/storage/emulated/0/${DEST#/data/media/0/}" >/dev/null 2>&1 ;; esac
+    else
+        rm -f "$DEST/.nomedia"
+    fi
+fi
 [ -n "$found" ] || exit 0
 line="      Icons: $copied copied to ${DEST#/data/media/0/}"
 [ $kept = 0 ] || line="$line, $kept already there kept"

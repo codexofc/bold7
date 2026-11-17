@@ -27,9 +27,15 @@ class AndroidRows(private val context: Context) : ProviderRows {
     private var contacts = false
         get() = field || (context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED).also { field = it }
 
-    // Simplification: kept for the process's life, a contact added or renamed shows at the next start;
-    // drop on a ContentObserver of the contacts if that matters. Unknown numbers are kept too.
+    // Kept until a contact changes (HubGraph observes the contacts and calls forgetNames): a contact
+    // added or renamed names its texts at the next read. Unknown numbers are kept too.
     private val names = HashMap<String, String?>()
+    @Volatile private var namesStale = false
+
+    /** A contact was added, renamed or deleted: the names are looked up again at the next read of the texts. */
+    fun forgetNames() {
+        namesStale = true
+    }
 
     // An MMS's address never changes.
     private val mmsAddresses = HashMap<Long, String?>()
@@ -59,6 +65,11 @@ class AndroidRows(private val context: Context) : ProviderRows {
     }
 
     override fun sms(): List<SmsRow> {
+        // On the sources' thread, as every read of names: cleared here, never from the observer's binder thread.
+        if (namesStale) {
+            namesStale = false
+            names.clear()
+        }
         val s = Telephony.Sms.CONTENT_URI
         return rows(s, arrayOf(BaseColumns._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE, Telephony.Sms.BODY, Telephony.Sms.READ, Telephony.Sms.TYPE)) { c ->
             val address = c.getString(2)

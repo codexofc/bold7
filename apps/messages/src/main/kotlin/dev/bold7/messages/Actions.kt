@@ -30,6 +30,8 @@ enum class Act(
     MARK_PRIOR_READ(method = HubContract.METHOD_MARK_READ),
     DELETE(method = HubContract.METHOD_DELETE),
     DELETE_PRIOR(method = HubContract.METHOD_DELETE),
+    /** Delete Messages, over a range (guide 7.1, "Delete a message", M). */
+    DELETE_RANGE(method = HubContract.METHOD_DELETE),
     COMPOSE_EMAIL,
     COMPOSE,
     COMPOSE_OTHER,
@@ -71,10 +73,12 @@ enum class Act(
  * text is in Compose Other ►'s submenu as in sim-44, C), Search, Search by ► (always, sim-44, C; p. 86), Display Style ► (p. 88), View Folder, View Saved Messages, Message Notifiers and
  * Options last. In [view] the saved messages, Delete removes the message from
  * them and Delete Prior is not there. Help and Close, under Options, come with [menuOf]; Switch
- * Application too (sim-44, C).
+ * Application too (sim-44, C). Over a [range] (Shift and the trackpad), Mark Read, Mark Unread
+ * and Delete Messages act on the whole of it (Delete Messages: guide 7.1, "Delete a message", M;
+ * Mark Read and Mark Unread on a range: S, remembered from the 9900).
  */
-fun fullMenu(line: InboxLine?, view: Filter = Filter.ALL): List<MenuEntry<Act>> {
-    val own = when (line) {
+fun fullMenu(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): List<MenuEntry<Act>> {
+    val own = if (range) listOf(Act.MARK_READ, Act.MARK_UNREAD, Act.DELETE_RANGE) else when (line) {
         is ItemLine -> listOfNotNull(
             Act.OPEN, if (line.unread) Act.MARK_READ else Act.MARK_UNREAD,
             Act.SAVE.takeIf { line.item.canSave() && !line.saved }, Act.DELETE,
@@ -124,12 +128,12 @@ fun displayStyleMenu() = Menu(listOf(MenuEntry(Act.STYLE_GROUP), MenuEntry(Act.S
  * The full menu as opened by the Menu key: Switch Application, then [fullMenu], then Help and Close
  * under Options (sim-289, sim-290, C), the first action focused.
  */
-fun menuOf(line: InboxLine?, view: Filter = Filter.ALL): Menu<Act> =
-    Menu(fullMenu(line, view) + MenuEntry(Act.HELP) + MenuEntry(Act.CLOSE), highlighted = 0).withSwitchApplication(Act.SWITCH)
+fun menuOf(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): Menu<Act> =
+    Menu(fullMenu(line, view, range) + MenuEntry(Act.HELP) + MenuEntry(Act.CLOSE), highlighted = 0).withSwitchApplication(Act.SWITCH)
 
 /** The short menu (the trackpad held): the same actions, Full Menu last (D: the 9900's for a message is not captured). */
-fun shortMenu(line: InboxLine?, view: Filter = Filter.ALL): List<MenuEntry<Act>> =
-    fullMenu(line, view).filter { it.action !in FULL_ONLY }
+fun shortMenu(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): List<MenuEntry<Act>> =
+    fullMenu(line, view, range).filter { it.action !in FULL_ONLY }
         // The one thing Compose Other holds here is the short menu's Compose Text Message cell.
         .map { if (it.action == Act.COMPOSE_OTHER) MenuEntry(Act.COMPOSE) else it.copy(separatorAbove = false) }
 
@@ -184,10 +188,17 @@ fun navigate(act: Act, lines: List<InboxLine>, from: Int, page: Int): Int? {
 }
 
 /**
- * What the user asked of the Hub's store: on a row's [item], or on a [day] and those before it as
- * the list was when its menu opened ([asOf], epoch ms): what came since is not written.
+ * What the user asked of the Hub's store: on a row's [item], or a range's [rows], or on a [day]
+ * and those before it as the list was when its menu opened ([asOf], epoch ms): what came since is
+ * not written.
  */
-data class Request(val act: Act, val item: HubItem? = null, val day: LocalDate? = null, val asOf: Long = Long.MAX_VALUE)
+data class Request(
+    val act: Act,
+    val item: HubItem? = null,
+    val day: LocalDate? = null,
+    val asOf: Long = Long.MAX_VALUE,
+    val rows: List<HubItem> = listOfNotNull(item),
+)
 
 private fun HubItem.key() = ItemKey(accountId, sourceKey)
 
@@ -204,11 +215,12 @@ private fun HubItem.sameRow(other: HubItem) =
 fun writeKeys(request: Request, snapshot: Snapshot, filter: Filter, search: String?, zone: ZoneId, account: String? = null, searchIn: SearchIn = SearchIn.ANY): List<ItemKey> {
     val items = snapshot.items.filter { !it.deleted }
     val targets: List<HubItem> = when (request.act) {
-        Act.MARK_UNREAD -> listOfNotNull(request.item?.takeIf { !it.deleted })
+        Act.MARK_UNREAD -> request.rows.filter { !it.deleted }
         // Single Messages: the row is one message, not its conversation.
         Act.MARK_READ, Act.DELETE ->
-            if (!snapshot.options.group) listOfNotNull(request.item?.takeIf { !it.deleted })
-            else request.item?.let { row -> items.filter { it.sameRow(row) && it.timestamp <= row.timestamp } }.orEmpty()
+            if (!snapshot.options.group) request.rows.filter { !it.deleted }
+            // Simplification: rows times items, on the io thread; a map by conversation if a long range is ever slow.
+            else items.filter { item -> request.rows.any { row -> item.sameRow(row) && item.timestamp <= row.timestamp } }
         Act.MARK_PRIOR_READ, Act.DELETE_PRIOR -> {
             val day = request.day ?: return emptyList()
             // By message, not by row: a conversation shown under a later day loses its messages
@@ -226,6 +238,17 @@ fun writeKeys(request: Request, snapshot: Snapshot, filter: Filter, search: Stri
     val echoes = (snapshot.items - targetSet).withoutEchoes(snapshot.smsApp, snapshot.dialer).filter { it !in visible && !it.deleted }
     return (targets + echoes).map { it.key() }
 }
+
+/**
+ * What Delete (one row) or Delete Messages (a range) does with the [rows]' items, as the 9900's
+ * Delete does: in the saved messages, taken out of them ([unsave], guide p. 93, B); a draft,
+ * this app's own file ([drafts]); the rest deleted in the Hub ([hub]).
+ */
+data class Deletion(val unsave: List<String> = emptyList(), val drafts: List<String> = emptyList(), val hub: List<HubItem> = emptyList())
+
+fun deletion(rows: List<HubItem>, view: Filter): Deletion =
+    if (view == Filter.SAVED) Deletion(unsave = rows.map { it.savedKey() })
+    else rows.partition { it.accountId == DRAFTS_ACCOUNT }.let { (drafts, hub) -> Deletion(drafts = drafts.map { it.sourceKey }, hub = hub) }
 
 /** Where Open goes: the item in its own app. */
 sealed interface Opening {

@@ -67,7 +67,7 @@ fun numberKey(name: String): String {
 /**
  * Without the notifications that only repeat an item a provider gave the Hub, each within
  * [ECHO_WINDOW_MS] of it, before or after, by its last post or by its Notification.when: the [smsApp]'s for an SMS or MMS of the same text from
- * the same sender, the [dialer]'s for a missed call from the caller it names (its title or its
+ * the same sender (its name or its number), the [dialer]'s for a missed call from the caller it names (its title or its
  * text: the dialer titles it "Missed call"). Everything the providers lack stays, an RCS chat of
  * the SMS app first of all. Left out of the list only: the trace stays in the store. A null app
  * leaves nothing out; an unknown sender never matches.
@@ -78,7 +78,10 @@ fun List<HubItem>.withoutEchoes(smsApp: String?, dialer: String?): List<HubItem>
     for (item in this) {
         val sender = numberKey(item.sender).ifEmpty { continue }
         when (item.kind) {
-            ItemKind.SMS, ItemKind.MMS -> texts.getOrPut(item.preview.trim() to sender) { ArrayList() } += item.timestamp
+            // By the name and by the number: the notification may name either, as it can.
+            ItemKind.SMS, ItemKind.MMS -> listOfNotNull(sender, item.address?.let(::numberKey)?.ifEmpty { null }).distinct().forEach {
+                texts.getOrPut(item.preview.trim() to it) { ArrayList() } += item.timestamp
+            }
             ItemKind.MISSED_CALL -> calls.getOrPut(sender) { ArrayList() } += item.timestamp
             else -> Unit
         }

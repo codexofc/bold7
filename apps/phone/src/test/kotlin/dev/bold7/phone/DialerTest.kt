@@ -47,6 +47,19 @@ class DialerTest {
         assertEquals(listOf(amtrak), "amt".fold(loaded) { d, c -> d.reduce(DialEvent.Typed(c)) }.shown)
     }
 
+    @Test fun aNationalNumberFindsItsInternationalForm() {
+        // In France one dials 06 or 01: the log and the cards keep the international form (+33 ...).
+        // Digits look in the calls only (digitsAndAnEmptyFieldShowNoContact).
+        val national = LogEntry(4, "0612345678", "", "", LogType.OUTGOING, at(8, 25, 9, 0), isNew = false)
+        val d = Dialer().reduce(DialEvent.Loaded(listOf(missed, national), listOf(dexter, deb)))
+        assertEquals(listOf(missed), d.type("0199001").shown)
+        assertEquals(listOf(missed), d.type("019900123").shown)
+        assertEquals(emptyList(), d.type("0699").shown)
+        // The international form still finds them, and finds a call kept in the national one.
+        assertEquals(listOf(missed), d.type("+33199001").shown)
+        assertEquals(listOf(national), d.type("+33612345678").shown)
+    }
+
     // Contacts found by name in the field (guide 7.1 p. 61: "Type a phone number or contact name"),
     // with the words rule of Contacts and Messages (core/ui matchesWords).
     private val dexter = LogEntry(-11, "+33 1 99 00 11 22", "Dexter Morgan", "Mobile", LogType.CONTACT, 0, isNew = false)
@@ -76,7 +89,9 @@ class DialerTest {
     @Test fun digitsAndAnEmptyFieldShowNoContact() {
         assertEquals(log, book.shown)
         assertEquals(listOf(unknown), book.type("973").shown)
-        assertEquals(emptyList(), book.type("0199").shown)
+        // The missed call from +33 1 99 00 12 34: its national form (aNationalNumberFindsItsInternationalForm).
+        assertEquals(listOf(missed), book.type("0199").shown)
+        assertEquals(emptyList(), book.type("0188").shown)
     }
 
     @Test fun aContactRowHasNeitherIconNorDate() {

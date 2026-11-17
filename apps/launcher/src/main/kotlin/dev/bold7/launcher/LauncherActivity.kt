@@ -225,7 +225,7 @@ class LauncherActivity : Activity() {
     private fun closeSearch() {
         search?.close()
         home.setTrayHidden(false)
-        keys.reset()
+        keys.searchClosed()
     }
 
     // What the search's microphone heard: the search again with it (the recognizer stopped the

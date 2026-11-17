@@ -47,6 +47,7 @@ expect "the folder at the top: the icons" "$(echo "$out" | tail -n +3 | tr '\n' 
 expect "owner, mode and label of Download/" "$(adb shell "cd $T && stat -c '%u:%g %a' dl media/Bold7/icons/com.whatsapp.png media/Bold7/icons | tr '\n' ' '; ls -Zd dl media/Bold7/icons/com.whatsapp.png | awk '{print \$1}' | sort -u" | tr -d '\r')" "2000:2000 777 2000:2000 660 2000:2000 2770 u:object_r:shell_data_file:s0"
 
 out=$(run top kept)
+expect "no album in Pictures: a .nomedia, owner and label of Download/" "$(adb shell "cd $T && stat -c '%u:%g %a' media/Bold7/icons/.nomedia; ls -Zd media/Bold7/icons/.nomedia | awk '{print \$1}'" | tr -d '\r' | tr '\n' ' ')" "2000:2000 660 u:object_r:shell_data_file:s0 "
 expect "an icon already there is kept" "$(echo "$out" | grep kept.app)" "com.kept.app.png=mine"
 expect "and said" "$(echo "$out" | head -1)" "      Icons: 1 copied to $T/media/Bold7/icons, 1 already there kept, 3 not a PNG icon skipped"
 

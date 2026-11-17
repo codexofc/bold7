@@ -113,6 +113,18 @@ class MailTest {
         assertFalse(s.copy(busy = true).answered(MailResult.AUTH).busy)
     }
 
+    @Test
+    fun `a password refused by Gmail or iCloud says where to make an app password`() {
+        fun refused(address: String) = SetupState(address = address, password = "pw").answered(MailResult.AUTH).notice
+        assertEquals(SetupNotice.AUTH_GMAIL, refused("alice@gmail.com"))
+        assertEquals(SetupNotice.AUTH_GMAIL, refused(" Alice@GoogleMail.com "))
+        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@icloud.com"))
+        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@me.com"))
+        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@mac.com"))
+        assertEquals(SetupNotice.AUTH, refused("alice@example.org"))
+        assertEquals(SetupNotice.AUTH, refused("alice@notgmail.com"))
+    }
+
     // OS 7's signature is "added to your email after you send it" (guide 7.1 p. 90, B),
     // under what I wrote and above the original (S).
     @Test fun theSignatureGoesUnderTheTextAboveTheOriginal() {

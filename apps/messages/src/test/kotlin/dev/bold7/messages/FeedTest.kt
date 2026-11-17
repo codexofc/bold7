@@ -119,6 +119,17 @@ class FeedTest {
         assertEquals(listOf(HubContract.METHOD_DELETE to listOf(ItemKey("sms", "a"))), reader.writes)
     }
 
+    @Test fun aLongRangeIsWrittenAtMostKeysMaxAtATime() {
+        val many = (0 until HubContract.KEYS_MAX + 100).map { sms("m$it", 12, 9) }
+        reader.snapshot = snapshot(*many.toTypedArray())
+        feed.reload()
+        scope.advanceUntilIdle()
+        feed.act(Request(Act.MARK_UNREAD, rows = many))
+        scope.advanceUntilIdle()
+        assertEquals(listOf(HubContract.KEYS_MAX, 100), reader.writes.map { it.second.size })
+        assertEquals(many.map { ItemKey("sms", it.sourceKey) }, reader.writes.flatMap { it.second })
+    }
+
     @Test fun anActOnTextsAsksGoogleMessagesTooBeforeTheHub() {
         val bridged = mutableListOf<List<ApiCall>>()
         val reader = FakeReader(snapshot(sms("sms:5", 12, 9, thread = "8"), sms("sms:4", 12, 8, thread = "8"), call("c", 12, 7)))

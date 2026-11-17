@@ -241,7 +241,7 @@ data class MailAccountInfo(val id: String, val address: String, val signature: S
 data class MailAccounts(val list: List<MailAccountInfo> = emptyList(), val browser: List<String> = emptyList())
 
 /** What the setup of an account says when it fails (D: the 9900's are not captured). */
-enum class SetupNotice { INVALID, AUTH, CERTIFICATE, NETWORK, REFUSED, SERVERS, UNAVAILABLE, CANCELLED }
+enum class SetupNotice { INVALID, AUTH, AUTH_GMAIL, AUTH_ICLOUD, CERTIFICATE, NETWORK, REFUSED, SERVERS, UNAVAILABLE, CANCELLED }
 
 /**
  * Email Setup (guide 7.1 p. 90, B: "follow the screens to set up your email address"): the
@@ -266,7 +266,7 @@ data class SetupState(
         servers = servers || result == MailResult.SERVERS,
         notice = when (result) {
             MailResult.OK -> null
-            MailResult.AUTH -> SetupNotice.AUTH
+            MailResult.AUTH -> refusedBy(address)
             MailResult.SERVERS -> SetupNotice.SERVERS
             MailResult.CERTIFICATE -> SetupNotice.CERTIFICATE
             MailResult.NETWORK -> SetupNotice.NETWORK
@@ -275,6 +275,16 @@ data class SetupState(
             MailResult.CANCELLED -> SetupNotice.CANCELLED
         },
     )
+}
+
+/**
+ * A refused password: Gmail and iCloud only take an app password over IMAP, and the most common
+ * mistake is the account's own password, so their notice says where to make one (D).
+ */
+private fun refusedBy(address: String): SetupNotice = when (address.trim().substringAfterLast('@').lowercase()) {
+    "gmail.com", "googlemail.com" -> SetupNotice.AUTH_GMAIL
+    "icloud.com", "me.com", "mac.com" -> SetupNotice.AUTH_ICLOUD
+    else -> SetupNotice.AUTH
 }
 
 fun port(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in 1..65535 }
