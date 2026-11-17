@@ -147,6 +147,8 @@ Pick the release of your system on the [releases page](https://github.com/codexo
 
 **Need help finding the official 9900 file?** Contact the maintainer for advice by email at arthur@sw3rm.com or on Discord (username `codexofc_`).
 
+**Questions and help from other Q25 users:** the [Bold7 topic](https://discord.com/channels/1356921788038119556/1572002370160828446) on the official Zinwa Discord.
+
 1. **Download two files** into `Download/`: the zip of your system from the releases page, and the official 9900 file.
 2. **Install the zip** from the KernelSU manager: Modules, Install, choose the zip. The manager shows each step: device and system recognised, 9900 file found and extracted, apps installed. If the 9900 file is missing, the installer stops before changing anything and says which file to place where.
 3. **Reboot** with the button the manager shows.
