@@ -162,6 +162,39 @@ class ActionsTest {
         assertEquals(keys("b"), writeKeys(Request(Act.DELETE, item = s.items[1]), s, Filter.ALL, null, paris))
     }
 
+    // A range (guide 7.1, "Delete a message", M; Mark Read and Mark Unread on it: S)
+
+    @Test fun aRangesMenuMarksAndDeletesItWhole() {
+        val own = listOf(Act.MARK_READ, Act.MARK_UNREAD, Act.DELETE_RANGE)
+        assertEquals(own, fullMenu(rows[2], range = true).map { it.action }.take(3))
+        assertEquals(Act.COMPOSE_EMAIL, fullMenu(rows[2], range = true)[3].action)
+        assertEquals(own, shortMenu(rows[2], range = true).map { it.action }.take(3))
+        assertEquals(Act.MARK_READ, menuOf(rows[0], range = true).entries[menuOf(rows[0], range = true).highlighted!!].action)
+        assertEquals(HubContract.METHOD_DELETE, Act.DELETE_RANGE.method)
+    }
+
+    @Test fun eachRowOfARangeIsItsWholeConversationUpToIt() {
+        val s = snapshot(
+            sms("a", 12, 9, thread = "t"), sms("b", 12, 10, thread = "t"), sms("x", 12, 11),
+            sms("u", 12, 8, thread = "v"), sms("w", 12, 9, thread = "v"), sms("later", 12, 12, thread = "v"),
+        )
+        val rows = listOf(s.items[1], s.items[4])
+        assertEquals(keys("a", "b", "u", "w"), writeKeys(Request(Act.MARK_READ, rows = rows), s, Filter.ALL, null, paris))
+        assertEquals(keys("a", "b", "u", "w"), writeKeys(Request(Act.DELETE, rows = rows), s, Filter.ALL, null, paris))
+        assertEquals(keys("b", "w"), writeKeys(Request(Act.MARK_UNREAD, rows = rows), s, Filter.ALL, null, paris))
+        // Single Messages: the rows alone.
+        val single = s.copy(options = MessagesOptions(group = false))
+        assertEquals(keys("b", "w"), writeKeys(Request(Act.DELETE, rows = rows), single, Filter.ALL, null, paris))
+    }
+
+    @Test fun deleteMessagesSortsTheRangeAsDeleteDoesOneRow() {
+        val draft = HubItem(DRAFTS_ACCOUNT, "d1", ItemKind.EMAIL, 12, "Me")
+        val text = sms("a", 12, 9)
+        assertEquals(Deletion(drafts = listOf("d1"), hub = listOf(text)), deletion(listOf(draft, text), Filter.ALL))
+        // In the saved messages, Delete takes them out of the saved ones only (guide p. 93, B).
+        assertEquals(Deletion(unsave = listOf(draft.savedKey(), text.savedKey())), deletion(listOf(draft, text), Filter.SAVED))
+    }
+
     @Test fun eachWritingActHasItsProviderMethod() {
         assertEquals(HubContract.METHOD_MARK_READ, Act.MARK_READ.method)
         assertEquals(HubContract.METHOD_MARK_READ, Act.MARK_PRIOR_READ.method)

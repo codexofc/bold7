@@ -33,6 +33,7 @@ import dev.bold7.design.Durations
 import dev.bold7.design.ListColors
 import dev.bold7.design.ListDimens
 import dev.bold7.hub.data.HubContract
+import dev.bold7.hub.data.HubItem
 import dev.bold7.hub.data.ItemKey
 import dev.bold7.hub.data.ItemKind
 import dev.bold7.showcase.SHOWCASE_EVENT_SETTING
@@ -100,6 +101,11 @@ class MessagesActivity : Activity() {
     private var travel = Travel()
     /** The search field being given the state's text: not an edit to report. */
     private var binding = false
+    /**
+     * Shift held, followed from its own keys: the trackpad (bold7-trackpad) is another device,
+     * whose arrows do not carry the keyboard's Shift in their meta state.
+     */
+    private var shiftHeld = false
 
     /** apps/hub's mail accounts, read at each start: C composes a mail when there is one, an account's view shows its address. */
     private var mail: List<MailAccountInfo> = emptyList()
@@ -277,6 +283,7 @@ class MessagesActivity : Activity() {
 
     override fun onPause() {
         letters.clear()
+        shiftHeld = false
         graph.feed.view(false)
         super.onPause()
     }
@@ -289,7 +296,11 @@ class MessagesActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (!hasFocus) return
+        // Shift's release may go to the window that took the focus (a dialog).
+        if (!hasFocus) {
+            shiftHeld = false
+            return
+        }
         takeFocus()
     }
 
@@ -306,7 +317,7 @@ class MessagesActivity : Activity() {
     private fun loadImages() = scope.launch {
         val sm = mapOf(
             Act.OPEN to "msg_sm_open", Act.MARK_READ to "msg_sm_mark_read", Act.MARK_UNREAD to "msg_sm_mark_unread",
-            Act.MARK_PRIOR_READ to "msg_sm_mark_prior_opened", Act.DELETE to "msg_sm_delete", Act.DELETE_PRIOR to "msg_sm_delete",
+            Act.MARK_PRIOR_READ to "msg_sm_mark_prior_opened", Act.DELETE to "msg_sm_delete", Act.DELETE_PRIOR to "msg_sm_delete", Act.DELETE_RANGE to "msg_sm_delete",
             Act.COMPOSE to "msg_sm_compose", Act.COMPOSE_EMAIL to "msg_sm_compose", Act.SEARCH to "msg_sm_search", Act.VIEW_FOLDER to "msg_sm_select_folder",
             Act.OPTIONS to "msg_sm_options_generic",
         )
@@ -366,7 +377,7 @@ class MessagesActivity : Activity() {
         if (none) empty.show(getString(R.string.no_messages), lit = true)
         when {
             s.lines !== old.lines -> lines.notifyDataSetChanged()
-            s.focus != old.focus -> rebindShown()
+            s.focus != old.focus || s.anchor != old.anchor -> rebindShown()
         }
         // Only when the focus goes to another line: not on a reload, nor when a message arriving
         // above moves its line down; a list scrolled by touch stays where the finger left it.
@@ -405,6 +416,7 @@ class MessagesActivity : Activity() {
             Act.MARK_PRIOR_READ -> R.string.act_mark_prior_read
             Act.DELETE -> R.string.act_delete
             Act.DELETE_PRIOR -> R.string.act_delete_prior
+            Act.DELETE_RANGE -> R.string.act_delete_messages
             Act.COMPOSE -> R.string.act_compose
             Act.COMPOSE_OTHER -> R.string.act_compose_other
             Act.COMPOSE_TEXT -> R.string.act_text_message
@@ -459,7 +471,7 @@ class MessagesActivity : Activity() {
      * menu of OS 7 over the same line, not the short menu's own entries.
      */
     private fun show(m: Menu<Act>?) {
-        val shown = if (m != null && m.line != null && m.expanded) menuOf(state.focusedLine, state.filter) else m
+        val shown = if (m != null && m.line != null && m.expanded) menuOf(state.focusedLine, state.filter, state.span() != null) else m
         menu = shown
         menuView.bind(shown)
     }
@@ -467,7 +479,7 @@ class MessagesActivity : Activity() {
     /** The short menu over the focused line; none on the search field or View Folder. */
     private fun holdLine(): Boolean {
         if (state.screen != Screen.LIST || state.focus == FIELD) return false
-        show(Menu(shortMenu(state.focusedLine, state.filter), line = state.focus.coerceAtLeast(0), highlighted = 0))
+        show(Menu(shortMenu(state.focusedLine, state.filter, state.span() != null), line = state.focus.coerceAtLeast(0), highlighted = 0))
         return true
     }
 
@@ -503,17 +515,19 @@ class MessagesActivity : Activity() {
         if (showcase && act in WRITES) return
         when (act) {
             Act.OPEN -> (line as? ItemLine)?.let(::open)
-            Act.MARK_READ, Act.MARK_UNREAD -> (line as? ItemLine)?.let { write(Request(act, it.item)) }
+            // The range's messages when there is one (its menu), else the focused one.
+            Act.MARK_READ, Act.MARK_UNREAD -> rows().takeIf { it.isNotEmpty() }?.let { write(Request(act, rows = it)) }
             Act.TOGGLE_READ -> (line as? ItemLine)?.let { write(Request(if (it.unread) Act.MARK_READ else Act.MARK_UNREAD, it.item)) }
-            Act.DELETE -> (line as? ItemLine)?.let {
-                ask(graph.store.options.confirmDelete, R.string.confirm_delete, R.string.button_delete, focused = 0) {
-                    when {
-                        // The saved messages' own Delete takes the message out of them only (guide p. 93, B).
-                        state.filter == Filter.SAVED -> unsave(it.item.savedKey())
-                        // A draft is this app's own file, not the Hub's.
-                        it.item.accountId == DRAFTS_ACCOUNT -> if (!locked()) scope.launch(graph.io) { graph.drafts.delete(it.item.sourceKey) }
-                        else -> write(Request(Act.DELETE, it.item))
-                    }
+            Act.DELETE, Act.DELETE_RANGE -> rows().takeIf { it.isNotEmpty() }?.let { rows ->
+                val range = act == Act.DELETE_RANGE
+                // A range deleted: Cancel has the focus, as for Delete Prior (D).
+                ask(graph.store.options.confirmDelete, if (range) R.string.confirm_delete_range else R.string.confirm_delete, R.string.button_delete, focused = if (range) 1 else 0) {
+                    if (locked()) return@ask
+                    val d = deletion(rows, state.filter)
+                    d.unsave.takeIf { it.isNotEmpty() }?.let(::unsave)
+                    // A draft is this app's own file, not the Hub's.
+                    if (d.drafts.isNotEmpty()) scope.launch(graph.io) { d.drafts.forEach { graph.drafts.delete(it) } }
+                    if (d.hub.isNotEmpty()) write(Request(Act.DELETE, rows = d.hub))
                 }
             }
             Act.MARK_PRIOR_READ, Act.DELETE_PRIOR -> (line as? DayLine)?.let {
@@ -548,6 +562,9 @@ class MessagesActivity : Activity() {
         }
     }
 
+    /** The range's items, else the focused message's. */
+    private fun rows(): List<HubItem> = state.range().ifEmpty { listOfNotNull(state.focusedLine as? ItemLine) }.map { it.item }
+
     /**
      * Writes through the Hub's provider, and for texts through Google Messages' API first (Feed,
      * apiCalls): read and deleted there too; Mark Unread stays the Hub's. Refused while
@@ -573,8 +590,8 @@ class MessagesActivity : Activity() {
         graph.ioThread.post { graph.store.save(key); graph.feed.reload() }
     }
 
-    private fun unsave(key: String) {
-        graph.ioThread.post { graph.store.unsave(key); graph.feed.reload() }
+    private fun unsave(keys: List<String>) {
+        graph.ioThread.post { keys.forEach(graph.store::unsave); graph.feed.reload() }
     }
 
     /** Message Notifiers: the profiles' Messages and Email sounds, in Options of the launcher. */
@@ -752,7 +769,7 @@ class MessagesActivity : Activity() {
         }
     }
 
-    private fun move(dir: Dir) {
+    private fun move(dir: Dir, shift: Boolean = false) {
         menu?.let {
             onMenuKey(it, when (dir) {
                 Dir.UP -> MenuKey.UP
@@ -764,7 +781,7 @@ class MessagesActivity : Activity() {
         }
         if (dir == Dir.LEFT || dir == Dir.RIGHT) return
         val down = dir == Dir.DOWN
-        update(if (state.screen == Screen.FOLDERS) InboxEvent.FolderStep(down) else InboxEvent.Step(down))
+        update(if (state.screen == Screen.FOLDERS) InboxEvent.FolderStep(down) else InboxEvent.Step(down, shift))
     }
 
     private val hold = Runnable { if (clicking && menu == null) held = holdLine() }
@@ -801,7 +818,9 @@ class MessagesActivity : Activity() {
                 }
                 val (next, steps) = travel.moved(dx, dy)
                 travel = next
-                for (d in steps) move(d)
+                // A pointer's meta state is the global one, the keyboard's Shift included.
+                val shift = shiftHeld || e.metaState and KeyEvent.META_SHIFT_ON != 0
+                for (d in steps) move(d, shift)
             }
         }
         return true
@@ -818,6 +837,7 @@ class MessagesActivity : Activity() {
     override fun dispatchKeyEvent(e: KeyEvent): Boolean {
         val code = e.keyCode
         val click = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+        if (code == KeyEvent.KEYCODE_SHIFT_LEFT || code == KeyEvent.KEYCODE_SHIFT_RIGHT) shiftHeld = e.action != KeyEvent.ACTION_UP
         if (menu != null || !e.isLetterOfTheList()) letters.flush()?.let(::letterOut)
         if (e.action == KeyEvent.ACTION_UP) letters.up(code)?.let { letterOut(it); return true }
         // What types goes to the search field's editor (the input method has seen it first).
@@ -847,10 +867,10 @@ class MessagesActivity : Activity() {
             return true
         }
         when (code) {
-            KeyEvent.KEYCODE_DPAD_UP -> move(Dir.UP)
-            KeyEvent.KEYCODE_DPAD_DOWN -> move(Dir.DOWN)
+            KeyEvent.KEYCODE_DPAD_UP -> move(Dir.UP, shiftHeld || e.isShiftPressed)
+            KeyEvent.KEYCODE_DPAD_DOWN -> move(Dir.DOWN, shiftHeld || e.isShiftPressed)
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> set(state.back() ?: return super.dispatchKeyEvent(e))
-            KeyEvent.KEYCODE_MENU -> if (state.screen == Screen.LIST) show(menuOf(state.focusedLine, state.filter))
+            KeyEvent.KEYCODE_MENU -> if (state.screen == Screen.LIST) show(menuOf(state.focusedLine, state.filter, state.span() != null))
             else -> when {
                 // Held: its first repeat comes after the long press timeout.
                 click -> if (e.isLongPress || e.repeatCount == 1) held = holdLine()
@@ -873,7 +893,8 @@ class MessagesActivity : Activity() {
         val lit = position == state.focus
         when (val line = state.lines.getOrNull(position)) {
             is DayLine -> (view as? ListHeaderView)?.show(line.title, lit)
-            is ItemLine -> (view as? MessageRowView)?.bind(line, lit)
+            // The range's messages on the focus's blue (D/S: as remembered of the 9900), its date fields not.
+            is ItemLine -> (view as? MessageRowView)?.bind(line, lit || state.span()?.contains(position) == true)
             null -> Unit
         }
     }
@@ -909,7 +930,7 @@ class MessagesActivity : Activity() {
 
         /** What the showcase does not do: every write, of the Hub or of Messages' own options, and every new message. */
         val WRITES = setOf(
-            Act.MARK_READ, Act.MARK_UNREAD, Act.TOGGLE_READ, Act.MARK_PRIOR_READ, Act.DELETE, Act.DELETE_PRIOR, Act.SAVE,
+            Act.MARK_READ, Act.MARK_UNREAD, Act.TOGGLE_READ, Act.MARK_PRIOR_READ, Act.DELETE, Act.DELETE_PRIOR, Act.DELETE_RANGE, Act.SAVE,
             Act.COMPOSE, Act.COMPOSE_TEXT, Act.COMPOSE_EMAIL, Act.STYLE_GROUP, Act.STYLE_SINGLE, Act.OPTIONS, Act.NOTIFIERS,
         )
     }

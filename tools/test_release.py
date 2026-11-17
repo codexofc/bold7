@@ -29,6 +29,8 @@ def openssl_ok():
     return out.startswith("OpenSSL ") and int(out.split()[1].split(".")[0]) >= 3
 
 
+OAUTH = "bold7.oauth.microsoft.id=client-ms\n"
+
 @unittest.skipUnless(openssl_ok(), "needs OpenSSL 3 or later")
 class ReleaseTest(unittest.TestCase):
     def setUp(self):
@@ -36,7 +38,7 @@ class ReleaseTest(unittest.TestCase):
         for d in ("keys", "system/module/release", "system/module/src", "assets-private/bbos7-9900", "vendor/bold7-camera"):
             os.makedirs(os.path.join(self.root, d))
         self.write("system/module/src/module.prop", PROP)
-        self.write("local.properties", f"sdk.dir=/nowhere\nbold7.release.password={PASSWORD}\n")
+        self.write("local.properties", f"sdk.dir=/nowhere\nbold7.release.password={PASSWORD}\n{OAUTH}")
         self.write("assets-private/bbos7-9900/bbos7-9900.sha256",
                    hashlib.sha256(FIRMWARE).hexdigest() + "  sounds/x/Spirit.m4a\n")
         self.write("notes.md", "- First release.\n")
@@ -67,8 +69,9 @@ class ReleaseTest(unittest.TestCase):
                 f.writestr(name, data)
         return z
 
-    def release(self, *args, zip_path=None):
-        env = dict(os.environ, BOLD7_ROOT=self.root, BOLD7_RELEASE_ZIP=zip_path or self.zip(), OPENSSL=OPENSSL)
+    def release(self, *args, zip_path=None, **extra_env):
+        env = {k: v for k, v in os.environ.items() if k != "BOLD7_NO_OAUTH"}
+        env.update(BOLD7_ROOT=self.root, BOLD7_RELEASE_ZIP=zip_path or self.zip(), OPENSSL=OPENSSL, **extra_env)
         return subprocess.run(["bash", SCRIPT, *args], env=env, capture_output=True, text=True)
 
     def test_release_files_signed_and_checked(self):
@@ -122,8 +125,19 @@ class ReleaseTest(unittest.TestCase):
         z = self.zip(version="1.1-benos", code=10100)
         self.assertRefused(self.release("1.2", self.path("notes.md"), zip_path=z), "version is '1.1-benos'")
 
+    def test_missing_oauth_client_refused(self):
+        # Without it the public Hub would turn Outlook's browser sign-in off, and no one would see it.
+        self.write("local.properties", f"bold7.release.password={PASSWORD}\nbold7.oauth.google.id=client-g\n")
+        self.assertRefused(self.release("1.2", self.path("notes.md")), "no bold7.oauth.microsoft.id")
+        self.assertFalse(os.path.exists(self.path("build/release/1.2-benos")))
+
+    def test_release_without_oauth_when_asked(self):
+        self.write("local.properties", f"bold7.release.password={PASSWORD}\n")
+        r = self.release("1.2", self.path("notes.md"), BOLD7_NO_OAUTH="1")
+        self.assertEqual(0, r.returncode, r.stderr)
+
     def test_wrong_passphrase_refused(self):
-        self.write("local.properties", "bold7.release.password=wrong\n")
+        self.write("local.properties", f"bold7.release.password=wrong\n{OAUTH}")
         self.assertRefused(self.release("1.2", self.path("notes.md")), "signing bold7-1.2-benos.zip failed")
         self.assertFalse(os.path.exists(self.path("build/release/1.2-benos")))
 

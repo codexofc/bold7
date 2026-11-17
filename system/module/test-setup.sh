@@ -3,7 +3,7 @@
 # and uninstall.sh) with the phone's own sh, as the shell user, in a scratch folder of
 # /data/local/tmp, against fakes: settings, pm, cmd, ime, content, appops, dumpsys, am, wm, getprop,
 # resetprop, ksud and Vector's cli read and write files of that folder, a made-up MediaStore table
-# included. Only the stock keylayout of the phone is read (as root), to check the module's copy against it.
+# included. Only the stock keylayout of the phone is read (as root), to make the module's from it.
 # Nothing else is touched: the real settings that setup.sh writes, the roles and the input method
 # are read before and after, and must not have moved. Exits non-zero on failure.
 #   system/module/test-setup.sh             the phone's sh (mksh), as the shell user
@@ -237,7 +237,8 @@ expect "a BB10 package is refused" "$(setup check $M)" 1
 stock; mkdir -p $T/adb/boot-completed.d; touch $T/adb/boot-completed.d/bold7-retour.sh
 expect "a removal not finished is refused" "$(setup check $M)" 1
 stock; echo "key 999 X" >> $F/stock.kl
-expect "another stock keylayout is refused" "$(setup check $M)" 1
+expect "another stock keylayout is taken" "$(setup check $M)" 0
+expect "the module's keylayout is it, End as ENDCALL" "$(sed 's/^key 172   ENDCALL$/key 172   HOME/' $M/layer/product/usr/keylayout/Q25_keyboard.kl | cmp -s - $F/stock.kl && grep -c '^key 172   ENDCALL$' $M/layer/product/usr/keylayout/Q25_keyboard.kl)" 1
 expect "a refusal changes nothing" "$(ls $T/adb | tr '\n' ' ')" "modules "
 
 echo "--- save"

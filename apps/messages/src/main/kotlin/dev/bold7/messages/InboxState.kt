@@ -51,16 +51,34 @@ data class InboxState(
     val base: Filter = Filter.ALL,
     /** The mail account whose icon opened Messages: only its items (gsm 029); null for all. */
     val account: String? = null,
+    /**
+     * The line ([InboxLine.id]) a range started from: the focus moved with Shift held (guide 7.1,
+     * "Delete a message", M); the range runs from it to the focus ([span]).
+     */
+    val anchor: Long? = null,
 ) {
     val focusedLine: InboxLine? get() = lines.getOrNull(focus)
 }
+
+/** The range's ends, lowest first: null without an anchor, with its line gone, on it, or on the field. */
+fun InboxState.span(): IntRange? {
+    val a = anchor ?: return null
+    if (focus < 0) return null
+    // Simplification: a scan of the lines at each call (each row bound while a range is shown); an index by id if it ever shows in a frame.
+    val from = lines.indexOfFirst { it.id == a }
+    if (from < 0 || from == focus) return null
+    return minOf(from, focus)..maxOf(from, focus)
+}
+
+/** The messages of the range, in the list's order: never a date field. */
+fun InboxState.range(): List<ItemLine> = span()?.mapNotNull { lines.getOrNull(it) as? ItemLine }.orEmpty()
 
 sealed interface InboxEvent {
     /** New lines from the feed. */
     data class Shown(val lines: List<InboxLine>) : InboxEvent
 
-    /** The trackpad, a step up or down. */
-    data class Step(val down: Boolean) : InboxEvent
+    /** The trackpad, a step up or down; with Shift held, it selects ([InboxState.anchor]). */
+    data class Step(val down: Boolean, val shift: Boolean = false) : InboxEvent
 
     /** A jump (navigate), or a touch on line [to]. */
     data class Moved(val to: Int) : InboxEvent
@@ -88,7 +106,8 @@ fun InboxState.reduce(event: InboxEvent): InboxState = when (event) {
             same >= 0 -> same
             else -> focus.coerceIn(0, (event.lines.size - 1).coerceAtLeast(0))
         }
-        copy(lines = event.lines, loaded = true, focus = focus)
+        // The range stays while its anchor's line is there.
+        copy(lines = event.lines, loaded = true, focus = focus, anchor = anchor?.takeIf { a -> event.lines.any { it.id == a } })
     }
     is InboxEvent.Step -> copy(
         focus = when {
@@ -97,27 +116,30 @@ fun InboxState.reduce(event: InboxEvent): InboxState = when (event) {
             focus == 0 && search != null -> FIELD
             else -> (focus - 1).coerceAtLeast(if (search != null) FIELD else 0)
         },
+        // Shift anchors where the focus was, unless a range is already shown; without it, no range.
+        anchor = if (!event.shift) null else if (span() != null) anchor else focusedLine?.id,
     )
-    is InboxEvent.Moved -> copy(focus = event.to.coerceIn(0, (lines.size - 1).coerceAtLeast(0)))
-    is InboxEvent.Filtered -> copy(filter = event.filter, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST)
-    InboxEvent.SearchOpened -> copy(search = search ?: "", focus = FIELD, screen = Screen.LIST)
-    is InboxEvent.SearchedBy -> copy(search = event.text, searchIn = event.field, focus = 0, screen = Screen.LIST)
-    is InboxEvent.Typed -> copy(search = event.text, focus = FIELD)
-    InboxEvent.FoldersOpened -> copy(screen = Screen.FOLDERS, folder = FOLDER_VIEWS.indexOf(filter).coerceAtLeast(0))
+    is InboxEvent.Moved -> copy(focus = event.to.coerceIn(0, (lines.size - 1).coerceAtLeast(0)), anchor = null)
+    is InboxEvent.Filtered -> copy(filter = event.filter, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
+    InboxEvent.SearchOpened -> copy(search = search ?: "", focus = FIELD, screen = Screen.LIST, anchor = null)
+    is InboxEvent.SearchedBy -> copy(search = event.text, searchIn = event.field, focus = 0, screen = Screen.LIST, anchor = null)
+    is InboxEvent.Typed -> copy(search = event.text, focus = FIELD, anchor = null)
+    InboxEvent.FoldersOpened -> copy(screen = Screen.FOLDERS, folder = FOLDER_VIEWS.indexOf(filter).coerceAtLeast(0), anchor = null)
     is InboxEvent.FolderStep -> copy(folder = (folder + if (event.down) 1 else -1).coerceIn(0, FOLDER_VIEWS.lastIndex))
     // The same icon again finds the app as it was left; the other one starts over on its view.
-    is InboxEvent.Opened -> if (event.base == base && event.account == account) this else copy(base = event.base, account = event.account, filter = event.base, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST)
+    is InboxEvent.Opened -> if (event.base == base && event.account == account) this else copy(base = event.base, account = event.account, filter = event.base, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
 }
 
 /**
- * Escape, one thing at a time: View Folder closes, then the search, then a view goes back to all
+ * Escape, one thing at a time: View Folder closes, then a range goes (D), then the search, then a view goes back to all
  * the messages ("View all your messages: Escape", guide 7.1 p. 52, B), or to the texts when Text
  * Messages opened the app (D); null at the end, where it leaves the app for the home.
  */
 fun InboxState.back(): InboxState? = when {
     screen == Screen.FOLDERS -> copy(screen = Screen.LIST)
-    search != null -> copy(search = null, searchIn = SearchIn.ANY, focus = 0)
-    filter != base -> copy(filter = base, focus = 0)
+    span() != null -> copy(anchor = null)
+    search != null -> copy(search = null, searchIn = SearchIn.ANY, focus = 0, anchor = null)
+    filter != base -> copy(filter = base, focus = 0, anchor = null)
     else -> null
 }
 

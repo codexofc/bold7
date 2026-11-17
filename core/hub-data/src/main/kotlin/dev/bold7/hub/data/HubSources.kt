@@ -231,10 +231,24 @@ internal fun Posted.toItem() = HubItem(
  * [fresh] as its source reads it again, with what the Hub holds of it ([stored]): the Hub's read
  * state while the source's own has not changed, and its deletion. A new item is the source's.
  */
-internal fun held(fresh: HubItem, stored: HubItem?): HubItem = when (stored) {
-    null -> fresh
+internal fun held(fresh: HubItem, stored: HubItem?): HubItem = when {
+    stored == null || !fresh.sameMessage(stored) -> fresh
     else -> fresh.copy(read = if (fresh.sourceRead != stored.sourceRead) fresh.read else stored.read, deleted = stored.deleted)
 }
+
+/**
+ * Whether [stored] is the message [this] reads again, and not an earlier one whose key the source
+ * gave again: Telephony's tables have no AUTOINCREMENT, so the _id of the last rows deleted comes
+ * back with the next message, of any thread. A message keeps its time and its conversation (an
+ * invitation's time is the stored one, adjusted before). An item the Hub stored before the message
+ * was written, by more than [CLOCK_SLACK_MS], is not it either: the builds before this rule merged a
+ * new message into a deleted one so, keeping the earlier arrival and deletion.
+ */
+internal fun HubItem.sameMessage(stored: HubItem) = timestamp == stored.timestamp && conversationId == stored.conversationId &&
+    (stored.addedAt == 0L || stored.addedAt >= timestamp - CLOCK_SLACK_MS)
+
+/** How far the phone's clock may have been set back between a message's writing and the Hub's reading (D). */
+internal const val CLOCK_SLACK_MS = 10 * 60_000L
 
 private fun HubItem.sameContent(other: HubItem) =
     sender == other.sender && subject == other.subject && preview == other.preview
@@ -270,12 +284,17 @@ class HubSources(private val sink: HubSink, private val rows: ProviderRows, priv
     ): Int {
         account(account)
         if (emptyRead) return 0
-        val stored = sink.items(account.id).associateBy { it.sourceKey }
+        val kept = sink.items(account.id).associateBy { it.sourceKey }
+        // A key given to another message: the earlier one goes, and the new one arrives as new
+        // (its own arrival, nothing of the earlier's read or deleted state).
+        val replaced = fresh.mapNotNull { f -> kept[f.sourceKey]?.takeIf { !adjust(f, it).sameMessage(it) }?.sourceKey }.toSet()
+        if (replaced.isNotEmpty()) sink.remove(account.id, replaced)
+        val stored = kept - replaced
         val put = fresh.map { held(adjust(it, stored[it.sourceKey]), stored[it.sourceKey]) }.filter { stored[it.sourceKey]?.copy(addedAt = 0) != it }
         val gone = stored.keys - fresh.mapTo(HashSet()) { it.sourceKey }
         if (put.isNotEmpty()) sink.put(put)
         if (gone.isNotEmpty()) sink.remove(account.id, gone)
-        return put.size + gone.size
+        return put.size + gone.size + replaced.size
     }
 
     // Simplification: each change reads the whole provider and the account's stored items, a few

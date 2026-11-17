@@ -331,6 +331,17 @@ internal class HomeKeys(
     }
 
     /**
+     * The search closed: the home takes Android's focus back at once. Closed by the home key
+     * (End from the home), the window keeps its focus, so windowFocus does not run, and the
+     * hidden search field kept its input connection: the letters went to the input method,
+     * typed into it unseen, and typing on the home opened nothing until the launcher restarted.
+     */
+    fun searchClosed() {
+        reset()
+        view.requestFocus()
+    }
+
+    /**
      * The window's focus: when it comes, the trackpad is asked for (Android releases it when it
      * goes), Android's focus taken back unless a text is being typed; when it goes, what was
      * typed is forgotten.

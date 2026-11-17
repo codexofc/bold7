@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.InputType
+import android.text.method.PasswordTransformationMethod
 import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.Gravity
@@ -93,11 +94,11 @@ class MailAccountsActivity : Activity() {
             }
         }
         address = field(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        password = field(InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        password = field(InputType.TYPE_TEXT_VARIATION_PASSWORD).apply { transformationMethod = Asterisks }
         imapHost = field(InputType.TYPE_TEXT_VARIATION_URI)
-        imapPort = field(0).apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        imapPort = field(0, InputType.TYPE_CLASS_NUMBER)
         smtpHost = field(InputType.TYPE_TEXT_VARIATION_URI)
-        smtpPort = field(0).apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        smtpPort = field(0, InputType.TYPE_CLASS_NUMBER)
         next = button(R.string.setup_continue) { submit() }
         browserButton = button(R.string.setup_browser) { submitBrowser() }
         browserHint = hint("")
@@ -207,15 +208,21 @@ class MailAccountsActivity : Activity() {
         setTextSize(TypedValue.COMPLEX_UNIT_PX, Typography.TEXT.toFloat())
         setTextColor(ListColors.Title)
         gravity = Gravity.CENTER
-        background = themeImage(this@MailAccountsActivity, "ui_button")
+        face(this, "ui_button")
         text = getString(label)
         isFocusable = true
         isClickable = true
         setOnClickListener { onClick() }
         setOnFocusChangeListener { v, has ->
-            v.background = themeImage(this@MailAccountsActivity, if (has) "ui_button_focus" else "ui_button")
+            face(v, if (has) "ui_button_focus" else "ui_button")
             (v as TextView).setTextColor(if (has) ListColors.Background else ListColors.Title)
         }
+    }
+
+    /** border_button is a 9-patch twice the button's height: its content band, as padding, would push the label out. */
+    private fun face(v: View, image: String) {
+        v.background = themeImage(this, image)
+        v.setPadding(0, 0, 0, 0)
     }
 
     private fun buttonParams(width: Int = 220) = LinearLayout.LayoutParams(width, 51).apply {
@@ -223,7 +230,13 @@ class MailAccountsActivity : Activity() {
         setMargins(0, 12, 9, 0)
     }
 
-    private fun field(variation: Int) = EditText(this).apply {
+    /**
+     * The input type first: it makes the field one line (setLines, which would undo minHeight) and,
+     * for a password, masks it and sets a monospace face, which the typeface below replaces.
+     * setSingleLine would put back a plain transformation: the password would show.
+     */
+    private fun field(variation: Int, kind: Int = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) = EditText(this).apply {
+        inputType = kind or variation
         typeface = slate(Typography.REGULAR)
         setTextSize(TypedValue.COMPLEX_UNIT_PX, Typography.TEXT.toFloat())
         setTextColor(ListColors.Title)
@@ -233,8 +246,6 @@ class MailAccountsActivity : Activity() {
         minHeight = 43
         gravity = Gravity.CENTER_VERTICAL or Gravity.START
         useCaret()
-        inputType = InputType.TYPE_CLASS_TEXT or variation or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        isSingleLine = true
         imeOptions = EditorInfo.IME_ACTION_NEXT or EditorInfo.IME_FLAG_NO_EXTRACT_UI
         defaultFocusHighlightEnabled = false
     }
@@ -425,6 +436,8 @@ class MailAccountsActivity : Activity() {
         }
         status(this, getString(when (now.notice) {
             SetupNotice.AUTH -> R.string.setup_auth
+            SetupNotice.AUTH_GMAIL -> R.string.setup_auth_gmail
+            SetupNotice.AUTH_ICLOUD -> R.string.setup_auth_icloud
             SetupNotice.CERTIFICATE -> R.string.setup_certificate
             SetupNotice.NETWORK -> R.string.setup_network
             SetupNotice.SERVERS -> R.string.setup_servers
@@ -464,5 +477,20 @@ class MailAccountsActivity : Activity() {
                 val a = accounts.getOrNull(position)
                 if (a != null) bind(a.address, "", lit = position == focus) else bind(getString(R.string.accounts_add), getString(R.string.accounts_add_hint), lit = position == focus)
             }
+    }
+}
+
+/**
+ * One asterisk a character, as the 9900's password entry (sim-85, C), instead of Android's dots
+ * and last character shown. A PasswordTransformationMethod still: copy and cut stay refused.
+ */
+private object Asterisks : PasswordTransformationMethod() {
+    override fun getTransformation(source: CharSequence, view: View): CharSequence = Stars(source)
+
+    private class Stars(private val source: CharSequence) : CharSequence {
+        override val length get() = source.length
+        override fun get(index: Int) = '*'
+        override fun subSequence(startIndex: Int, endIndex: Int) = "*".repeat(endIndex - startIndex)
+        override fun toString() = "*".repeat(length)
     }
 }

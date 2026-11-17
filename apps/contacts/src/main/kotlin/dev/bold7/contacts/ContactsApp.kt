@@ -9,6 +9,7 @@ import android.os.Process
 import android.util.LruCache
 import dev.bold7.platform.enableStrictModeIfDebuggable
 import dev.bold7.platform.speakOs7Language
+import dev.bold7.platform.stopOrphanKeyReleases
 import dev.bold7.showcase.avatar
 import dev.bold7.showcase.showcaseOn
 
@@ -23,6 +24,7 @@ class ContactsApp : Application() {
     override fun onCreate() {
         enableStrictModeIfDebuggable()
         speakOs7Language()
+        stopOrphanKeyReleases()
         super.onCreate()
     }
 }

@@ -18,7 +18,7 @@
 #   1. module.prop gets version (<version>-<line>) and versionCode: the manager offers the update by
 #      itself, and the change is to commit with the release; any later failure puts module.prop back
 #      as it was;
-#   2. the public module zip, ./gradlew -Pbold7.public=true :system:module:moduleZip. While the
+#   2. the public module zip, ./gradlew -Pbold7.public=true -Pbold7.release=true :system:module:moduleZip. While the
 #      module cannot extract the BlackBerry resources at install yet, the build refuses and lists what
 #      is missing: this script says so and stops, without any zip;
 #   3. the zip checked: its module.prop is the one of step 1, and no entry is a BlackBerry file (sha256
@@ -72,6 +72,14 @@ CAMERA_SRC_NAME=$(basename "$CAMERA_SRC")
 BOLD7_RELEASE_PASSWORD=$(sed -n 's/^bold7\.release\.password=//p' "$ROOT/local.properties" 2>/dev/null | tail -1)
 [ -n "$BOLD7_RELEASE_PASSWORD" ] || fail "no bold7.release.password in $ROOT/local.properties"
 export BOLD7_RELEASE_PASSWORD
+# Browser sign-in for Outlook needs Bold7's Microsoft client in local.properties, read by apps/hub's
+# build: a release without it would turn it off without a word. BOLD7_NO_OAUTH=1 releases without.
+# Google's client never goes into a release (-Pbold7.release=true, apps/hub/build.gradle.kts):
+# Gmail goes by app password.
+if [ "${BOLD7_NO_OAUTH:-}" != 1 ]; then
+  grep -q '^bold7\.oauth\.microsoft\.id=.' "$ROOT/local.properties" ||
+    fail "no bold7.oauth.microsoft.id in $ROOT/local.properties: browser sign-in would be off (BOLD7_NO_OAUTH=1 to release without it)"
+fi
 
 # The notes, never empty.
 if [ $# -eq 2 ]; then
@@ -93,7 +101,7 @@ sed -i '' -e "s/^version=.*/version=$V-$LINE/" -e "s/^versionCode=.*/versionCode
 if [ -n "${BOLD7_RELEASE_ZIP:-}" ]; then
   ZIP=$BOLD7_RELEASE_ZIP
 else
-  (cd "$ROOT" && ./gradlew -Pbold7.public=true :system:module:moduleZip) ||
+  (cd "$ROOT" && ./gradlew -Pbold7.public=true -Pbold7.release=true :system:module:moduleZip) ||
     fail "The public mode cannot produce a complete module yet (the list is above): no zip made, module.prop left as it was."
   ZIP=$ROOT/system/module/build/dist/bold7-module.zip
 fi

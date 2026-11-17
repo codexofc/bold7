@@ -107,6 +107,55 @@ class HubSourcesTest {
         assertEquals(1_000, stored("sms").single().addedAt)
     }
 
+    @Test fun aNewTextGivenTheIdOfADeletedOneIsANewMessageNotTheDeletedOne() = runTest {
+        // Telephony gives the _id of the last rows deleted again (no AUTOINCREMENT): sms:1 of the
+        // afternoon, deleted in the Hub, then every text deleted (an empty read forgets nothing),
+        // and the first text of the evening is sms:1 again, of another thread.
+        rows.sms = listOf(received)
+        sources.syncTexts()
+        setInHub("sms", "sms:1") { it.copy(deleted = true, read = true) }
+        rows.sms = emptyList()
+        sources.syncTexts()
+        clock = 9_000
+        val evening = SmsRow(id = 1, threadId = 16, address = "+33600000002", name = "Lisa", date = 8_000, body = "Salut", read = false, type = 1)
+        rows.sms = listOf(evening)
+        sources.syncTexts()
+        val item = stored("sms").single()
+        assertEquals(listOf(false, false, 9_000L, "16", 8_000L), listOf(item.deleted, item.read, item.addedAt, item.conversationId, item.timestamp))
+    }
+
+    @Test fun aTextAlreadyMergedWithTheDeletedOneComesBack() = runTest {
+        // As left on the phone by the builds before: the evening's text stored under sms:1 with its
+        // own time and thread, but the afternoon's arrival and deletion. Seen by the Hub before it
+        // was written: it is not that message.
+        clock = 8_000_100
+        rows.sms = listOf(SmsRow(id = 1, threadId = 16, address = "+33600000002", name = "Lisa", date = 8_000_000, body = "Salut", read = true, type = 2))
+        sources.syncTexts()
+        sink.items[("sms" to "sms:1")] = sink.items.getValue("sms" to "sms:1").copy(addedAt = 1_000, deleted = true)
+        clock = 8_000_500
+        sources.syncTexts()
+        val item = stored("sms").single()
+        assertEquals(listOf(false, 8_000_500L), listOf(item.deleted, item.addedAt))
+    }
+
+    @Test fun aTextWrittenWithTheClockSetBackAFewMinutesStaysTheSame() = runTest {
+        rows.sms = listOf(received.copy(date = 1_000 + 9 * 60_000L))
+        sources.syncTexts()
+        setInHub("sms", "sms:1") { it.copy(deleted = true) }
+        sources.syncTexts()
+        assertTrue(stored("sms").single().deleted)
+    }
+
+    @Test fun aContactRenamedRenamesItsTexts() = runTest {
+        rows.sms = listOf(received.copy(name = "Lulu"))
+        sources.syncTexts()
+        setInHub("sms", "sms:1") { it.copy(read = true) }
+        rows.sms = listOf(received.copy(name = "Lisa"))
+        assertEquals(1, sources.syncTexts())
+        // The same message: renamed, still read in the Hub, its arrival kept.
+        assertEquals(listOf(Triple("Lisa", true, 1_000L)), stored("sms").map { Triple(it.sender, it.read, it.addedAt) })
+    }
+
     // What the user set in the Hub
 
     private fun setInHub(account: String, key: String, change: (HubItem) -> HubItem) {

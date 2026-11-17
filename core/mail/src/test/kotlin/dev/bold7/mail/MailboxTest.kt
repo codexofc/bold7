@@ -367,6 +367,38 @@ class MailboxTest {
         assertFailsWith<AuthenticationFailedException> { mailbox(account("mauvais mot de passe")).check() }
     }
 
+    @Test
+    fun `a login the server refuses with a response code is a refused password, not the network`() {
+        // As Gmail answers a Google password, or any login after a few refused ones.
+        java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { server ->
+            val imap = Thread {
+                server.accept().use { s ->
+                    val out = s.getOutputStream().bufferedWriter()
+                    val input = s.getInputStream().bufferedReader()
+                    out.write("* OK [CAPABILITY IMAP4rev1] ready\r\n"); out.flush()
+                    while (true) {
+                        val (tag, command) = (input.readLine() ?: break).split(' ', limit = 3).let { it[0] to it.getOrElse(1) { "" } }
+                        out.write(
+                            when (command.uppercase()) {
+                                "CAPABILITY" -> "* CAPABILITY IMAP4rev1\r\n$tag OK done\r\n"
+                                "LOGIN" -> "$tag NO [ALERT] Application-specific password required\r\n"
+                                else -> "$tag BAD unexpected\r\n"
+                            },
+                        )
+                        out.flush()
+                    }
+                }
+            }.apply { isDaemon = true; start() }
+            val refused = MailAccount(
+                address, password,
+                MailProvider("test", Endpoint("127.0.0.1", server.localPort, tls = false), Endpoint("127.0.0.1", greenMail.smtp.port, tls = false)),
+            )
+            val e = assertFailsWith<AuthenticationFailedException> { mailbox(refused).check() }
+            assertTrue("Application-specific password required" in e.messageFromServer.orEmpty(), e.messageFromServer)
+            imap.join(5_000)
+        }
+    }
+
     /** A token source that hands [token] out, counting what the servers refused. */
     private class FixedTokens(private val token: String) : com.fsck.k9.mail.oauth.OAuth2TokenProvider {
         var invalidated = 0

@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.SystemClock
 import android.provider.CalendarContract
 import android.provider.CallLog
+import android.provider.ContactsContract
 import android.provider.Telephony
 import android.util.Log
 import dev.bold7.hub.data.HubSources
@@ -28,7 +29,8 @@ internal const val TAG = "Bold7/Hub"
  */
 class HubGraph(private val app: Context) {
     private val thread = Executors.newSingleThreadExecutor { Thread(it, "hub-sources") }
-    private val sources = HubSources(hubStore(app), AndroidRows(app), System::currentTimeMillis)
+    private val rows = AndroidRows(app)
+    private val sources = HubSources(hubStore(app), rows, System::currentTimeMillis)
     val diagnostics = Diagnostics()
 
     /** Mail: its accounts, their sync and push, Messages' calls. */
@@ -39,6 +41,7 @@ class HubGraph(private val app: Context) {
 
     fun start() {
         watch("texts", Manifest.permission.READ_SMS, listOf(Telephony.Sms.CONTENT_URI, Telephony.Mms.CONTENT_URI)) { syncTexts() }
+            ?.let(::watchContacts)
         watch("calls", Manifest.permission.READ_CALL_LOG, listOf(CallLog.Calls.CONTENT_URI)) { syncCalls() }
         watch("invitations", Manifest.permission.READ_CALENDAR, listOf(CalendarContract.CONTENT_URI)) { syncInvitations() }
         mail.start()
@@ -78,10 +81,11 @@ class HubGraph(private val app: Context) {
      * Reads the source once, then at each change of [uris]. Changes arriving while a read waits
      * make one read; one arriving during a read makes the next.
      */
-    private fun watch(source: String, permission: String, uris: List<Uri>, sync: suspend HubSources.() -> Int) {
+    private fun watch(source: String, permission: String, uris: List<Uri>, sync: suspend HubSources.() -> Int): (() -> Unit)? {
         if (app.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-            refused[source] = permission to { watch(source, permission, uris, sync) }
-            return diagnostics.refused(source, permission)
+            refused[source] = permission to { watch(source, permission, uris, sync)?.let { if (source == "texts") watchContacts(it) } }
+            diagnostics.refused(source, permission)
+            return null
         }
         val pending = AtomicBoolean()
         fun schedule() {
@@ -98,6 +102,27 @@ class HubGraph(private val app: Context) {
         }
         uris.forEach { app.contentResolver.registerContentObserver(it, true, observer) }
         schedule()
+        return ::schedule
+    }
+
+    /**
+     * A contact added, renamed or deleted names the texts again at once ([AndroidRows.forgetNames],
+     * then [readTexts]), without waiting for a new text. Without READ_CONTACTS the texts show their
+     * numbers and nothing is observed (the provider would refuse the observer).
+     */
+    private fun watchContacts(readTexts: () -> Unit) {
+        if (app.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                rows.forgetNames()
+                readTexts()
+            }
+        }
+        try {
+            app.contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, observer)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "contacts not observed: ${e.javaClass.name}")
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 id=bold7
 name=Bold7
-version=0.1.0-lineage24
-versionCode=100
+version=0.1.1-lineage24
+versionCode=101
 author=codexofc
 description=The BlackBerry OS 7.1 interface for the Zinwa Q25 on LineageOS 24. To remove: Remove, then reboot; everything is given back. Rescue: KernelSU's safe mode (Volume down during boot).
 banner=banner.png
