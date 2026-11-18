@@ -154,8 +154,7 @@ internal class HomeKeys(
     }
 
     private fun open(letter: Char) {
-        val apps = homeState().apps
-        val app = appForLetter(letter, apps.map { it.label })?.let(apps::get) ?: return
+        val app = homeState().appForLetter(letter) ?: return
         start(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(app.packageName, app.className))
     }
 
@@ -280,7 +279,7 @@ internal class HomeKeys(
             show(to)
             return
         }
-        val m = move(focus, dir, count(), expanded, lastIcon)
+        val m = move(focus, dir, count(), expanded, lastIcon, notices = list?.hasLines != false)
         if (m.panel != 0) {
             lastIcon = 0 // another view: its first icon (D)
             dispatch(HomeEvent.ShowPanel(homeState().let { it.panel.next(m.panel, it.hiddenPanels) }))
@@ -309,6 +308,11 @@ internal class HomeKeys(
         val f = focus ?: return
         val v = valid(if (lowering) lowered(f) else f, count())
         if (v != f) show(v)
+    }
+
+    /** The last notification gone: the row's empty centre leaves the focus to the speaker (Focus.move). */
+    fun noticesChanged() {
+        if (focus == Focus.Top(BannerFocus.NOTIFICATIONS) && list?.hasLines == false) show(Focus.Top(BannerFocus.SPEAKER))
     }
 
     /** The focus drawn again: on the row's zone, or on nothing while a line of the open list has it. */
@@ -383,6 +387,9 @@ internal interface HomeList {
 
     /** Takes a step: true if it moved its own focus (or keeps the step), false to leave it to the home. */
     fun step(dir: Dir): Boolean
+
+    /** It has lines to open: without, the row's centre takes no focus. */
+    val hasLines: Boolean
 
     /** One of its lines has the focus: the banner shows none. */
     val lineFocused: Boolean

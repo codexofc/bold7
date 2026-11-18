@@ -20,7 +20,7 @@ real() {
 }
 before=$(real)
 adb shell "rm -rf $T && mkdir -p $T/mod/layer/product/usr/keylayout"
-adb push src/setup.sh src/uninstall.sh src/saisie-start.sh $T/mod/ >/dev/null
+adb push src/setup.sh src/uninstall.sh src/saisie-start.sh src/lift.sh $T/mod/ >/dev/null
 adb push src/layer/product/usr/keylayout/Q25_keyboard.kl $T/mod/layer/product/usr/keylayout/ >/dev/null
 adb shell "su -c 'cat /vendor/usr/keylayout/Q25_keyboard.kl > $T/stock.kl && chmod 644 $T/stock.kl'"
 adb shell "cat > $T/run.sh" <<'EOF'
@@ -223,13 +223,19 @@ expect "said in one line" "$(tail -n 1 $T/out)" "OK, Zinwa Q25 on LineageOS 24.0
 echo Q20 > $F/prop-ro.product.device
 expect "another phone is refused" "$(setup check $M)" 1
 stock; echo BenOS-Valarie_stablePublicRel > $F/prop-ro.build.display.id; rm $F/prop-ro.lineage.*
-expect "BenOS is refused, said" "$(setup check $M) $(grep -c 'now needs LineageOS 24' $T/out)" "1 1"
+expect "BenOS is refused, said" "$(setup check $M) $(grep -c 'Install Bold7 for BenOS' $T/out)" "1 1"
 stock; echo 23.2 > $F/prop-ro.lineage.build.version
 expect "another LineageOS is refused" "$(setup check $M)" 1
 stock; rm $F/prop-ro.lineage.device
 expect "a ROM that is not LineageOS is refused" "$(setup check $M)" 1
 stock; touch $T/adb/metamodule
 expect "a metamodule is refused" "$(setup check $M)" 1
+stock; mkdir -p $T/adb/modules/hybrid_mount; echo "name=Hybrid Mount" > $T/adb/modules/hybrid_mount/module.prop; ln -s $T/adb/modules/hybrid_mount $T/adb/metamodule
+expect "a metamodule is refused, named" "$(setup check $M) $(grep -c 'metamodule, Hybrid Mount' $T/out)" "1 1"
+stock; mkdir -p $T/adb/modules/bb10launcher_quickstep
+expect "JL10 QuickStep on is refused" "$(setup check $M) $(grep -c 'JL10 QuickStep is on' $T/out)" "1 1"
+touch $T/adb/modules/bb10launcher_quickstep/disable
+expect "JL10 QuickStep off is taken" "$(setup check $M)" 0
 stock; mkdir -p $T/adb/modules_update/cascade
 expect "the BB10 module waiting is refused" "$(setup check $M)" 1
 stock; echo x > $F/pkg/dev.cascade.hub
@@ -275,7 +281,7 @@ expect "and marked as Bold7's" "$([ -e $S/vector.installe ] && echo yes)" yes
 expect "the apps, Messages after the Hub and the Phone" "$(calls '^install' | sed 's/install //g')" \
   "dev.bold7.hub dev.bold7.phone dev.bold7.messages dev.bold7.saisie dev.bold7.clock dev.bold7.calendar dev.bold7.contacts dev.bold7.calculator dev.bold7.flashlight dev.bold7.memopad dev.bold7.tasks dev.bold7.pictures dev.bold7.help dev.bold7.sysui dev.bold7.camera.benos "
 expect "Camera marked as Bold7's" "$([ -e $S/camera.installe ] && echo yes)" yes
-expect "the zip's copies removed, the access to give again" "$(ls $M | tr '\n' ' ')$([ -e $S/acces.fait ] || echo again)" "layer saisie-start.sh setup.sh uninstall.sh again"
+expect "the zip's copies removed, the access to give again" "$(ls $M | tr '\n' ' ')$([ -e $S/acces.fait ] || echo again)" "layer lift.sh saisie-start.sh setup.sh uninstall.sh again"
 expect "NeoZygisk there: nothing said" "$(grep -c 'No Zygisk' $T/out)" 0
 stock; setup save $M >/dev/null; rm -r $T/adb/modules/zygisksu
 expect "no Zygisk: installed all the same, said as a step not done" "$(setup install $M) $(grep -c '^! No Zygisk module (NeoZygisk)' $T/out)" "0 1"

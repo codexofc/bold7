@@ -26,6 +26,9 @@ import kotlinx.coroutines.withContext
  * - "Call 5551234?" with the question mark, Call focused over Cancel (sim-104, C), for a missed call
  *   opened from the list of notifications or from Messages ([ACTION_CALL_PROMPT] on tel:N); Call
  *   places it through Telecom, which shows it on the call screen once the Phone holds DIALER.
+ *   Call stays focused as on the 9900, but the dialog chooses nothing in its first
+ *   [Durations.CALL_PROMPT_ARM_MS]: a quick double click on a missed call never calls a number
+ *   not yet read (D).
  *
  * Never over the lock screen (no showWhenLocked): a dialog started while locked waits behind it,
  * and shows once the phone is unlocked. Exported for [ACTION_CALL_PROMPT] only to Bold7's apps
@@ -87,7 +90,7 @@ class PromptActivity : Activity() {
             !number.isNullOrEmpty() -> scope.launch {
                 // The contact's name if the number is one's (D: sim-104's number is no contact's).
                 val name = withContext(graph.io) { graph.log.name(number) }
-                show(getString(R.string.call_prompt, name ?: number), listOf(R.string.act_call, R.string.act_cancel), DialogIcon.QUESTION) { call ->
+                show(getString(R.string.call_prompt, name ?: number), listOf(R.string.act_call, R.string.act_cancel), DialogIcon.QUESTION, Durations.CALL_PROMPT_ARM_MS) { call ->
                     if (call) place(number)
                 }
             }
@@ -138,7 +141,7 @@ class PromptActivity : Activity() {
     }
 
     /** OS 7's dialog, its first button focused; [then] gets whether that first button was chosen, before the window goes. */
-    private fun show(text: String, buttons: List<Int>, icon: DialogIcon?, then: (Boolean) -> Unit) {
+    private fun show(text: String, buttons: List<Int>, icon: DialogIcon?, armMs: Long = 0, then: (Boolean) -> Unit) {
         dialog?.dismiss()
         dialog = Bold7Dialog(
             this, text, buttons.map(::getString), icon,
@@ -151,6 +154,7 @@ class PromptActivity : Activity() {
                 finish()
             },
             hideStatusBar = true,
+            armMs = armMs,
         ).apply { show() }
     }
 

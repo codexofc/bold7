@@ -21,6 +21,7 @@ import dev.bold7.design.Typography
 import dev.bold7.platform.hideStatusBar
 import dev.bold7.ui.Bold7Dialog
 import dev.bold7.ui.DialogIcon
+import dev.bold7.ui.FieldMovement
 import dev.bold7.ui.useCaret
 import dev.bold7.ui.FieldSelection
 import dev.bold7.ui.TextAct
@@ -180,6 +181,7 @@ class EditActivity : Activity() {
             (if (multi) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0)
         isSingleLine = !multi
         defaultFocusHighlightEnabled = false
+        movementMethod = FieldMovement
     }
 
     // Menu, leaving, saving

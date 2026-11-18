@@ -469,6 +469,71 @@ class MailboxTest {
         }
     }
 
+    @Test
+    fun `the setup's check says which server refused the login, in its own words`() {
+        val error = mailbox(account("mauvais mot de passe")).checkError()!!
+        assertEquals(Failure.AUTH, error.failure)
+        assertEquals(greenMail.imap.port, error.server?.port)
+        assertTrue(!error.detail.isNullOrBlank(), "GreenMail's NO text")
+        assertEquals(null, mailbox().checkError())
+    }
+
+    @Test
+    fun `a closed port, implicit TLS on a plain port, a server without STARTTLS each say so`() {
+        val closed = java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { it.localPort }
+        fun with(imap: Endpoint) = mailbox(account().copy(provider = MailProvider("test", imap, Endpoint("127.0.0.1", greenMail.smtp.port, tls = false))))
+        assertEquals(Failure.PORT_CLOSED, with(Endpoint("127.0.0.1", closed, tls = false)).checkError()?.failure)
+        assertEquals(Failure.TLS, with(Endpoint("127.0.0.1", greenMail.imap.port)).checkError()?.failure)
+        java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { server ->
+            Thread {
+                server.accept().use { s ->
+                    val out = s.getOutputStream().bufferedWriter()
+                    val input = s.getInputStream().bufferedReader()
+                    out.write("* OK [CAPABILITY IMAP4rev1 AUTH=PLAIN] ready\r\n"); out.flush()
+                    while (true) {
+                        val tag = (input.readLine() ?: break).substringBefore(' ')
+                        out.write("* CAPABILITY IMAP4rev1 AUTH=PLAIN\r\n$tag OK done\r\n"); out.flush()
+                    }
+                }
+            }.apply { isDaemon = true; start() }
+            val error = with(Endpoint.startTls("127.0.0.1", server.localPort)).checkError()!!
+            assertEquals(Failure.NO_STARTTLS, error.failure)
+            assertEquals(server.localPort, error.server?.port)
+        }
+    }
+
+    @Test
+    fun `a certificate accepted for one server is taken there only, and only that one`() {
+        val tls = GreenMail(arrayOf(ServerSetupTest.IMAPS.dynamicPort(), ServerSetupTest.SMTPS.dynamicPort())).apply { start() }
+        try {
+            tls.setUser(address, address, password)
+            val imap = Endpoint("localhost", tls.imaps.port)
+            val smtp = Endpoint("localhost", tls.smtps.port)
+            var account = account().copy(provider = MailProvider(MailProviders.CUSTOM, imap, smtp))
+            val first = Mailbox(account, store, tempDir).checkError()!!
+            assertEquals(Failure.CERTIFICATE, first.failure)
+            assertEquals(imap, first.server)
+            val cert = first.certificate!!
+            assertTrue(cert.sha256.matches(Regex("([0-9A-F]{2}:){31}[0-9A-F]{2}")), cert.sha256)
+            assertTrue(cert.names.isNotEmpty())
+            // Accepted for another port of the same host: still refused.
+            account = account.copy(pins = listOf(Pin("localhost", smtp.port + 1, cert.sha256)))
+            assertEquals(imap, Mailbox(account, store, tempDir).checkError()?.server)
+            // A wrong fingerprint for the right server: refused.
+            account = account.copy(pins = listOf(Pin("localhost", imap.port, "00" + cert.sha256.drop(2))))
+            assertEquals(Failure.CERTIFICATE, Mailbox(account, store, tempDir).checkError()?.failure)
+            // Accepted for IMAP: SMTP's own certificate is still asked about.
+            account = account.copy(pins = listOf(Pin("localhost", imap.port, cert.sha256)))
+            val second = Mailbox(account, store, tempDir).checkError()!!
+            assertEquals(Failure.CERTIFICATE, second.failure)
+            assertEquals(smtp, second.server)
+            account = account.copy(pins = account.pins + Pin("localhost", smtp.port, second.certificate!!.sha256))
+            assertEquals(null, Mailbox(account, store, tempDir).checkError())
+        } finally {
+            tls.stop()
+        }
+    }
+
     private suspend fun awaitItems(count: Int) = withTimeout(10.seconds) {
         while (store.items.size < count) delay(50)
     }

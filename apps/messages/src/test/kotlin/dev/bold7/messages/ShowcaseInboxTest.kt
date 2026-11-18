@@ -21,7 +21,7 @@ private val showcaseFormat = InboxFormat(ZoneId.of("America/Toronto"), Locale.EN
 private const val NOW = 1_800_000_000_000L
 
 /** Every real source of the thread, failing at any call: the showcase must reach none of them. */
-private object Tripwire : ThreadReader, ContactBook, MessagingApi, AttachmentStore {
+private object Tripwire : ThreadReader, ContactBook, MessagingApi, AttachmentStore, AppThreads {
     private fun real(): Nothing = error("real source reached in the showcase")
     override fun read(threadId: Long) = real()
     override fun threads() = real()
@@ -36,6 +36,10 @@ private object Tripwire : ThreadReader, ContactBook, MessagingApi, AttachmentSto
     override fun run(call: ApiCall) = real()
     override fun take(source: String) = real()
     override fun drop(attachment: Attachment) = real()
+    override fun items(key: String) = real()
+    override fun canReply(key: String) = real()
+    override fun reply(key: String, text: String) = real()
+    override fun write(method: String, keys: List<dev.bold7.hub.data.ItemKey>, hubOnly: Boolean) = real()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -112,7 +116,7 @@ class ShowcaseInboxTest {
     @Test fun aShowcaseThreadReachesNoRealSource() {
         val scope = TestScope(StandardTestDispatcher())
         val errors = mutableListOf<RuntimeException>()
-        val conversation = Conversation(Tripwire, Tripwire, Tripwire, Tripwire, StandardTestDispatcher(scope.testScheduler), scope) { errors += it }
+        val conversation = Conversation(Tripwire, Tripwire, Tripwire, Tripwire, Tripwire, StandardTestDispatcher(scope.testScheduler), scope) { errors += it }
         conversation.show(showcaseConversation(showcaseThreadId(1), NOW)!!)
         conversation.reload()
         conversation.event(ThreadEvent.Typed('a'))
@@ -136,7 +140,7 @@ class ShowcaseInboxTest {
 
         val scope = TestScope(StandardTestDispatcher())
         val errors = mutableListOf<RuntimeException>()
-        val conversation = Conversation(Tripwire, Tripwire, Tripwire, Tripwire, StandardTestDispatcher(scope.testScheduler), scope) { errors += it }
+        val conversation = Conversation(Tripwire, Tripwire, Tripwire, Tripwire, Tripwire, StandardTestDispatcher(scope.testScheduler), scope) { errors += it }
         val thread = showcaseThreadId(Showcase.STORY_THREAD)
         conversation.show(showcaseConversation(thread, NOW, ShowcaseEvent.MESSAGE)!!)
         val before = conversation.state.value.messages.size

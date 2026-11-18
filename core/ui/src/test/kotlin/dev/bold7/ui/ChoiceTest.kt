@@ -19,6 +19,17 @@ class ChoiceTest {
     }
 
     @Test
+    fun `the title bar stays clear`() {
+        // Launch by Typing's list, Application Shortcuts chosen, its field just under the 35 px title bar.
+        val launch = ChoiceList(count = 2, chosen = 1)
+        assertEquals(35, launch.top(rowTop = 70, row = 57, screen = 720, floor = 35))
+        assertEquals(70, launch.copy(chosen = 0).top(rowTop = 70, row = 57, screen = 720, floor = 35))
+        // Taller than the room under the bar, it keeps the chosen row in place as far as its ends allow.
+        assertEquals(300, sensitivity.top(rowTop = 600, row = 57, screen = 720, floor = 300)) // no gap above it
+        assertEquals(720 - 9 * 57, sensitivity.copy(chosen = 8).top(rowTop = 650, row = 57, screen = 720, floor = 300)) // nor under it
+    }
+
+    @Test
     fun `taller than the screen, the ends allow what they can`() {
         // 9 x 57 = 513 on the 9900's 480: the list starts above the screen (the simulator's capture).
         assertEquals(150 - 3 * 57, sensitivity.top(rowTop = 150, row = 57, screen = 480))

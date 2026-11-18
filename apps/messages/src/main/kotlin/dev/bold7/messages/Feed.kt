@@ -33,6 +33,9 @@ data class FeedState(
     val search: String? = null,
     val account: String? = null,
     val searchIn: SearchIn = SearchIn.ANY,
+    val app: String? = null,
+    /** The apps with a view of their own ([messagingApps]). */
+    val apps: List<String> = emptyList(),
 )
 
 /**
@@ -52,6 +55,8 @@ class Feed(
      * writes; a refusal is the caller's to report, the Hub writes all the same.
      */
     private val bridge: (List<ApiCall>) -> Unit = {},
+    /** An app's name, for a notification without a title; called on [io]. */
+    private val appName: (String) -> String = { it },
 ) {
     private val mutable = MutableStateFlow(FeedState())
     val state: StateFlow<FeedState> = mutable.asStateFlow()
@@ -62,6 +67,7 @@ class Feed(
     @Volatile private var search: String? = null
     @Volatile private var account: String? = null
     @Volatile private var searchIn = SearchIn.ANY
+    @Volatile private var app: String? = null
     @Volatile private var viewing = false
 
     /** The last read, for the actions to name their items. */
@@ -76,13 +82,14 @@ class Feed(
                     val q = search
                     val a = account
                     val by = searchIn
+                    val p = app
                     when (val s = snapshot) {
-                        null -> mutable.value.copy(loaded = true, filter = f, search = q, account = a, searchIn = by)
+                        null -> mutable.value.copy(loaded = true, filter = f, search = q, account = a, searchIn = by, app = p)
                         else -> {
                             // Opening Messages sees what is new in the view shown (Text Messages:
                             // the texts); no loop: seen up to the arrivals read, the next read
                             // finds nothing new there.
-                            val seen = if (viewing && !s.demo) toSee(s, f, a) else emptyMap()
+                            val seen = if (viewing && !s.demo) toSee(s, f, a, p) else emptyMap()
                             if (seen.isNotEmpty()) {
                                 try {
                                     reader.markSeen(seen)
@@ -90,7 +97,7 @@ class Feed(
                                     onError(e)
                                 }
                             }
-                            FeedState(inboxLines(s, f, q, reader.format(), a, by), loaded = true, filter = f, search = q, account = a, searchIn = by)
+                            FeedState(inboxLines(s, f, q, reader.format(), a, by, p, appName), loaded = true, filter = f, search = q, account = a, searchIn = by, app = p, apps = messagingApps(s))
                         }
                     }
                 } catch (e: RuntimeException) {
@@ -107,9 +114,10 @@ class Feed(
         requests.trySend(Unit)
     }
 
-    /** Shows [filter] and [search] (in [searchIn]), within [account] when one is given, from the last read. */
-    fun show(filter: Filter, search: String?, account: String? = null, searchIn: SearchIn = SearchIn.ANY) {
-        if (filter == this.filter && search == this.search && account == this.account && searchIn == this.searchIn) return
+    /** Shows [filter] and [search] (in [searchIn]), within [account] or [app] when one is given, from the last read. */
+    fun show(filter: Filter, search: String?, account: String? = null, searchIn: SearchIn = SearchIn.ANY, app: String? = null) {
+        if (filter == this.filter && search == this.search && account == this.account && searchIn == this.searchIn && app == this.app) return
+        this.app = app
         this.filter = filter
         this.search = search
         this.account = account
@@ -135,7 +143,7 @@ class Feed(
             val s = snapshot ?: return@launch
             if (s.demo) return@launch
             try {
-                val keys = writeKeys(request, s, filter, search, reader.format().zone, account, searchIn)
+                val keys = writeKeys(request, s, filter, search, reader.format().zone, account, searchIn, app)
                 val written = keys.toHashSet()
                 apiCalls(request.act, s.items.filter { ItemKey(it.accountId, it.sourceKey) in written }).takeIf { it.isNotEmpty() }?.let(bridge)
                 keys.chunked(HubContract.KEYS_MAX).forEach { reader.write(method, it) }

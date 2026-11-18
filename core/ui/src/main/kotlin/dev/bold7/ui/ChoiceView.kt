@@ -228,7 +228,8 @@ class ChoiceListView(
         invalidate()
     }
 
-    private fun top(l: ChoiceList) = l.top(rowTop, ListDimens.CHOICE_LIST_ROW, height)
+    // The title bar at the top of the page stays clear (s_rs0: Launch by Typing's list over "Home Screen Preferences").
+    private fun top(l: ChoiceList) = l.top(rowTop, ListDimens.CHOICE_LIST_ROW, height, TitleBar.HEIGHT)
 
     override fun onDraw(canvas: Canvas) {
         val l = list ?: return

@@ -1,5 +1,6 @@
 package dev.bold7.launcher.notices
 
+import dev.bold7.design.NoticeDimens
 import dev.bold7.design.OS7_LOCALE
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.HubItem
@@ -104,3 +105,19 @@ fun noticeStep(focus: Int?, size: Int, down: Boolean): Int? = when {
 
 /** The focus once the list changed under it (a row opened, an item read elsewhere): still in the list (D). */
 fun noticeFocus(focus: Int?, size: Int): Int? = if (focus == null || size == 0) null else minOf(focus, size - 1)
+
+/** Whether line [i] shows, even in part, in the list's [window] px scrolled by [scroll]: only those are drawn. */
+fun noticeShown(i: Int, scroll: Int, window: Int): Boolean {
+    val top = NoticeDimens.GAP + i * NoticeDimens.LINE
+    return top + NoticeDimens.LINE > scroll && top < scroll + window
+}
+
+/** Where the list scrolls to bring the focused [line] whole into its [window] px; null: it is already there. */
+fun noticeScroll(line: Int, scroll: Int, window: Int): Int? {
+    val top = NoticeDimens.GAP + line * NoticeDimens.LINE
+    return when {
+        top < scroll -> top
+        top + NoticeDimens.LINE > scroll + window -> top + NoticeDimens.LINE - window
+        else -> null
+    }
+}

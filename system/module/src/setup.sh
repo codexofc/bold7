@@ -249,6 +249,19 @@ sound_value() { case $1 in null | content://media/*) return 0 ;; esac; return 1;
 scan() { "$TOOLS/content" call --uri content://media --method scan_volume --arg internal >/dev/null 2>&1; }
 
 # --- check ---------------------------------------------------------------------------------------
+# A metamodule (Hybrid Mount, meta-overlayfs...) mounts whole partitions with the source KSU, which
+# Zygisk detaches in apps, Bold7's mounts with them: named, with how to check that nothing else
+# needs it ($ADB/metamodule is a link to its folder).
+metamodule_refusal() {
+    local name
+    name=$(sed -n 's/^name=//p' "$ADB/metamodule/module.prop" 2>/dev/null | head -n 1)
+    echo "Your phone has a metamodule${name:+, $name}. Bold7 places its own files and cannot run beside one: Zygisk would hide both from your apps. Open Modules and check that no other module needs it (its card says what it mounts; 0 means nothing), remove it, restart, then install Bold7 again. Your other modules keep working."
+}
+# JL10's module makes another home screen the recents provider: enabled, it fights Bold7 for the
+# home and the recent apps. Off or being removed, it does nothing.
+JL10=$ADB/modules/bb10launcher_quickstep
+JL10_REFUSAL="JL10 QuickStep is on: it takes the home screen and the recent apps Bold7 needs. Turn it off or remove it in Modules, restart, then install Bold7 again."
+jl10_off() { [ ! -d "$JL10" ] || [ -e "$JL10/disable" ] || [ -e "$JL10/remove" ]; }
 # keylayout <moddir>: the module's Q25_keyboard.kl is the phone's own with End (key 172) as ENDCALL,
 # made here from it, so that a BenOS update that changes the file keeps its changes and installs.
 # Without the stock file, or without key 172 as HOME in it, the module places none: End keeps what
@@ -265,18 +278,22 @@ keylayout() {
 }
 
 do_check() {
-    local d id v
+    local d id v BENOS
     d=$(gp ro.product.device)
     [ "$d" = Q25 ] || die "Bold7 is made for the Zinwa Q25 only, and this phone is a '$d'."
     # LineageOS 24 official (the build of its device tree for the Q25), whatever its weekly build.
-    # BenOS, which Bold7 first ran on, is no longer one: its own SystemUI, keyboard app and Android 14.
+    # BenOS (Android 14, its own SystemUI and keyboard app) takes the BenOS release.
     id=$(gp ro.build.display.id)
     v=$(gp ro.lineage.build.version)
-    case $id in BenOS*) die "Bold7 now needs LineageOS 24 on your Q25, and this one runs BenOS ($id). Install LineageOS 24, then install Bold7 again." ;; esac
+    # BenOS has its own release of Bold7 (the BenOS line's check: its name anywhere, or its timestamp).
+    BENOS="This is Bold7 for LineageOS 24, and your Q25 runs BenOS ($id). Install Bold7 for BenOS (bold7-<version>-benos.zip) from the releases page instead."
+    case $id in *[Bb][Ee][Nn][Oo][Ss]*) die "$BENOS" ;; esac
+    [ -z "$(gp ro.benos_timestamp)" ] || die "$BENOS"
     [ "$(gp ro.lineage.device)" = Q25 ] && case $v in 24.*) ;; *) false ;; esac ||
-        die "Bold7 needs LineageOS 24 on your Q25, and this one runs '$id'${v:+ (LineageOS $v)}. Install LineageOS 24, then install Bold7 again."
+        die "This is Bold7 for LineageOS 24, and your Q25 runs '$id'${v:+ (LineageOS $v)}. Install the official LineageOS 24 first (step-by-step guide: github.com/codexofc/bold7, INSTALL-LINEAGEOS24.md), then install Bold7 again."
     v=$(gp ro.lineage.version)
-    [ ! -e "$ADB/metamodule" ] || die "A metamodule is installed ($ADB/metamodule), and Bold7 places its files itself. Remove that module in Modules, restart, then install Bold7 again."
+    [ ! -e "$ADB/metamodule" ] || die "$(metamodule_refusal)"
+    jl10_off || die "$JL10_REFUSAL"
     [ ! -e "$WRAPPER" ] || die "Bold7 is still finishing its removal. Unlock your phone, wait a minute, then install Bold7 again."
     if [ -e "$ADB/modules/cascade" ] || [ -e "$ADB/modules_update/cascade" ] || "$TOOLS/pm" list packages -u dev.cascade 2>/dev/null | grep -q .; then
         die "The BB10 build of this project (cascade) is still installed. Remove it first (tools/uninstall.sh of its tag bb10-final), restart, then install Bold7 again."

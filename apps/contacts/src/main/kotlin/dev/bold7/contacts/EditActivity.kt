@@ -31,6 +31,7 @@ import dev.bold7.design.Typography
 import dev.bold7.platform.hideStatusBar
 import dev.bold7.ui.Bold7Dialog
 import dev.bold7.ui.ChoiceList
+import dev.bold7.ui.FieldMovement
 import dev.bold7.ui.useCaret
 import dev.bold7.ui.ChoiceListView
 import dev.bold7.ui.DialogIcon
@@ -305,6 +306,7 @@ open class EditActivity : Activity() {
             imeOptions = EditorInfo.IME_ACTION_NEXT or EditorInfo.IME_FLAG_NO_EXTRACT_UI
             defaultFocusHighlightEnabled = false
             setText(f.value)
+            movementMethod = FieldMovement
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) = Unit
@@ -436,8 +438,11 @@ open class EditActivity : Activity() {
             runOnUiThread {
                 saving = false
                 if (saved == null) status(this, getString(R.string.not_saved)) else {
-                    // The contact added for another app: its URI, readable by it (as Android's Contacts returns it).
-                    if (asked) setResult(RESULT_OK, Intent().setData(ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, saved)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                    val uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, saved)
+                    // The contact added for another app: its URI, readable by it (as Android's Contacts returns it);
+                    // a new one for the list, which focuses it (sim-193, C).
+                    if (asked) setResult(RESULT_OK, Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                    else if (contact == null) setResult(RESULT_OK, Intent().setData(uri))
                     finish()
                 }
             }

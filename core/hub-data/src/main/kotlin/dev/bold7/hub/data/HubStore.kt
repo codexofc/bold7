@@ -167,6 +167,9 @@ internal abstract class HubDao {
 
     @Query("SELECT * FROM item") abstract fun itemsNow(): List<HubItem>
 
+    @Query("SELECT * FROM item WHERE accountId = :accountId AND kind = 'NOTIFICATION' AND conversationId = :key")
+    abstract fun conversationNow(accountId: String, key: String): List<HubItem>
+
     @Query("SELECT EXISTS (SELECT 1 FROM item WHERE accountId = :accountId AND kind = 'NOTIFICATION' AND conversationId = :key)")
     abstract fun holdsNotificationNow(accountId: String, key: String): Boolean
 }
@@ -258,6 +261,12 @@ class HubStore(private val db: HubDatabase, private val now: () -> Long, private
 
     /** Whether [key] is the key of a notification the Hub holds: the only ones it opens. Blocking. */
     fun holdsNotification(key: String): Boolean = dao.holdsNotificationNow(HubAccounts.NOTIFICATIONS.id, key)
+
+    /** The rows of HubContract.CONVERSATION_URI: the notification [key]'s items, their texts whole. Blocking. */
+    fun conversationRows(key: String): List<Array<Any?>> = db.runInTransaction<List<Array<Any?>>> {
+        val color = dao.accountsNow().firstOrNull { it.id == HubAccounts.NOTIFICATIONS.id }?.color ?: AccountColor.NONE
+        dao.conversationNow(HubAccounts.NOTIFICATIONS.id, key).map { itemRow(it, color, max = Int.MAX_VALUE) }
+    }
 
     /** The rows of HubContract's items cursor, each item with its account's colour. Blocking, off the main thread. */
     fun itemRows(): List<Array<Any?>> = db.runInTransaction<List<Array<Any?>>> {

@@ -1,12 +1,21 @@
 package dev.bold7.messages
 
+import dev.bold7.hub.data.Box
+import dev.bold7.hub.data.HubContract
+import dev.bold7.hub.data.HubItem
+import dev.bold7.hub.data.ItemKey
+import dev.bold7.hub.data.ItemKind
+import dev.bold7.hub.data.ReplyResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 
 /** Telephony by thread, by hand (docs/ARCHITECTURE.md §2). */
 private class FakeThreads : ThreadReader {
@@ -67,6 +76,26 @@ private class FakeApi(private val threads: FakeThreads) : MessagingApi {
     }
 }
 
+/** The Hub's conversations of other apps, by hand: its items, its notification's reply, what it was asked. */
+private class FakeApps : AppThreads {
+    val items = HashMap<String, List<HubItem>>()
+    var replyable = true
+    var answer = ReplyResult.SENT
+    var failing = false
+    val calls = mutableListOf<String>()
+    override fun items(key: String) = items[key]
+    override fun canReply(key: String) = replyable
+    override fun reply(key: String, text: String): ReplyResult {
+        calls += "reply $key ${text.length}"
+        if (failing) throw IllegalStateException("Hub gone")
+        return answer
+    }
+
+    override fun write(method: String, keys: List<ItemKey>, hubOnly: Boolean) {
+        calls += "$method ${keys.joinToString(",") { it.sourceKey }}${if (hubOnly) " hub" else ""}"
+    }
+}
+
 /** Messages' copies of the files attached, by hand. */
 private class FakeStore : AttachmentStore {
     val taken = mutableListOf<String>()
@@ -96,7 +125,8 @@ class ConversationTest {
     private val errors = mutableListOf<RuntimeException>()
     private val contacts = FakeContacts()
     private val store = FakeStore()
-    private val conversation = Conversation(threads, api, contacts, store, dispatcher, scope) { errors += it }
+    private val apps = FakeApps()
+    private val conversation = Conversation(threads, api, contacts, store, apps, dispatcher, scope, { scope.testScheduler.currentTime }) { errors += it }
 
     private fun type(text: String) = text.forEach { conversation.event(ThreadEvent.Typed(it)) }
     private val state get() = conversation.state.value
@@ -399,5 +429,159 @@ class ConversationTest {
         scope.advanceUntilIdle()
         assertEquals(null, state.attachment)
         assertEquals(2, store.dropped.size)
+    }
+
+    // Another app's conversation
+
+    private val key = "0|com.instagram.android|1|t|10200"
+
+    private fun note(at: Long, text: String, mine: Boolean = false, read: Boolean = mine) = HubItem(
+        "notifications", "$key@$at", ItemKind.NOTIFICATION, at, "Erin", preview = text, box = if (mine) Box.SENT else Box.INBOX,
+        folder = "com.instagram.android", conversationId = key, read = read, messaging = true,
+    )
+
+    private fun openApp() {
+        // The clock after the messages, as on the phone.
+        scope.advanceTimeBy(10_000)
+        conversation.openApp(key, "com.instagram.android", "Erin")
+        scope.advanceUntilIdle()
+    }
+
+    @Test fun anAppConversationShowsItsItemsReadInTheHubAlone() {
+        apps.items[key] = listOf(note(1, "Hi", read = true), note(2, "Lunch?"))
+        openApp()
+        assertEquals(listOf("Hi", "Lunch?"), state.messages.map { it.text })
+        assertEquals(APP_THREAD, state.threadId)
+        assertTrue(state.reply && state.writable)
+        // Read in the Hub, never through the app's own "mark as read" (only the menu's Mark Opened does that).
+        assertEquals(listOf("${HubContract.METHOD_MARK_READ} $key@2 hub"), apps.calls)
+        // Telephony and Google Messages are never asked.
+        assertEquals(0, threads.reads)
+        assertEquals(emptyList(), api.calls)
+    }
+
+    @Test fun withoutAReplyTheFieldWaitsAndNothingLeaves() {
+        apps.items[key] = listOf(note(1, "Hi", read = true))
+        apps.replyable = false
+        openApp()
+        assertTrue(!state.writable)
+        conversation.event(ThreadEvent.Edited("", "Yo"))
+        assertTrue(!state.sendable)
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals(emptyList(), apps.calls)
+    }
+
+    @Test fun aReplyShowsSendingThenSentOnItsEcho() {
+        apps.items[key] = listOf(note(1, "Hi", read = true))
+        openApp()
+        type("On my way")
+        conversation.send()
+        // Not yet the thirty seconds the echo is awaited.
+        scope.runCurrent()
+        assertEquals("reply $key 9", apps.calls.single())
+        assertEquals("", state.draft)
+        assertEquals(Delivery.SENDING, state.messages.last().delivery)
+        // The app updates its notification with the message; the Hub announces it.
+        apps.items[key] = listOf(note(1, "Hi", read = true), note(5, "On my way", mine = true))
+        conversation.reload()
+        scope.runCurrent()
+        assertEquals(listOf(Delivery.RECEIVED, Delivery.SENT), state.messages.map { it.delivery })
+        // Thirty seconds on, nothing to say.
+        scope.advanceTimeBy(ECHO_MS + 1)
+        scope.advanceUntilIdle()
+        assertEquals(null, state.notice)
+    }
+
+    @Test fun anAppThatNeverEchoesLeavesTheReplyNotConfirmedAndSaysSoOnce() {
+        apps.items[key] = listOf(note(1, "Hi", read = true))
+        openApp()
+        type("OK")
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals(Delivery.UNCONFIRMED, state.messages.last().delivery)
+        assertEquals(Notice.UNCONFIRMED, state.notice)
+        conversation.event(ThreadEvent.Noticed)
+        conversation.reload()
+        scope.advanceUntilIdle()
+        assertEquals(null, state.notice)
+        assertEquals(Delivery.UNCONFIRMED, state.messages.last().delivery)
+    }
+
+    @Test fun twoQuickRepliesAreTwoBubbles() {
+        apps.items[key] = emptyList()
+        openApp()
+        type("a")
+        conversation.send()
+        scope.advanceUntilIdle()
+        type("b")
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals(listOf("a", "b"), state.messages.map { it.text })
+        assertEquals(2, apps.calls.size)
+    }
+
+    @Test fun aCancelledReplyKeepsTheTextAndSaysSo() {
+        apps.items[key] = emptyList()
+        openApp()
+        apps.answer = ReplyResult.CANCELED
+        type("Salut 😀")
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals("Salut 😀", state.draft)
+        assertEquals(Notice.REPLY_CANCELED, state.notice)
+        assertTrue(state.messages.isEmpty() && !state.sending)
+    }
+
+    @Test fun aNotificationGoneWhileTypingTurnsTheFieldAndKeepsTheText() {
+        apps.items[key] = emptyList()
+        openApp()
+        apps.answer = ReplyResult.NO_REPLY
+        type("Yo")
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals("Yo", state.draft)
+        assertTrue(!state.writable)
+        assertEquals(Notice.REPLY_GONE, state.notice)
+    }
+
+    @Test fun aHubThatFailsOrRefusesKeepsTheText() {
+        apps.items[key] = emptyList()
+        openApp()
+        apps.failing = true
+        type("x".repeat(5000))
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals(5000, state.draft.length)
+        assertEquals(Notice.NOT_SENT, state.notice)
+        apps.failing = false
+        apps.answer = ReplyResult.REFUSED
+        conversation.event(ThreadEvent.Noticed)
+        conversation.send()
+        scope.advanceUntilIdle()
+        assertEquals(5000, state.draft.length)
+        assertEquals(Notice.NOT_SENT, state.notice)
+        // The whole text reached the Hub.
+        assertEquals("reply $key 5000", apps.calls.last())
+    }
+
+    @Test fun deleteAndMarkUnreadGoToTheHub() {
+        apps.items[key] = listOf(note(1, "Hi", read = true), note(2, "Me", mine = true), note(3, "Lunch?", read = true))
+        openApp()
+        conversation.delete(listOf(state.messages.first().uri))
+        scope.advanceUntilIdle()
+        assertEquals("${HubContract.METHOD_DELETE} $key@1", apps.calls.last())
+        scope.runCurrentAndMarkUnread()
+        // The latest received message, and nothing read again after.
+        assertEquals("${HubContract.METHOD_MARK_UNREAD} $key@3", apps.calls.last())
+        apps.items[key] = listOf(note(3, "Lunch?"))
+        conversation.reload()
+        scope.advanceUntilIdle()
+        assertEquals("${HubContract.METHOD_MARK_UNREAD} $key@3", apps.calls.last())
+    }
+
+    private fun TestScope.runCurrentAndMarkUnread() {
+        launch { conversation.markUnread() }
+        advanceUntilIdle()
     }
 }

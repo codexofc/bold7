@@ -1,5 +1,6 @@
 package dev.bold7.launcher.notices
 
+import dev.bold7.design.NoticeDimens
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.AccountKind
 import dev.bold7.hub.data.Box
@@ -158,5 +159,29 @@ class NoticesTest {
         assertEquals(0, noticeFocus(0, size = 2))
         assertNull(noticeFocus(1, size = 0))
         assertNull(noticeFocus(null, size = 2))
+    }
+    // 12 rows show of the list's 580 px (docs/BBOS7-VISUEL.md §5, D), then it scrolls: only the
+    // lines in its window are drawn, wherever it is scrolled (19 notices drew only their first 13).
+    @Test fun onlyTheLinesInTheWindowAreDrawn() {
+        val window = 720 - NoticeDimens.TOP
+        assertEquals((0..12).toList(), (0 until 200).filter { noticeShown(it, scroll = 0, window = window) })
+        assertEquals((7..19).toList(), (0 until 200).filter { noticeShown(it, scroll = 341, window = window) })
+        val end = NoticeDimens.GAP + 200 * NoticeDimens.LINE - window
+        assertEquals((187..199).toList(), (0 until 200).filter { noticeShown(it, scroll = end, window = window) })
+        assertEquals(emptyList(), (0 until 200).filter { noticeShown(it, scroll = 0, window = 0) })
+    }
+
+    // The trackpad's focus drives the scroll: the focused line comes whole into the window, the
+    // list does not move while it is already there.
+    @Test fun theScrollFollowsTheFocus() {
+        val window = 720 - NoticeDimens.TOP
+        assertNull(noticeScroll(0, scroll = 0, window = window))
+        assertNull(noticeScroll(11, scroll = 0, window = window))
+        val last = 199
+        val bottom = NoticeDimens.GAP + (last + 1) * NoticeDimens.LINE
+        assertEquals(bottom - window, noticeScroll(last, scroll = 0, window = window))
+        assertNull(noticeScroll(last, scroll = bottom - window, window = window))
+        assertEquals(NoticeDimens.GAP, noticeScroll(0, scroll = bottom - window, window = window))
+        assertEquals(NoticeDimens.GAP + 12 * NoticeDimens.LINE + NoticeDimens.LINE - window, noticeScroll(12, scroll = 0, window = window))
     }
 }

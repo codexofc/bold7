@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -25,6 +26,10 @@ interface Focused {
  * says so (Manage Connections' check boxes). No animation, no veil (sim-19, C; D for
  * the animation). Shared by [Bold7Dialog] and the home's profile popup.
  *
+ * [armMs]: nothing is chosen until the window has had the focus that long, so the second click
+ * of a double click, or a held Enter, that opened the dialog does not choose for the user before
+ * they have read it ("Call …?", D). 0 for none.
+ *
  * [hideStatusBar]: a window over the home, which hides Android's bar for its own banner, hides it
  * in this one too; so does a window over an app that has hidden the bar for its own title bar or
  * none (the dialog's window would otherwise set the bar's look again and show Android's black);
@@ -36,9 +41,11 @@ abstract class FocusDialog<V>(
     private val count: Int,
     private val hideStatusBar: Boolean = false,
     private val touchOutsideCancels: Boolean = false,
+    private val armMs: Long = 0,
 ) : Dialog(context, android.R.style.Theme_Translucent_NoTitleBar) where V : View, V : Focused {
     private var travel = Travel()
     private var clicking = false
+    private var focusedAt = -1L // uptime of the window's last focus, -1 before the first
 
     /** The item at ([x], [y]) of [view], or null. */
     protected abstract fun itemAt(x: Float, y: Float): Int?
@@ -94,6 +101,7 @@ abstract class FocusDialog<V>(
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         if (!hasFocus) return
+        focusedAt = SystemClock.uptimeMillis()
         hideBar()
         view.requestFocus()
         view.requestPointerCapture()
@@ -129,6 +137,7 @@ abstract class FocusDialog<V>(
     }
 
     protected fun choose(item: Int) {
+        if (!armed(focusedAt, SystemClock.uptimeMillis(), armMs)) return
         if (closes(item)) dismiss()
         onChosen(item)
     }
@@ -140,10 +149,14 @@ abstract class FocusDialog<V>(
             KeyEvent.KEYCODE_DPAD_DOWN -> view.focused = next(view.focused, Dir.DOWN)
             KeyEvent.KEYCODE_DPAD_LEFT -> view.focused = next(view.focused, Dir.LEFT)
             KeyEvent.KEYCODE_DPAD_RIGHT -> view.focused = next(view.focused, Dir.RIGHT)
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> choose(view.focused)
+            // A held Enter's repeats are not a choice: with [armMs], the press that opened the dialog stays its opener's.
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (e.repeatCount == 0 || armMs == 0L) choose(view.focused)
             KeyEvent.KEYCODE_ESCAPE -> cancel()
             else -> if (!onOtherKey(e)) return super.dispatchKeyEvent(e)
         }
         return true
     }
 }
+
+/** Whether a dialog whose window got the focus at [focusedAt] (-1: not yet) may choose at [now], with [armMs] of delay. Pure. */
+fun armed(focusedAt: Long, now: Long, armMs: Long): Boolean = armMs == 0L || (focusedAt >= 0 && now - focusedAt >= armMs)

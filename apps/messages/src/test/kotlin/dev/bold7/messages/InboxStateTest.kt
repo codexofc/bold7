@@ -39,6 +39,46 @@ class InboxStateTest {
         assertNull(onB.reduce(InboxEvent.Shown(emptyList())).focusedLine)
     }
 
+    // A view opens on its top, its first date field focused (sim-53, gsm 022, C), whatever line
+    // of the view it leaves shows there too: the focus never follows the old view's first line.
+    @Test fun aViewOpensOnItsTopWhateverItSharesWithTheOneLeft() {
+        val calls = InboxState().reduce(InboxEvent.Filtered(Filter.CALLS)).reduce(InboxEvent.Shown(inboxLines(snapshot(call("x", 11, 10)), Filter.CALLS, null, format)))
+        // Call Logs' first line is the 11th, which All shows under the 12th.
+        assertEquals(0, calls.reduce(InboxEvent.Filtered(Filter.ALL)).reduce(InboxEvent.Shown(rows)).focus)
+        assertEquals(0, calls.back()!!.reduce(InboxEvent.Shown(rows)).focus)
+        // Once there, a reload keeps the focus on its line again.
+        val all = calls.back()!!.reduce(InboxEvent.Shown(rows)).reduce(InboxEvent.Moved(4))
+        assertEquals(4, all.reduce(InboxEvent.Shown(rows)).focus)
+        // The search field keeps the focus while its results come.
+        assertEquals(FIELD, all.reduce(InboxEvent.SearchOpened).reduce(InboxEvent.Typed("c")).reduce(InboxEvent.Shown(rows)).focus)
+    }
+
+    // 0 day 12, 1 a, 2 b, 3 d, 4 day 11, 5 c, 6 e
+    private val five = inboxLines(snapshot(sms("a", 12, 9), sms("b", 12, 8), sms("d", 12, 7), sms("c", 11, 9), sms("e", 11, 8)), Filter.ALL, null, format)
+
+    private fun without(vararg keys: String) = inboxLines(
+        snapshot(*listOf(sms("a", 12, 9), sms("b", 12, 8), sms("d", 12, 7), sms("c", 11, 9), sms("e", 11, 8)).filter { it.sourceKey !in keys }.toTypedArray()),
+        Filter.ALL, null, format,
+    )
+
+    // A range deleted: the focus goes to what follows it, else to what precedes it, as for one message.
+    @Test fun aDeletedRangeLeavesTheFocusOnWhatFollowedIt() {
+        val top = InboxState().reduce(InboxEvent.Shown(five))
+        // a to d, the whole of the 12th: the 11th's date field follows.
+        val first = shift(top.reduce(InboxEvent.Moved(1)), down = true, times = 2)
+        assertEquals(0, first.reduce(InboxEvent.Shown(without("a", "b", "d"))).focus)
+        // b and d: the 11th's field, under a.
+        assertEquals(2, shift(top.reduce(InboxEvent.Moved(2)), down = true, times = 1).reduce(InboxEvent.Shown(without("b", "d"))).focus)
+        // The same range made upwards.
+        assertEquals(2, shift(top.reduce(InboxEvent.Moved(3)), down = false, times = 1).reduce(InboxEvent.Shown(without("b", "d"))).focus)
+        // c and e, the end of the list: d before them.
+        val last = shift(top.reduce(InboxEvent.Moved(5)), down = true, times = 1).reduce(InboxEvent.Shown(without("c", "e")))
+        assertEquals(3, last.focus)
+        assertEquals("d", (last.focusedLine as ItemLine).item.sourceKey)
+        // One message: what followed it.
+        assertEquals(five[4], top.reduce(InboxEvent.Moved(3)).reduce(InboxEvent.Shown(without("d"))).focusedLine)
+    }
+
     @Test fun searchOpensItsFieldWithTheFocusAndTheTrackpadLeavesIt() {
         val searching = shown.reduce(InboxEvent.Moved(2)).reduce(InboxEvent.SearchOpened)
         assertEquals("", searching.search)

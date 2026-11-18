@@ -23,7 +23,10 @@ open class HubProvider : ContentProvider() {
     private fun store() = HubStore(HubDatabase.get(context!!), System::currentTimeMillis) {}
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor =
-        when (uri.toString()) {
+        // READ_HUB only (no path-permission of STATUS_BAR): one conversation's whole texts.
+        if (uri.toString().startsWith(HubContract.CONVERSATION_URI + "/")) {
+            MatrixCursor(HubContract.ITEM_COLUMNS).apply { store().conversationRows(uri.lastPathSegment!!).forEach(::addRow) }
+        } else when (uri.toString()) {
             HubContract.COUNTS_URI -> MatrixCursor(arrayOf(HubContract.ACCOUNT, HubContract.KIND, HubContract.UNREAD, HubContract.NEW, HubContract.SEEN)).apply {
                 // The last visits for Bold7's apps only: SystemUI (STATUS_BAR) gets the counts.
                 val seen = context!!.checkCallingPermission(HubContract.PERMISSION) == PackageManager.PERMISSION_GRANTED
@@ -45,6 +48,12 @@ open class HubProvider : ContentProvider() {
      * (apps/hub) answers. Called only for a key the Hub holds, the phone unlocked.
      */
     protected open fun open(key: String): PendingIntent? = null
+
+    /** Whether the live notification [key] has a reply that takes free text. Only for a key the Hub holds, unlocked. */
+    protected open fun canReply(key: String): Boolean = false
+
+    /** [text] through the live notification [key]'s reply. Only for a key the Hub holds, unlocked when called. */
+    protected open fun reply(key: String, text: String): ReplyResult = ReplyResult.NO_REPLY
 
     /** Notifications the user read in the Hub: their own "mark as read" action, where they have one. */
     protected open fun markedRead(keys: Set<String>) = Unit
@@ -68,13 +77,20 @@ open class HubProvider : ContentProvider() {
         val locked = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
         val call = hubCall(
             method, arg, extras?.getStringArray(HubContract.EXTRA_ACCOUNTS), extras?.getStringArray(HubContract.EXTRA_KEYS), locked,
-            extras?.getLongArray(HubContract.EXTRA_SEEN_UP_TO),
+            extras?.getLongArray(HubContract.EXTRA_SEEN_UP_TO), extras?.getString(HubContract.EXTRA_TEXT),
+            extras?.getBoolean(HubContract.EXTRA_HUB_ONLY) == true,
         )
         when (call) {
             HubCall.Refused -> Unit
             // A store that announces its writes: the launcher's splats read them back.
             is HubCall.Seen -> hubStore(context).markSeen(call.upTo)
             is HubCall.Open -> if (store().holdsNotification(call.key)) open(call.key)?.let { result.putParcelable(HubContract.EXTRA_INTENT, it) }
+            // A source turned off is forgotten, so never held: no reply for it (Signal by default).
+            is HubCall.CanReply -> result.putBoolean(HubContract.EXTRA_CAN_REPLY, store().holdsNotification(call.key) && canReply(call.key))
+            is HubCall.Reply -> result.putString(
+                HubContract.EXTRA_REPLY_RESULT,
+                (if (store().holdsNotification(call.key)) reply(call.key, call.text) else ReplyResult.REFUSED).name,
+            )
             is HubCall.Write -> {
                 // A store that announces its writes: the launcher's list reads them back.
                 val store = hubStore(context)

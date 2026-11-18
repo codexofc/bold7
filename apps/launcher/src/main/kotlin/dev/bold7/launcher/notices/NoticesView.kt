@@ -108,6 +108,8 @@ internal class NoticesView(
         if (next.isEmpty()) close()
     }
 
+    override val hasLines get() = lines.isNotEmpty()
+
     override val lineFocused get() = isOpen && focus != null
 
     override fun step(dir: Dir): Boolean {
@@ -134,11 +136,22 @@ internal class NoticesView(
 
     /** Scrolls [line] into the list's window. */
     private fun show(line: Int) {
-        val top = D.GAP + line * D.LINE
-        when {
-            top < scrollY -> smoothScrollTo(0, top)
-            top + D.LINE > scrollY + height -> smoothScrollTo(0, top + D.LINE - height)
-        }
+        noticeScroll(line, scrollY, height)?.let { smoothScrollTo(0, it) }
+    }
+
+    // The lines draw only what shows (Lines.onDraw): scrolled, they are drawn again.
+    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+        super.onScrollChanged(l, t, oldl, oldt)
+        content.invalidate()
+    }
+
+    // The home does not clip its children (HomeView: the moved icon goes over everything) and a
+    // ScrollView without padding does not clip its own: scrolled, the lines drew over the banner.
+    override fun dispatchDraw(canvas: Canvas) {
+        canvas.save()
+        canvas.clipRect(scrollX, scrollY, scrollX + width, scrollY + height)
+        super.dispatchDraw(canvas)
+        canvas.restore()
     }
 
     private fun activate(line: Int) {
@@ -205,9 +218,12 @@ internal class NoticesView(
         }
 
         override fun onDraw(canvas: Canvas) {
+            // The list's scroll, not this view's own (always 0).
+            val scroll = this@NoticesView.scrollY
+            val window = this@NoticesView.height
             for (i in lines.indices) {
+                if (!noticeShown(i, scroll, window)) continue
                 val top = D.GAP + i * D.LINE
-                if (top + D.LINE < scrollY || top > scrollY + this@NoticesView.height) continue
                 val lit = i == focus
                 if (lit) {
                     canvas.save()

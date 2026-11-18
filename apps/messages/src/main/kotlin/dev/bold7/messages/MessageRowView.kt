@@ -21,12 +21,19 @@ import dev.bold7.ui.osEmoji
 import dev.bold7.ui.focusPaint
 import dev.bold7.ui.textPaint
 
-/** The two strips of status icons, decoded off the main thread; null until then (nothing drawn). */
+/** The strips of status icons, decoded off the main thread; null until then (nothing drawn). */
 class IconStrips {
     @Volatile var message: Bitmap? = null
     @Volatile var phone: Bitmap? = null
+    @Volatile var facebook: Bitmap? = null
+    @Volatile var twitter: Bitmap? = null
 
-    fun of(strip: Strip) = if (strip == Strip.MESSAGE) message else phone
+    fun of(strip: Strip) = when (strip) {
+        Strip.MESSAGE -> message
+        Strip.PHONE -> phone
+        Strip.FACEBOOK -> facebook
+        Strip.TWITTER -> twitter
+    }
 }
 
 /**
@@ -36,8 +43,9 @@ class IconStrips {
  * bold while unread (gsm 029); the time in 23 black on the same baseline, its end 5 px from the
  * right edge; the subject or text in 23 grey on a baseline 62. Under the trackpad's focus, the blue
  * band of the lists over the row and its line, the texts white. Kept to the right edge on the Q25 (D).
+ * Another app's row shows that app's own 42 px icon in place of the cell once drawn (AppLooks, D).
  */
-class MessageRowView(context: Context, private val strips: IconStrips) : View(context) {
+class MessageRowView(context: Context, private val strips: IconStrips, private val appIcon: (String) -> Bitmap? = { null }) : View(context) {
     companion object {
         const val HEIGHT = ListDimens.ROW
         const val ICON = 42
@@ -64,7 +72,7 @@ class MessageRowView(context: Context, private val strips: IconStrips) : View(co
     private val previewLit = textPaint(Typography.SUBTITLE, Typography.REGULAR, ListColors.TitleBarText)
     private val bitmapPaint = Paint()
     private val src = Rect()
-    private val dst = Rect(ICON_X, ICON_Y, ICON_X + ICON, ICON_Y + ICON)
+    private val dst = Rect()
 
     private var line: ItemLine? = null
     private var lit = false
@@ -72,7 +80,7 @@ class MessageRowView(context: Context, private val strips: IconStrips) : View(co
 
     // The preview cut to the row, its emojis drawn as OS 7's emoticons.
     private var shownPreview: List<Chunk> = emptyList()
-    // The sender's name too: a name may carry an emoji (the clip cuts it to the row).
+    // The sender's name too: a name may carry an emoji.
     private var shownSender: List<Chunk> = emptyList()
     private val pen = EmoticonPen()
 
@@ -88,7 +96,11 @@ class MessageRowView(context: Context, private val strips: IconStrips) : View(co
         this.line = line
         this.lit = lit
         val icon = line.icon
-        src.set(icon.column * ICON, icon.row * ICON, (icon.column + 1) * ICON, (icon.row + 1) * ICON)
+        val cell = icon.strip.cell
+        src.set(icon.column * cell, icon.row * cell, (icon.column + 1) * cell, (icon.row + 1) * cell)
+        // A smaller cell (Facebook's and Twitter's 40 px) centred in the row's 42, at its pixels.
+        val inset = (ICON - cell) / 2
+        dst.set(ICON_X + inset, ICON_Y + inset, ICON_X + inset + cell, ICON_Y + inset + cell)
         cut()
         invalidate()
     }
@@ -97,7 +109,9 @@ class MessageRowView(context: Context, private val strips: IconStrips) : View(co
     private fun cut() {
         val l = line ?: return
         shownPreview = emoticonChunks(preview.fitEmoticons(osEmoji(l.preview), (width - TIME_RIGHT - TEXT_X).coerceAtLeast(0).toFloat()))
-        shownSender = emoticonChunks(osEmoji(l.sender))
+        // Cut before the time with "…", as the preview (D).
+        val room = width - TIME_RIGHT - timeWidth - TIME_GAP - TEXT_X
+        shownSender = emoticonChunks((if (l.unread) senderBold else sender).fitEmoticons(osEmoji(l.sender), room.coerceAtLeast(0f)))
         EmoticonStrip.want(this, shownPreview + shownSender)
     }
 
@@ -108,13 +122,12 @@ class MessageRowView(context: Context, private val strips: IconStrips) : View(co
         val w = width.toFloat()
         val bottom = HEIGHT.toFloat()
         if (lit) canvas.drawRect(0f, 0f, w, bottom, focus) else canvas.drawRect(0f, bottom - ListDimens.DIVIDER, w, bottom, divider)
-        strips.of(l.icon.strip)?.let { canvas.drawBitmap(it, src, dst, bitmapPaint) }
+        val own = l.app?.let(appIcon)
+        if (own != null) canvas.drawBitmap(own, ICON_X.toFloat(), ICON_Y.toFloat(), bitmapPaint)
+        else strips.of(l.icon.strip)?.let { canvas.drawBitmap(it, src, dst, bitmapPaint) }
         val right = w - TIME_RIGHT
         canvas.drawText(l.time, right, TITLE_BASELINE.toFloat(), if (lit) timeLit else time)
-        canvas.save()
-        canvas.clipRect(TEXT_X.toFloat(), 0f, right - timeWidth - TIME_GAP, bottom)
         pen.draw(canvas, shownSender, TEXT_X.toFloat(), TITLE_BASELINE.toFloat(), if (l.unread) (if (lit) senderBoldLit else senderBold) else if (lit) senderLit else sender)
-        canvas.restore()
         pen.draw(canvas, shownPreview, TEXT_X.toFloat(), PREVIEW_BASELINE.toFloat(), if (lit) previewLit else preview)
     }
 }

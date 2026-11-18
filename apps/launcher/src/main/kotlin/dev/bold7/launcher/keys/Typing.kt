@@ -1,5 +1,7 @@
 package dev.bold7.launcher.keys
 
+import dev.bold7.launcher.home.App
+import dev.bold7.launcher.home.HomeState
 import dev.bold7.launcher.search.Folded
 import dev.bold7.launcher.search.matchRanges
 import java.io.File
@@ -57,6 +59,16 @@ fun appForLetter(letter: Char, labels: List<String>): Int? {
     if (!letter.isLetter()) return null
     PREFERRED[letter.lowercaseChar()]?.let { p -> labels.indexOf(p).takeIf { it >= 0 }?.let { return it } }
     return labels.indexOfFirst { matchRanges(Folded(it.take(1)), letter.toString()) != null }.takeIf { it >= 0 }
+}
+
+/**
+ * The app [letter] opens among those the grid shows. A hidden app is never the letter's: Google's
+ * Calculator and Google Messages stay installed behind Bold7's under the same names and sort
+ * before them, so C and M opened Android's apps (D).
+ */
+fun HomeState.appForLetter(letter: Char): App? {
+    val shown = apps.filterNot(::hides)
+    return appForLetter(letter, shown.map { it.label })?.let(shown::get)
 }
 
 /** Launch by Typing kept in a file of the launcher (credential-protected storage, like the home's layout). */

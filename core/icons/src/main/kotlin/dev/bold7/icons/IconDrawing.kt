@@ -127,12 +127,20 @@ private fun renderAlpha(size: Int, target: Box, drawable: Drawable): IntArray {
  * ([downscaleSteps]) in a 33x29 frame. Never on the main thread.
  */
 fun indicatorBitmap(icon: Bitmap): Bitmap {
-    val m = icon.width * INDICATOR_MARGIN / TEMPLATE_SIZE
-    val crop = Bitmap.createBitmap(icon, m, m, icon.width - 2 * m, icon.height - 2 * m)
-    val small = downscaleSteps(crop.width, INDICATOR_SIDE).fold(crop) { b, size -> Bitmap.createScaledBitmap(b, size, size, true) }
+    val small = marginless(icon, INDICATOR_SIDE)
     // Drawn at their pixels, never scaled by a density (the theme's images are DENSITY_NONE too).
     val frame = Bitmap.createBitmap(INDICATOR_FRAME_WIDTH, INDICATOR_FRAME_HEIGHT, Bitmap.Config.ARGB_8888).apply { density = Bitmap.DENSITY_NONE }
-    small.density = Bitmap.DENSITY_NONE
     Canvas(frame).drawBitmap(small, INDICATOR_BOX.left.toFloat(), INDICATOR_BOX.top.toFloat(), Paint(Paint.FILTER_BITMAP_FLAG))
     return frame
+}
+
+/**
+ * [icon] (the grid's, [TEMPLATE_SIZE] px) without its [INDICATOR_MARGIN] of margin and shadow,
+ * brought down to [side] px in steps ([downscaleSteps]): an indicator's, or a list row's status
+ * icon (Messages, 42 px). Never on the main thread.
+ */
+fun marginless(icon: Bitmap, side: Int): Bitmap {
+    val m = icon.width * INDICATOR_MARGIN / TEMPLATE_SIZE
+    val crop = Bitmap.createBitmap(icon, m, m, icon.width - 2 * m, icon.height - 2 * m)
+    return downscaleSteps(crop.width, side).fold(crop) { b, size -> Bitmap.createScaledBitmap(b, size, size, true) }.apply { density = Bitmap.DENSITY_NONE }
 }

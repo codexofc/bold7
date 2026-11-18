@@ -50,7 +50,7 @@ class Mailbox(
     private val account: MailAccount,
     private val store: MailStore,
     tempDir: File,
-    private val sockets: TrustedSocketFactory = TlsSocketFactory(),
+    private val sockets: TrustedSocketFactory = TlsSocketFactory(pins = account.pins),
     private val now: () -> Long = System::currentTimeMillis,
     /** The access tokens of an account signed in through the browser, null for an app password. */
     private val oauthTokens: OAuth2TokenProvider? = null,
@@ -153,13 +153,31 @@ class Mailbox(
      * it is reported as a refused password, with the server's words, never as the network.
      */
     fun check() {
+        checkImap()
+        checkSmtp()
+    }
+
+    /** [check], its failure described: which server, and why; null when both logged in. */
+    fun checkError(): CheckError? {
+        for ((server, step) in listOf(account.provider.imap to ::checkImap, account.provider.smtp to ::checkSmtp)) {
+            try {
+                step()
+            } catch (e: Exception) {
+                return diagnose(e, server, now())
+            }
+        }
+        return null
+    }
+
+    private fun checkImap() {
         try {
             imap.checkSettings()
         } catch (e: NegativeImapResponseException) {
             throw AuthenticationFailedException("Refused by the server", e, e.alertText ?: e.responseText)
         }
-        SmtpTransport(account.smtpSettings(), sockets, oauthTokenProvider = oauthTokens).checkSettings()
     }
+
+    private fun checkSmtp() = SmtpTransport(account.smtpSettings(), sockets, oauthTokenProvider = oauthTokens).checkSettings()
 
     private inline fun <T> ImapFolder.openReadOnly(block: (ImapFolder) -> T): T {
         open(OpenMode.READ_ONLY)

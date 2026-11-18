@@ -12,6 +12,10 @@ internal object Eyeballed {
     // How long an app's status message (sim-42) stays: never timed on the simulator.
     const val STATUS_MS = 2000L
 
+    // "Call …?" chooses nothing until it has been shown this long: the second click of a quick
+    // double click on a missed call never calls (D, a safety the 9900 did not have).
+    const val CALL_PROMPT_ARM_MS = 500L
+
     // The corners of the short menu's box and of its focus (sim-17, sim-52): about 6 and 5 px.
     const val SHORT_MENU_RADIUS = 6f
     const val SHORT_FOCUS_RADIUS = 5f

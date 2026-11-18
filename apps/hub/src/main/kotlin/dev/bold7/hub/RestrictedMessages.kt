@@ -18,13 +18,18 @@ object RestrictedMessages {
     fun main(args: Array<String>) {
         val providers = HashMap<String, (Long) -> Unit>()
         var asked = 0
+        var left = 0
+        var why: String? = null
         while (true) {
             val line = readLine() ?: break
             val (uri, id) = liftedRow(line) ?: continue
-            providers.getOrPut(uri) { direct(uri) ?: viaContent(uri) }(id)
+            val lift = providers.getOrPut(uri) { direct(uri) ?: viaContent(uri) }
             asked++
+            // One row that fails never ends the run (a user's lifter died on the first locked row).
+            if (!liftRetrying(onLeft = { why = it }) { lift(id) }) left++
         }
         println(asked)
+        if (left > 0) System.err.println("$left of $asked rows left restricted: $why")
     }
 
     /**
@@ -58,6 +63,35 @@ object RestrictedMessages {
         val content = Class.forName("com.android.commands.content.Content").getMethod("main", Array<String>::class.java)
         return { id -> content.invoke(null, liftArgs(uri, id)) }
     }
+}
+
+/**
+ * [lift] for one row, tried again while the provider answers that its database is locked
+ * (SQLITE_BUSY: Google Messages writing, or the Hub reading a long history at that moment), [pause]
+ * growing between tries; true once done. A row still locked after [tries], or failing otherwise, is
+ * left (false), its reason to [onLeft]: the run goes on.
+ */
+internal fun liftRetrying(
+    tries: Int = 6,
+    pause: (Int) -> Unit = { Thread.sleep(it * 250L) },
+    onLeft: (String) -> Unit = {},
+    lift: () -> Unit,
+): Boolean {
+    for (attempt in 1..tries) {
+        try {
+            lift()
+            return true
+        } catch (e: Exception) {
+            val cause = generateSequence<Throwable>(e) { it.cause }.last()
+            val busy = generateSequence<Throwable>(e) { it.cause }.any { it.message.orEmpty().contains("database is locked") }
+            if (!busy || attempt == tries) {
+                onLeft("${cause.javaClass.simpleName}: ${cause.message.orEmpty().take(120)}")
+                return false
+            }
+            pause(attempt)
+        }
+    }
+    return false
 }
 
 private val ROW = Regex("(content://(?:sms|mms)) ([0-9]{1,18})")

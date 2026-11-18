@@ -19,8 +19,10 @@ import javax.crypto.spec.GCMParameterSpec
  * File: version byte, IV length, IV, then the GCM ciphertext and tag. Version 2
  * seals the servers with the account: a typed server, Outlook's, iCloud's. Version 3
  * adds how it logs in (app password, or the browser's OAuth server and its refresh token in place of
- * the password) and the signature; a version 2 file still opens, as an app password with OS 7's
- * signature. A modified file or another key is erased by [load], never half read.
+ * the password) and the signature; version 4 the login name and the accepted certificates (typed
+ * servers). A version 2 or 3 file still opens: the address as login name, no certificate, and for
+ * version 2 an app password with OS 7's signature. A modified file or another key is erased by
+ * [load], never half read.
  */
 class AccountVault(private val file: File, private val key: () -> SecretKey) {
     /**
@@ -33,7 +35,7 @@ class AccountVault(private val file: File, private val key: () -> SecretKey) {
         val plain = try {
             DataInputStream(file.inputStream().buffered()).use {
                 version = it.readByte()
-                check(version == VERSION || version == V2) { "Unknown account file version" }
+                check(version in V2..VERSION) { "Unknown account file version" }
                 val iv = ByteArray(it.readUnsignedByte()).also(it::readFully)
                 cipher(Cipher.DECRYPT_MODE, iv).doFinal(it.readBytes())
             }
@@ -57,11 +59,15 @@ class AccountVault(private val file: File, private val key: () -> SecretKey) {
             val imap = endpoint()
             val smtp = endpoint()
             val password = it.readUTF()
-            val provider = MailProvider(providerId, imap, smtp)
+            // How it logs in is the provider's, never stored: rebuilt from its id.
+            val provider = MailProvider(providerId, imap, smtp, MailProviders.byId(providerId)?.login ?: Login.PASSWORD)
             if (version == V2) return@use MailAccount(address, password, provider)
             val oauth = it.readUTF().ifEmpty { null }
             val signature = if (it.readBoolean()) it.readUTF() else null
-            MailAccount(address, password, provider, oauth, signature)
+            if (version == V3) return@use MailAccount(address, password, provider, oauth, signature)
+            val user = it.readUTF()
+            val pins = List(it.readInt()) { _ -> Pin(it.readUTF(), it.readInt(), it.readUTF()) }
+            MailAccount(address, password, provider, oauth, signature, user, pins)
         }
     }
 
@@ -80,6 +86,13 @@ class AccountVault(private val file: File, private val key: () -> SecretKey) {
                 it.writeUTF(account.oauth.orEmpty())
                 it.writeBoolean(account.signature != null)
                 account.signature?.let(it::writeUTF)
+                it.writeUTF(account.user)
+                it.writeInt(account.pins.size)
+                for (p in account.pins) {
+                    it.writeUTF(p.host)
+                    it.writeInt(p.port)
+                    it.writeUTF(p.sha256)
+                }
             }
         }.toByteArray()
         // The Android Keystore picks the IV itself (randomized encryption), and so does the JVM.
@@ -110,7 +123,8 @@ class AccountVault(private val file: File, private val key: () -> SecretKey) {
     }
 
     private companion object {
-        const val VERSION: Byte = 3
+        const val VERSION: Byte = 4
+        const val V3: Byte = 3
         const val V2: Byte = 2
         val AAD = "bold7-mail-account".toByteArray()
     }

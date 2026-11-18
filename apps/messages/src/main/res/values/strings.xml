@@ -35,6 +35,11 @@
     <string name="options_display_hint">Hide and change messages display</string>
     <string name="options_inbox">Inbox Management</string>
     <string name="options_inbox_hint">Select types of messages to show</string>
+    <!-- Message Sources: mine (D), no such screen on the 9900; worded as Inbox Management. -->
+    <string name="options_sources">Message Sources</string>
+    <string name="options_sources_hint">Select which messages the device keeps</string>
+    <string name="opt_missed_calls">Missed Calls</string>
+    <string name="opt_invitations">Meeting Invitations</string>
     <string name="options_accounts_hint">Set up Internet email accounts</string>
     <string name="options_texts">Text Messaging</string>
     <string name="options_texts_hint">Set text messaging preferences</string>
@@ -127,6 +132,12 @@
     <string name="confirm_discard">Discard message?</string>
     <string name="button_discard">Discard</string>
     <string name="not_sent">Message not sent. It stays in the field.</string>
+    <!-- Another app's conversation in the thread: mine (D), worded as OS 7's status messages. -->
+    <string name="thread_open_in">Open in %1$s</string>
+    <string name="thread_reply_in">Reply in %1$s</string>
+    <string name="reply_gone">%1$s no longer offers a reply here. Your message stays in the field.</string>
+    <string name="reply_canceled">%1$s refused the reply. Message not sent. It stays in the field.</string>
+    <string name="reply_unconfirmed">%1$s has not confirmed your message. Open in %1$s to check.</string>
     <string name="not_created">Unable to start a conversation with %1$s. Your message stays in the field.</string>
     <string name="not_deleted">Unable to delete the message.</string>
     <!-- Google Messages' door shut: said, then Text Messages opens as without the API (D) -->
@@ -173,7 +184,7 @@
     <string name="setup_title">Email Setup</string>
     <string name="setup_address">Email address:</string>
     <string name="setup_password">Password:</string>
-    <string name="setup_password_hint">An app password: Gmail, Outlook and iCloud make one in the account\'s security settings.</string>
+    <string name="setup_password_hint">The address\'s password, or the app password its provider asks for. An app password replaces the password here and works with two-step verification: nothing to turn off. Not sure? Press Next without a password.</string>
     <string name="setup_imap">Incoming server:</string>
     <string name="setup_smtp">Outgoing server:</string>
     <string name="setup_port">Port:</string>
@@ -182,8 +193,38 @@
     <string name="setup_done">Your email address %1$s is set up. Its messages will arrive in Messages.</string>
     <string name="setup_invalid">Type your email address and its password.</string>
     <string name="setup_auth">The email address or the password is incorrect.</string>
-    <string name="setup_auth_gmail">Gmail refused the password. Gmail needs an app password: turn on 2-Step Verification, then make one at myaccount.google.com/apppasswords.</string>
-    <string name="setup_auth_icloud">iCloud refused the password. iCloud needs an app-specific password: make one at account.apple.com, Sign-In and Security.</string>
+    <string name="setup_auth_gmail">Gmail needs an app password: with 2-Step Verification on, make one at myaccount.google.com/apppasswords and type it in Password. It replaces your Gmail password here: nothing to turn off.</string>
+    <string name="setup_auth_icloud">iCloud needs an app-specific password: make one at account.apple.com, Sign-In and Security, App-Specific Passwords, and type it in Password. It replaces your Apple Account password here and works with two-factor authentication.</string>
+    <!-- What each provider asks of another app (docs/MAIL.md §11; D for the words). -->
+    <string name="setup_auth_yahoo">Yahoo needs an app password: at login.yahoo.com/account/security, Generate app password, then type it in Password. It replaces your Yahoo password here and works with two-step verification: nothing to turn off.</string>
+    <string name="setup_auth_aol">AOL needs an app password: at login.aol.com/account/security, Generate app password, then type it in Password. It replaces your AOL password here and works with two-step verification: nothing to turn off.</string>
+    <string name="setup_auth_gmx">GMX lets other apps in once IMAP is on: on GMX\'s website (gmx.net, gmx.com, gmx.fr…), Email Settings, POP3/IMAP, allow POP3 and IMAP access. With two-factor authentication on, type an app password made in GMX\'s security settings: it replaces your password here.</string>
+    <string name="setup_auth_webde">WEB.DE lets other apps in once IMAP is on: at web.de, Email Settings, POP3/IMAP, allow POP3 and IMAP access. With two-factor authentication on, type an app password made in WEB.DE\'s security settings: it replaces your password here.</string>
+    <string name="setup_auth_mailcom">mail.com lets other apps in with a Premium account only, once POP3 and IMAP access is on in mail.com\'s Email Settings. With two-factor authentication on, type an app password: it replaces your password here.</string>
+    <string name="setup_auth_zoho">Zoho Mail lets other apps in once IMAP Access is on: Settings, Mail Accounts, IMAP. With two-factor authentication on, type an app-specific password from accounts.zoho.com, Security, App Passwords: it replaces your password here.</string>
+    <string name="setup_auth_yandex">Yandex needs an app password: at id.yandex.com/security/app-passwords, create one for Mail and type it in Password. In Yandex Mail, Settings, Email clients, turn on IMAP first.</string>
+    <string name="setup_auth_orange">Orange needs its password for email apps: in your Espace Client, Connexion et sécurité, Logiciels, generate it and type it in Password. POP and IMAP access must be on in Mail Orange\'s settings.</string>
+    <string name="setup_outlook_browser">Outlook.com, Hotmail and Live addresses sign in through the browser only: Microsoft refuses passwords in other apps since September 16, 2024. Select Sign In With Browser.</string>
+    <string name="setup_outlook_off">Outlook.com, Hotmail and Live addresses sign in through the browser only (Microsoft refuses passwords in other apps since September 16, 2024), and browser sign-in is off in this build of Bold7. This address cannot be set up yet.</string>
+    <string name="setup_work_account">This address is a Microsoft 365 work or school account. Microsoft takes no password from other apps, and browser sign-in here is for personal accounts only: it cannot be set up yet.</string>
+    <string name="setup_proton">Proton Mail reaches other email apps only through Proton Mail Bridge, on a computer. It cannot be set up on this smartphone.</string>
+    <string name="setup_auth_server">%1$s refused the user name or the password.</string>
+    <string name="setup_server_said">The server said: “%1$s”</string>
+    <string name="setup_host_unknown">%1$s cannot be found. Check the server name.</string>
+    <string name="setup_port_closed">Nothing answers at %1$s. Check the port.</string>
+    <string name="setup_timeout">%1$s did not answer in time. Check the port and your connection.</string>
+    <string name="setup_no_starttls">%1$s does not offer STARTTLS. Clear Use STARTTLS: SSL/TLS is usually on port 993 or 465.</string>
+    <string name="setup_tls">%1$s did not start SSL/TLS on this port. Select Use STARTTLS: it is usually on port 143 or 587.</string>
+    <string name="setup_no_password_login">%1$s offers no login by password.</string>
+    <string name="setup_cert_self_signed">it signed itself</string>
+    <string name="setup_cert_expired">it has expired or is not valid yet</string>
+    <string name="setup_cert_untrusted">it is not from a trusted authority, or names another server</string>
+    <string name="setup_cert_question">The certificate of %1$s cannot be verified: %2$s.\nIssued to: %3$s\nIssued by: %4$s\nSHA-256: %5$s\nAccept it for this server only? Compare the fingerprint with your provider\'s first.</string>
+    <string name="setup_cert_refused">The certificate of %1$s cannot be trusted: %2$s. Nothing was kept.\nIssued to: %3$s\nSHA-256: %4$s</string>
+    <string name="setup_cert_accept">Accept</string>
+    <string name="setup_user">User name:</string>
+    <string name="setup_user_hint">the email address</string>
+    <string name="setup_starttls">Use STARTTLS</string>
     <string name="setup_certificate">The server\'s certificate cannot be trusted. Nothing was kept.</string>
     <string name="setup_network">Unable to reach the server. Check your connection and the server names.</string>
     <string name="setup_refused">This email address is already set up, or cannot be added.</string>

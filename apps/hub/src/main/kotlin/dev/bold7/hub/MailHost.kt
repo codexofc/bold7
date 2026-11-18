@@ -7,8 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.net.DnsResolver
 import android.net.Network
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.PowerManager
@@ -26,42 +28,53 @@ import dev.bold7.hub.data.HubSink
 import dev.bold7.hub.data.ItemKey
 import dev.bold7.hub.data.MailContract
 import dev.bold7.hub.data.MailResult
+import dev.bold7.mail.CheckError
+import dev.bold7.mail.Discovered
+import dev.bold7.mail.Failure
 import dev.bold7.mail.FolderRole
+import dev.bold7.mail.HttpConfigFetch
+import dev.bold7.mail.HttpTokenPost
+import dev.bold7.mail.Login
+import dev.bold7.mail.Loopback
 import dev.bold7.mail.MailAccount
 import dev.bold7.mail.MailAddress
 import dev.bold7.mail.MailItem
 import dev.bold7.mail.MailKeystore
+import dev.bold7.mail.MailProvider
 import dev.bold7.mail.MailProviders
 import dev.bold7.mail.MailPush
 import dev.bold7.mail.MailStore
 import dev.bold7.mail.Mailbox
-import dev.bold7.mail.HttpTokenPost
-import dev.bold7.mail.Loopback
 import dev.bold7.mail.OAuthClient
 import dev.bold7.mail.OAuthException
 import dev.bold7.mail.OAuthServer
 import dev.bold7.mail.OAuthServers
 import dev.bold7.mail.OAuthTokenSource
-import dev.bold7.mail.Redirect
-import dev.bold7.mail.authorizationUrl
-import dev.bold7.mail.exchangeCode
-import dev.bold7.mail.newSecret
-import dev.bold7.mail.pkceChallenge
 import dev.bold7.mail.OutgoingMail
+import dev.bold7.mail.Pin
 import dev.bold7.mail.PushEnd
 import dev.bold7.mail.PushPolicy
+import dev.bold7.mail.Redirect
 import dev.bold7.mail.SyncPlan
 import dev.bold7.mail.SyncedFolder
+import dev.bold7.mail.authorizationUrl
+import dev.bold7.mail.discover
+import dev.bold7.mail.exchangeCode
+import dev.bold7.mail.newSecret
+import dev.bold7.mail.normalizedAddress
+import dev.bold7.mail.parseMx
+import dev.bold7.mail.pkceChallenge
 import dev.bold7.mail.toMessage
 import java.io.File
 import java.io.IOException
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 import java.security.SecureRandom
 import java.util.Date
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
@@ -84,7 +97,12 @@ private const val MAIL_TAG = "Bold7/mail"
  * ([MailContract]): blocking, on a binder thread; the push runs on [io]. Nothing read from a mail,
  * no address and no password is logged: counts and class names only.
  */
-class MailHost(private val app: Context, private val sink: HubSink) {
+class MailHost(
+    private val app: Context,
+    private val sink: HubSink,
+    /** The sources the user turned off in Messages: an account among them is not synced. */
+    private val off: () -> Set<String> = { emptySet() },
+) {
     private val io = Executors.newCachedThreadPool { Thread(it, "hub-mail") }.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + io)
     private val refresh by lazy { AlarmRefresh(app) }
@@ -187,7 +205,7 @@ class MailHost(private val app: Context, private val sink: HubSink) {
     @Synchronized
     private fun run(id: String) {
         val r = accounts[id] ?: return
-        if (!online || r.job?.isActive == true) return
+        if (!online || r.job?.isActive == true || id in off()) return
         r.job = scope.launch {
             var tries = 0
             while (true) {
@@ -227,6 +245,13 @@ class MailHost(private val app: Context, private val sink: HubSink) {
                 delay(PushPolicy.retryDelay(++tries))
             }
         }
+    }
+
+    /** The sources turned off changed: an account now off stops, one on again syncs (its mail comes back whole). */
+    fun sourcesChanged() {
+        val off = off()
+        accounts.filterKeys { it in off }.values.forEach(::halt)
+        scope.launch { accounts.keys.forEach(::run) }
     }
 
     private suspend fun sync(mailbox: Mailbox, folder: SyncedFolder) {
@@ -273,26 +298,116 @@ class MailHost(private val app: Context, private val sink: HubSink) {
         return out
     }
 
-    /** Both servers logged in to before anything is kept; the address, once only. */
+    /**
+     * Email Setup's Next: the provider (typed servers, the table, or looked up now: the user
+     * asked), what it needs when no password was typed or when it takes none, then both servers
+     * logged in to before anything is kept; the address, once only. A failure says which server
+     * and why; servers found by the lookup come back for the user to correct.
+     */
     private fun add(x: Bundle, out: Bundle): MailResult {
-        val address = x.getString(MailContract.EXTRA_ADDRESS)?.trim().orEmpty()
+        val address = normalizedAddress(x.getString(MailContract.EXTRA_ADDRESS).orEmpty()) ?: return MailResult.REFUSED
         val password = x.getString(MailContract.EXTRA_PASSWORD).orEmpty()
-        if (!address.matches(EMAIL) || password.isEmpty()) return MailResult.REFUSED
         if (accounts.values.any { it.account.address.equals(address, ignoreCase = true) }) return MailResult.REFUSED
         val imapHost = x.getString(MailContract.EXTRA_IMAP_HOST)?.trim().orEmpty()
         val smtpHost = x.getString(MailContract.EXTRA_SMTP_HOST)?.trim().orEmpty()
-        val provider = MailProviders.forAddress(address)
-            ?: if (imapHost.isNotEmpty() && smtpHost.isNotEmpty()) {
-                MailProviders.custom(imapHost, x.getInt(MailContract.EXTRA_IMAP_PORT, 993), smtpHost, x.getInt(MailContract.EXTRA_SMTP_PORT, 465))
-            } else {
-                return MailResult.SERVERS
-            }
-        val account = MailAccount(address, password, provider)
-        val checked = attempt { Mailbox(account, NoStore, temp).run { try { check() } finally { close() } } }
-        if (checked != MailResult.OK) return checked
-        out.putString(MailContract.EXTRA_ID, keep(account))
-        return MailResult.OK
+        val typed = imapHost.isNotEmpty() && smtpHost.isNotEmpty()
+        fun startTls(key: String) = if (x.containsKey(key)) x.getBoolean(key) else null
+        val found = if (typed) {
+            val provider = MailProviders.custom(
+                imapHost, x.getInt(MailContract.EXTRA_IMAP_PORT, 993), startTls(MailContract.EXTRA_IMAP_STARTTLS),
+                smtpHost, x.getInt(MailContract.EXTRA_SMTP_PORT, 465), startTls(MailContract.EXTRA_SMTP_STARTTLS),
+            )
+            Discovered(provider, x.getString(MailContract.EXTRA_USER)?.trim().orEmpty().ifEmpty { address })
+        } else {
+            resolve(address) ?: return MailResult.SERVERS
+        }
+        val provider = found.provider
+        out.putString(MailContract.EXTRA_PROVIDER, provider.id)
+        when (provider.login) {
+            Login.BRIDGE -> return MailResult.BRIDGE
+            // No password tried: Microsoft refuses them all since September 16, 2024.
+            Login.BROWSER -> return if (browserServer(provider) != null) MailResult.BROWSER else MailResult.UNAVAILABLE
+            Login.PASSWORD -> Unit
+        }
+        if (password.isEmpty()) return MailResult.PASSWORD
+        // A certificate is accepted for typed or found servers only: a known provider's that fails is an attack, never a choice.
+        val pins = if (provider.id == MailProviders.CUSTOM) x.getStringArray(MailContract.EXTRA_ACCEPT).orEmpty().mapNotNull(Pin::parse) else emptyList()
+        val account = MailAccount(address, password, provider, user = found.user, pins = pins)
+        val error = Mailbox(account, NoStore, temp).run { try { checkError() } finally { close() } }
+        if (error == null) {
+            out.putString(MailContract.EXTRA_ID, keep(account))
+            return MailResult.OK
+        }
+        if (!typed && provider.id == MailProviders.CUSTOM) {
+            out.putString(MailContract.EXTRA_IMAP_HOST, provider.imap.host)
+            out.putInt(MailContract.EXTRA_IMAP_PORT, provider.imap.port)
+            out.putBoolean(MailContract.EXTRA_IMAP_STARTTLS, provider.imap.startTls)
+            out.putString(MailContract.EXTRA_SMTP_HOST, provider.smtp.host)
+            out.putInt(MailContract.EXTRA_SMTP_PORT, provider.smtp.port)
+            out.putBoolean(MailContract.EXTRA_SMTP_STARTTLS, provider.smtp.startTls)
+            out.putString(MailContract.EXTRA_USER, found.user)
+        }
+        return described(error, provider, out)
     }
+
+    /** [error] in [out] for Email Setup (shown, never logged): the server, its words, the certificate. */
+    private fun described(error: CheckError, provider: MailProvider, out: Bundle): MailResult {
+        failed("setup: ${error.failure}")
+        error.server?.let { out.putString(MailContract.EXTRA_SERVER, "${it.host}:${it.port}") }
+        error.detail?.let { out.putString(MailContract.EXTRA_DETAIL, it) }
+        error.certificate?.let {
+            out.putString(MailContract.EXTRA_CERT_SHA256, it.sha256)
+            out.putStringArray(MailContract.EXTRA_CERT_NAMES, it.names.toTypedArray())
+            out.putString(MailContract.EXTRA_CERT_ISSUER, it.issuer)
+            out.putBoolean(MailContract.EXTRA_CERT_SELF_SIGNED, it.selfSigned)
+            out.putBoolean(MailContract.EXTRA_CERT_EXPIRED, it.expired)
+            out.putBoolean(MailContract.EXTRA_CERT_ACCEPTABLE, provider.id == MailProviders.CUSTOM)
+        }
+        return resultOf(error.failure)
+    }
+
+    private fun resultOf(failure: Failure) = when (failure) {
+        Failure.AUTH -> MailResult.AUTH
+        Failure.CERTIFICATE -> MailResult.CERTIFICATE
+        Failure.HOST_UNKNOWN -> MailResult.HOST_UNKNOWN
+        Failure.PORT_CLOSED -> MailResult.PORT_CLOSED
+        Failure.TIMEOUT -> MailResult.TIMEOUT
+        Failure.NO_STARTTLS -> MailResult.NO_STARTTLS
+        Failure.TLS -> MailResult.TLS
+        Failure.NO_PASSWORD_LOGIN -> MailResult.NO_PASSWORD_LOGIN
+        Failure.NETWORK -> MailResult.NETWORK
+    }
+
+    /** [address]'s provider: the table's, else looked up (ISPDB, autoconfig, MX), on the user's Next only. */
+    private fun resolve(address: String): Discovered? =
+        MailProviders.forAddress(address)?.let { Discovered(it, address) } ?: discover(address, HttpConfigFetch, ::mx)
+
+    /** [domain]'s MX hosts from the system's resolver, by preference; none after 5 s or on any error. */
+    private fun mx(domain: String): List<String> {
+        val answer = CompletableFuture<ByteArray?>()
+        val cancel = CancellationSignal()
+        DnsResolver.getInstance().rawQuery(
+            null, domain, DnsResolver.CLASS_IN, TYPE_MX, DnsResolver.FLAG_EMPTY, Executor { it.run() }, cancel,
+            object : DnsResolver.Callback<ByteArray> {
+                override fun onAnswer(bytes: ByteArray, rcode: Int) {
+                    answer.complete(bytes.takeIf { rcode == 0 })
+                }
+
+                override fun onError(error: DnsResolver.DnsException) {
+                    answer.complete(null)
+                }
+            },
+        )
+        return try {
+            answer.get(5, TimeUnit.SECONDS)?.let(::parseMx).orEmpty()
+        } catch (e: Exception) {
+            cancel.cancel()
+            emptyList()
+        }
+    }
+
+    /** The OAuth server [provider]'s accounts sign in with in this build: none without its client. */
+    private fun browserServer(provider: MailProvider): OAuthServer? = OAuthServers.forProvider(provider.id)?.takeIf { clients.containsKey(it.id) }
 
     /** [account], checked, sealed and pushed: its new id. */
     private fun keep(account: MailAccount): String {
@@ -320,7 +435,7 @@ class MailHost(private val app: Context, private val sink: HubSink) {
      * state, all in this process; the page opened by Messages in the system's browser, never a
      * WebView. One at a time: a new one ends the last.
      */
-    private class BrowserFlow(val address: String, val server: OAuthServer, val client: OAuthClient, val loop: Loopback, val verifier: String, val state: String) {
+    private class BrowserFlow(val address: String, val provider: MailProvider, val server: OAuthServer, val client: OAuthClient, val loop: Loopback, val verifier: String, val state: String) {
         @Volatile var heard = false
         val done = CompletableFuture<Pair<MailResult, String?>>()
     }
@@ -328,14 +443,16 @@ class MailHost(private val app: Context, private val sink: HubSink) {
     private val flowLock = Any()
     private var flow: BrowserFlow? = null
 
-    private fun browserBegin(address: String, out: Bundle): MailResult {
-        if (!address.matches(EMAIL)) return MailResult.REFUSED
+    private fun browserBegin(typed: String, out: Bundle): MailResult {
+        val address = normalizedAddress(typed) ?: return MailResult.REFUSED
         if (accounts.values.any { it.account.address.equals(address, ignoreCase = true) }) return MailResult.REFUSED
-        val provider = MailProviders.forAddress(address) ?: return MailResult.UNAVAILABLE
-        val server = OAuthServers.forProvider(provider.id) ?: return MailResult.UNAVAILABLE
-        val client = clients[server.id] ?: return MailResult.UNAVAILABLE
+        // A Google Workspace domain is found by its MX: the same sign-in as Gmail's.
+        val provider = resolve(address)?.provider ?: return MailResult.UNAVAILABLE
+        out.putString(MailContract.EXTRA_PROVIDER, provider.id)
+        val server = browserServer(provider) ?: return MailResult.UNAVAILABLE
+        val client = clients.getValue(server.id)
         val random = SecureRandom()
-        val f = BrowserFlow(address, server, client, Loopback(server.loopbackHost), newSecret(random), newSecret(random))
+        val f = BrowserFlow(address, provider, server, client, Loopback(server.loopbackHost), newSecret(random), newSecret(random))
         synchronized(flowLock) {
             flow?.loop?.close()
             flow = f
@@ -364,12 +481,11 @@ class MailHost(private val app: Context, private val sink: HubSink) {
         }
         // Without a refresh token, the account would stop within the hour.
         val refresh = tokens.refresh ?: return (MailResult.AUTH to null).also { failed("browser sign-in: no refresh token") }
-        val provider = MailProviders.forAddress(f.address) ?: return MailResult.UNAVAILABLE to null
-        val account = MailAccount(f.address, refresh, provider, oauth = f.server.id)
+        val account = MailAccount(f.address, refresh, f.provider, oauth = f.server.id)
         // The sign-in's own access token for the check: no refresh, so no rotated token to lose.
         val source = OAuthTokenSource(f.server, f.client, refresh, HttpTokenPost, System::currentTimeMillis, initial = tokens) {}
-        val checked = attempt { Mailbox(account, NoStore, temp, oauthTokens = source).run { try { check() } finally { close() } } }
-        if (checked != MailResult.OK) return checked to null
+        val error = Mailbox(account, NoStore, temp, oauthTokens = source).run { try { checkError() } finally { close() } }
+        if (error != null) return resultOf(error.failure).also { failed("browser sign-in: ${error.failure}") } to null
         if (accounts.values.any { it.account.address.equals(f.address, ignoreCase = true) }) return MailResult.REFUSED to null
         return MailResult.OK to keep(account)
     }
@@ -523,13 +639,14 @@ class MailHost(private val app: Context, private val sink: HubSink) {
     }
 
     private companion object {
-        val EMAIL = Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")
-
         /** The names Email Setup shows for the browser's sign-in, by OAuth server (D). */
         val BROWSER_NAMES = mapOf(OAuthServers.GOOGLE.id to "Gmail", OAuthServers.MICROSOFT.id to "Outlook")
 
         /** How long the redirect is listened for: a sign-in with a second factor takes minutes (D). */
         const val BROWSER_WAIT_MS = 10 * 60_000L
+
+        /** The DNS type of an MX record (RFC 1035 §3.2.2); DnsResolver names A and AAAA only. */
+        const val TYPE_MX = 15
 
         fun hubKeys(x: Bundle) = dev.bold7.hub.data.itemKeys(x.getStringArray(HubContract.EXTRA_ACCOUNTS), x.getStringArray(HubContract.EXTRA_KEYS))
     }

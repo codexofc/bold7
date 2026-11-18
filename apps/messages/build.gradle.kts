@@ -26,6 +26,8 @@ dependencies {
     implementation(project(":core:platform"))
     // The components of OS 7 in views: menus, list header, dialogs, search field.
     implementation(project(":core:ui"))
+    // The other apps' BBOS 7 icons in the list's rows, drawn as the home's grid draws them (B14).
+    implementation(project(":core:icons"))
     // The Hub's model, its pure list and its provider's contract; the store stays in apps/hub's process.
     implementation(project(":core:hub-data"))
     // The showcase's made-up people and messages, shown instead of the user's while bold7_showcase is 1.

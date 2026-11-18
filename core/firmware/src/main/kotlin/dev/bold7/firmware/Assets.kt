@@ -236,6 +236,8 @@ internal class Assets(
         png(Resize.resize(image(File(theme, "folder.png")), 52, 52), "$dir/msg_folder.png")
         for (img in listOf("play", "pause", "stop", "previous", "play_focus", "pause_focus", "stop_focus", "previous_focus", "next_disabled"))
             copy(File(theme, "$img.png"), "$dir/msg_player_$img.png")
+        copy(File(tree, "images/net_rim_bb_facebook_resource/res/facebook_ML_40.png"), "$dir/msg_facebook_icons.png")
+        copy(File(tree, "images/net_rim_bb_twitter_resources_small/res/twitter_ML_icons40.png"), "$dir/msg_twitter_icons.png")
     }
 
     fun phone() {
@@ -483,7 +485,8 @@ internal class Assets(
             "lightning_bolt_01", "lightning_bolt_02", "lightning_bolt_03", "lightning_bolt_04", "lightning_bolt_05",
             "banner_search_button", "banner_voice_button",
             "homescreen_mask_p", "folder", "net_rim_bb_ribbon_app",
-            "background_folderview", "icon_move_underlay", "new_overlay",
+            "background_folder_1", "background_folder_2", "background_folder_3", "background_folder_4",
+            "background_folder_5", "background_folder_bottom", "icon_move_underlay", "new_overlay",
             "sm_launch", "sm_delete", "sm_add_folder", "sm_delete_folder",
             "bs1/banner_background~focus",
             "bs1/sm_mark_favourite", "bs1/sm_unmark_favourite", "bs1/sm_move", "bs1/sm_move_to_folder", "bs1/sm_hide",

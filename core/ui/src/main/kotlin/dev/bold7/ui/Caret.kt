@@ -8,6 +8,9 @@ import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
+import android.text.Selection
+import android.text.Spannable
+import android.text.method.ArrowKeyMovementMethod
 import android.widget.TextView
 import dev.bold7.design.Focus
 
@@ -55,4 +58,20 @@ class Caret(private val ascent: Int) : Drawable() {
 /** Gives this field OS 7's caret, after its typeface and its size are set. */
 fun TextView.useCaret() {
     textCursorDrawable = Caret(-paint.fontMetricsInt.ascent)
+}
+
+/**
+ * A form's field, as OS 7's: the trackpad goes from field to field, up from the first line and
+ * down from the last ([leavesField]); Android's movement would spend a step taking the caret to
+ * the text's start or end first. Within a field's lines and sideways, Android's.
+ */
+object FieldMovement : ArrowKeyMovementMethod() {
+    override fun up(widget: TextView, buffer: Spannable): Boolean = !leaves(widget, buffer, false) && super.up(widget, buffer)
+
+    override fun down(widget: TextView, buffer: Spannable): Boolean = !leaves(widget, buffer, true) && super.down(widget, buffer)
+
+    private fun leaves(widget: TextView, buffer: Spannable, down: Boolean): Boolean {
+        val layout = widget.layout ?: return false
+        return leavesField(layout.getLineForOffset(Selection.getSelectionEnd(buffer).coerceAtLeast(0)), layout.lineCount, down)
+    }
 }

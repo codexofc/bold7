@@ -24,9 +24,10 @@ APP_PROCESS=${APP_PROCESS:-/system/bin/app_process}
 FONTS_XML=${FONTS_XML:-/system/etc/fonts.xml}
 KEPT=$S/extrait
 WANT=9900M_PBr7.1.0_rel2807_PL5.1.0.692_A7.1.0.1033_Wind.exe
-NEEDS="Bold7 needs the official BlackBerry Bold 9900 OS 7.1 file: put $WANT (or the official BlackBerry Simulator 7.1.0.318 for the 9900) in your Download folder, then install Bold7 again."
+NEEDS="Bold7 needs the official BlackBerry Bold 9900 OS 7.1 file: put $WANT (or the official BlackBerry Simulator 7.1.0.318 for the 9900) in your Download folder, as it is, in a folder inside it, or still in its zip, then install Bold7 again."
 run() { CLASSPATH=$JAR "$APP_PROCESS" /system/bin dev.bold7.firmware.ExtractorKt "$@"; }
 fail() {
+    rm -rf "$MOD/9900"
     echo "$*" >"$MOD/why"
     rm -rf "$MOD/extract" "$MOD/stock"
     exit 1
@@ -39,11 +40,36 @@ if [ ! -f "$JAR" ]; then
 fi
 stamp=$(sha256sum "$JAR" | cut -d' ' -f1)
 
+# The 9900's file still in a zip (the one shared beside Bold7, downloaded and never unpacked): the
+# entry of an official file's size is unpacked into the module's folder, then found there by size and
+# sha256 as any other; removed once extracted. Only when nothing was found and nothing kept.
+ZIPPED=$MOD/9900
+from_zip() {
+    local z name
+    for z in "$DOWNLOAD"/*.zip "$DOWNLOAD"/*/*.zip; do
+        [ -f "$z" ] || continue
+        # unzip -l: length, date, time, then the name, which may hold spaces (the simulator's).
+        name=$(/system/bin/unzip -l "$z" 2>/dev/null | awk '$1 == 273797496 || $1 == 240527751 { $1 = $2 = $3 = ""; sub(/^ +/, ""); print; exit }')
+        [ -n "$name" ] || continue
+        echo "[2/5] Finding your BlackBerry 9900 file... in ${z##*/}, unpacking it"
+        rm -rf "$ZIPPED"
+        mkdir -p "$ZIPPED" && /system/bin/unzip -o -j -q "$z" "$name" -d "$ZIPPED" 2>/dev/null && return 0
+        rm -rf "$ZIPPED"
+    done
+    return 1
+}
+
 file=$(run find "$DOWNLOAD" 2>"$MOD/find.err")
 rc=$?
+kept=
+[ -n "$stamp" ] && [ "$(cat "$KEPT/.extractor" 2>/dev/null)" = "$stamp" ] && kept=1
+if [ $rc = 3 ] && [ -z "$kept" ] && from_zip; then
+    file=$(run find "$ZIPPED" 2>>"$MOD/find.err")
+    rc=$?
+fi
 if [ $rc = 0 ]; then
     echo "[2/5] Finding your BlackBerry 9900 file... found (${file##*/})"
-elif [ $rc = 3 ] && [ -n "$stamp" ] && [ "$(cat "$KEPT/.extractor" 2>/dev/null)" = "$stamp" ]; then
+elif [ $rc = 3 ] && [ -n "$kept" ]; then
     echo "[2/5] Finding your BlackBerry 9900 file... not needed, Bold7 kept what it took from it last time"
 elif [ $rc = 3 ]; then
     echo "[2/5] Finding your BlackBerry 9900 file... not found"
@@ -60,7 +86,7 @@ if [ $rc = 0 ]; then
         fail "The extraction stopped: $(cat "$MOD/extract.err"). It needs about 600 MB free: if your phone is almost full, make room, then install Bold7 again."
     { mkdir -p "$S" && chmod 700 "$S" && rm -rf "$KEPT" && mv "$MOD/extract/gen" "$KEPT" && echo "$stamp" >"$KEPT/.extractor"; } ||
         fail "Bold7 could not keep the extracted files. Restart your phone, then install Bold7 again."
-    rm -rf "$MOD/extract"
+    rm -rf "$MOD/extract" "$ZIPPED"
 fi
 
 # The phone's own fonts.xml. On an update, Bold7's is mounted over it: the stock one is read beneath,

@@ -38,7 +38,9 @@ import dev.bold7.ui.themeBitmap
  * Messages Options (Messages > Menu > Options): "Messages Options" in an Options band, the rows of
  * sim-294 and sim-295 (C) that do something in Bold7: Message Display and Actions (Hide Sent
  * Messages, Confirm Delete, Confirm Mark Prior Read, guide 7.1 p. 87-89, B), Inbox Management
- * (a check box per mail account, then Text Messages, p. 87), Email Account Management (its
+ * (a check box per mail account, then Text Messages, p. 87, then one per other app, D), Message
+ * Sources (mine, D: a check box per source, the texts, each mail account, the missed calls, the
+ * invitations, each app; one turned off no longer enters the Hub), Email Account Management (its
  * own screen) and Text Messaging (sim-295), which opens the settings of Google Messages, the engine of
  * the texts and of their chat features (D). The others (Email Preferences, Email Filters, Email
  * Reconciliation, Recent Contact Management, Spell Check, Emergency Alert Messages) change nothing
@@ -57,9 +59,13 @@ class MessagesOptionsActivity : Activity() {
     private var saved = MessagesOptions()
     private var options = saved
     private var accounts: List<MailAccountInfo> = emptyList()
+    /** Inbox Management's apps ([messagingApps]) and Message Sources' ([sourceApps]), with their names. */
+    private var apps: List<String> = emptyList()
+    private var sourceApps: List<String> = emptyList()
+    private var names: Map<String, String> = emptyMap()
     private var focus = 0
     private var menu: Menu<Act>? = null
-    private val icons = arrayOfNulls<Bitmap>(4)
+    private val icons = arrayOfNulls<Bitmap>(5)
 
     private lateinit var title: TitleBar
     private lateinit var list: ListView
@@ -108,15 +114,23 @@ class MessagesOptionsActivity : Activity() {
         // No status bar of Android's: the 9900 shows the title bar alone (sim-294, C).
         window.hideStatusBar()
         render()
-        // The options and the accounts, read off the main thread (the store's copy is already loaded).
+        // The options, the accounts and the apps the Hub holds, read off the main thread (the store's copy is already loaded).
         graph.ioThread.post {
             val read = graph.store.options
             val mail = graph.mail.accounts()?.list.orEmpty()
-            val images = listOf("msg_cat_display", "msg_cat_inbox", "msg_cat_accounts", "msg_cat_texts").map { themeBitmap(applicationContext, it) }
+            // Message Sources' image: Inbox Management's (D).
+            val images = listOf("msg_cat_display", "msg_cat_inbox", "msg_cat_inbox", "msg_cat_accounts", "msg_cat_texts").map { themeBitmap(applicationContext, it) }
+            val hub = graph.reader.read()?.copy(options = read)
+            val shown = hub?.let(::messagingApps).orEmpty()
+            val sources = hub?.let { sourceApps(it, graph.looks::installed) } ?: read.disabledSources.filter(::isAppSource)
+            val named = (shown + sources).associateWith(graph.looks::name)
             runOnUiThread {
                 saved = read
                 options = read
                 accounts = mail
+                apps = shown
+                sourceApps = sources
+                names = named
                 images.forEachIndexed { i, b -> icons[i] = b }
                 render()
             }
@@ -140,7 +154,11 @@ class MessagesOptionsActivity : Activity() {
         if (screen == OptionsScreen.LIST) return
         val labels = when (screen) {
             OptionsScreen.DISPLAY -> listOf(R.string.opt_hide_sent, R.string.opt_confirm_delete, R.string.opt_confirm_prior).map(::getString) to options.displayChecks().map { it.second }
-            else -> (accounts.map { it.address } + getString(R.string.opt_text_messages)) to options.inboxChecks(accounts.map { it.id })
+            OptionsScreen.SOURCES -> (
+                listOf(getString(R.string.opt_text_messages)) + accounts.map { it.address } +
+                    listOf(getString(R.string.opt_missed_calls), getString(R.string.opt_invitations)) + sourceApps.map(::nameOf)
+                ) to options.sourceChecks(accounts.map { it.id }, sourceApps)
+            else -> (accounts.map { it.address } + getString(R.string.opt_text_messages) + apps.map(::nameOf)) to options.inboxChecks(accounts.map { it.id }, apps)
         }
         while (checks.childCount < labels.first.size) checks.addView(CheckBoxView(this).apply {
             val at = checks.childCount
@@ -150,10 +168,13 @@ class MessagesOptionsActivity : Activity() {
         labels.first.forEachIndexed { i, label -> (checks.getChildAt(i) as CheckBoxView).bind(label, labels.second[i], lit = i == focus && menu == null) }
     }
 
+    private fun nameOf(app: String) = names[app] ?: app
+
     private fun count() = when (screen) {
-        OptionsScreen.LIST -> 4
+        OptionsScreen.LIST -> 5
         OptionsScreen.DISPLAY -> 3
-        OptionsScreen.INBOX -> accounts.size + 1
+        OptionsScreen.INBOX -> accounts.size + 1 + apps.size
+        OptionsScreen.SOURCES -> sourceIds(accounts.map { it.id }, sourceApps).size
     }
 
     private fun open(to: OptionsScreen) {
@@ -167,7 +188,8 @@ class MessagesOptionsActivity : Activity() {
             OptionsScreen.LIST -> when (focus) {
                 0 -> open(OptionsScreen.DISPLAY)
                 1 -> open(OptionsScreen.INBOX)
-                2 -> if (!locked()) startActivity(Intent(this, MailAccountsActivity::class.java))
+                2 -> open(OptionsScreen.SOURCES)
+                3 -> if (!locked()) startActivity(Intent(this, MailAccountsActivity::class.java))
                 else -> if (!locked()) textSettings()
             }
             else -> toggle()
@@ -175,7 +197,7 @@ class MessagesOptionsActivity : Activity() {
     }
 
     private fun toggle() {
-        options = options.toggled(screen, focus, accounts.map { it.id })
+        options = options.toggled(screen, focus, accounts.map { it.id }, if (screen == OptionsScreen.SOURCES) sourceApps else apps)
         render()
     }
 
@@ -270,6 +292,7 @@ class MessagesOptionsActivity : Activity() {
         private val texts = listOf(
             R.string.options_display to R.string.options_display_hint,
             R.string.options_inbox to R.string.options_inbox_hint,
+            R.string.options_sources to R.string.options_sources_hint,
             R.string.accounts_title to R.string.options_accounts_hint,
             R.string.options_texts to R.string.options_texts_hint,
         )

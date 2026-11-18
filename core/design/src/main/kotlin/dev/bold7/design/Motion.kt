@@ -90,6 +90,9 @@ object Durations {
     /** An app's status message (sim-42), by eye. */
     const val STATUS_MS = Eyeballed.STATUS_MS
 
+    /** "Call …?" deaf to the clicks of its first moments, by eye (PromptActivity). */
+    const val CALL_PROMPT_ARM_MS = Eyeballed.CALL_PROMPT_ARM_MS
+
     /** animation-duration-portrait. */
     const val PORTRAIT_MS = 250L
 

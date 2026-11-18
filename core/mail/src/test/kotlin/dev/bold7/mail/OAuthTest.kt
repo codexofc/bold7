@@ -102,6 +102,15 @@ class OAuthTest {
     }
 
     @Test
+    fun `microsoft's tenant is personal accounts for now, work and school accounts waiting behind a constant`() {
+        assertEquals("consumers", OAuthServers.MICROSOFT_TENANT)
+        assertTrue(OAuthServers.MICROSOFT.token.startsWith("https://login.microsoftonline.com/consumers/"))
+        // Microsoft 365 needs the common tenant: no browser sign-in for it while consumers is set.
+        assertNull(OAuthServers.forProvider(MailProviders.MICROSOFT_365.id))
+        assertEquals("https://login.microsoftonline.com/common/oauth2/v2.0/token", microsoftServer("common").token)
+    }
+
+    @Test
     fun `only the redirect of this flow is taken`() {
         assertEquals(Redirect.Code("4/abc"), parseRedirect("GET /?state=s1&code=4%2Fabc&scope=x HTTP/1.1", "s1"))
         assertEquals(Redirect.Denied("access_denied"), parseRedirect("GET /?error=access_denied&state=s1 HTTP/1.1", "s1"))

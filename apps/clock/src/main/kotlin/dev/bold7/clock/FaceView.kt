@@ -43,7 +43,8 @@ class FaceView(context: Context) : View(context) {
         const val PILL_BASELINE = 197 // from the face's top (C)
         const val BAR_TEXT = 33
         const val BAR_GAP = 20 // between the indicator and the time (C)
-        const val PILL_ROOM = 100f // the pill's room for its text: the day, "Fri 16", in the face (C)
+        // The right pill's inside, x 215 to 339 of face_370.png (A): "Wed 18", the widest day, is 103 px in BBAlpha Sans 27.
+        const val PILL_ROOM = 125f
         const val LCD_MARGIN = 16
             }
 

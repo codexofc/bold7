@@ -126,10 +126,21 @@ fun displayStyleMenu() = Menu(listOf(MenuEntry(Act.STYLE_GROUP), MenuEntry(Act.S
 
 /**
  * The full menu as opened by the Menu key: Switch Application, then [fullMenu], then Help and Close
- * under Options (sim-289, sim-290, C), the first action focused.
+ * under Options (sim-289, sim-290, C), focused on [menuFocus].
  */
-fun menuOf(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): Menu<Act> =
-    Menu(fullMenu(line, view, range) + MenuEntry(Act.HELP) + MenuEntry(Act.CLOSE), highlighted = 0).withSwitchApplication(Act.SWITCH)
+fun menuOf(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): Menu<Act> {
+    val entries = fullMenu(line, view, range) + MenuEntry(Act.HELP) + MenuEntry(Act.CLOSE)
+    return Menu(entries, highlighted = menuFocus(entries, line, range)).withSwitchApplication(Act.SWITCH)
+}
+
+/**
+ * The entry of [entries] a menu over [line] opens on, its default action (docs/BBOS7-VISUEL.md §4):
+ * on a date field Compose Email, as the short menu of a date field focuses Compose (vid-06, C) and
+ * Messages' full menu Compose Email (sim-44, sim-289, C; the short menu the same, D); else the
+ * first action, Open on a message.
+ */
+fun menuFocus(entries: List<MenuEntry<Act>>, line: InboxLine?, range: Boolean = false): Int =
+    if (line is DayLine && !range) entries.indexOfFirst { it.action == Act.COMPOSE_EMAIL }.coerceAtLeast(0) else 0
 
 /** The short menu (the trackpad held): the same actions, Full Menu last (D: the 9900's for a message is not captured). */
 fun shortMenu(line: InboxLine?, view: Filter = Filter.ALL, range: Boolean = false): List<MenuEntry<Act>> =
@@ -212,7 +223,7 @@ private fun HubItem.sameRow(other: HubItem) =
  * or deleted, the notifications the list hides as repeating them go too, so that the app's own
  * action reads them and Android's shade loses them. Never a deleted item.
  */
-fun writeKeys(request: Request, snapshot: Snapshot, filter: Filter, search: String?, zone: ZoneId, account: String? = null, searchIn: SearchIn = SearchIn.ANY): List<ItemKey> {
+fun writeKeys(request: Request, snapshot: Snapshot, filter: Filter, search: String?, zone: ZoneId, account: String? = null, searchIn: SearchIn = SearchIn.ANY, app: String? = null): List<ItemKey> {
     val items = snapshot.items.filter { !it.deleted }
     val targets: List<HubItem> = when (request.act) {
         Act.MARK_UNREAD -> request.rows.filter { !it.deleted }
@@ -225,7 +236,7 @@ fun writeKeys(request: Request, snapshot: Snapshot, filter: Filter, search: Stri
             val day = request.day ?: return emptyList()
             // By message, not by row: a conversation shown under a later day loses its messages
             // of that day and before (D).
-            snapshot.shown(filter, search, account, searchIn).filter {
+            snapshot.shown(filter, search, account, searchIn, app).filter {
                 it.timestamp <= request.asOf && !Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate().isAfter(day)
             }
         }
@@ -255,6 +266,9 @@ sealed interface Opening {
     /** The notification's contentIntent while it lives, else its [app]. */
     data class Notification(val key: String, val app: String?) : Opening
 
+    /** A messaging app's conversation, the notification [key]'s, in the thread of OS 7. */
+    data class AppThread(val key: String, val app: String) : Opening
+
     /**
      * The SMS app on the conversation with [addresses]: one, or every member of a group (the Hub
      * joins them with ";", as smsto: does), never a single member of a group; none known, the SMS app.
@@ -279,7 +293,10 @@ sealed interface Opening {
 }
 
 fun opening(item: HubItem): Opening = when (item.kind) {
-    ItemKind.NOTIFICATION -> item.conversationId?.let { Opening.Notification(it, item.folder) } ?: Opening.None
+    ItemKind.NOTIFICATION -> item.conversationId?.let { key ->
+        // MessagingStyle: a conversation, which the thread shows; anything else in its app.
+        if (item.messaging && item.folder != null) Opening.AppThread(key, item.folder!!) else Opening.Notification(key, item.folder)
+    } ?: Opening.None
     ItemKind.SMS, ItemKind.MMS -> Opening.Conversation(item.address.orEmpty().split(';').filter { it.isNotBlank() })
     ItemKind.MISSED_CALL -> item.address?.takeIf { it.isNotBlank() }?.let(Opening::Call) ?: Opening.CallLog
     ItemKind.INVITATION -> item.sourceKey.toLongOrNull()?.let(Opening::Event) ?: Opening.None

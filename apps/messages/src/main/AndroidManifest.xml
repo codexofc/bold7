@@ -172,6 +172,14 @@
             android:exported="true"
             android:permission="dev.bold7.permission.READ_TEXT_CONSENT" />
 
+        <!-- The sources turned off in Message Sources, read by the Hub (call "disabled"):
+             exported behind READ_HUB only, which the provider checks again. -->
+        <provider
+            android:name=".SourcesProvider"
+            android:authorities="dev.bold7.messages.sources"
+            android:exported="true"
+            android:permission="dev.bold7.permission.READ_HUB" />
+
         <!-- Mail: reading, Compose Email and Email Account Management, started by the
              inbox only, never over the lock screen. The accounts and the network are apps/hub's
              (MailContract): this app has no INTERNET. -->

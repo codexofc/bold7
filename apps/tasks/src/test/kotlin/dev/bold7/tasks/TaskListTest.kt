@@ -51,6 +51,17 @@ class TaskListTest {
         assertEquals(Entry(taskc), s.reduce(ListEvent.Loaded(all, SortBy.PRIORITY)).focused)
     }
 
+    @Test fun aTaskJustCreatedTakesTheFocusWhetherTheListReloadsBeforeOrAfter() {
+        // sim-277, sim-278, sim-280 (C): Taskc, Aard and Zulu, each focused once added.
+        val abc = task(9, "Abc")
+        val focusedOnAddTask = loaded().reduce(ListEvent.Moved(0))
+        assertEquals(Entry(abc), focusedOnAddTask.reduce(ListEvent.Created(9)).reduce(ListEvent.Loaded(all + abc)).focused)
+        assertEquals(Entry(abc), focusedOnAddTask.reduce(ListEvent.Loaded(all + abc)).reduce(ListEvent.Created(9)).focused)
+        // Asked once: the reload after it keeps the focus where the trackpad takes it.
+        val moved = focusedOnAddTask.reduce(ListEvent.Created(9)).reduce(ListEvent.Loaded(all + abc)).reduce(ListEvent.Moved(0))
+        assertEquals(AddTask, moved.reduce(ListEvent.Loaded(all + abc)).focused)
+    }
+
     @Test fun theFocusMovesAndStopsAtTheEnds() {
         var s = loaded()
         repeat(20) { s = s.reduce(ListEvent.Step(down = true)) }

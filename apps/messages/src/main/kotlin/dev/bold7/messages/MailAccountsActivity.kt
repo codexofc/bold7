@@ -42,10 +42,13 @@ import dev.bold7.ui.themeImage
 /**
  * Email Account Management (Messages > Options, guide 7.1 p. 90, B): the accounts of
  * apps/hub, a row each, then "Internet Mail Account", which opens Email Setup ("follow the screens
- * to set up your email address", B): the address and its app password (decision D4 of
- * apps/hub), the servers only when apps/hub does not know the domain, then Next; apps/hub logs
- * in to both servers before it keeps anything, and the screen says the confirmation (B) or why
- * not. Gmail and Outlook can also sign in through the system's browser (OAuth):
+ * to set up your email address", B): the address and its password (or the app password its
+ * provider asks for), then Next; apps/hub knows the provider or looks its servers up, and the
+ * servers (login name and STARTTLS each) only show when it finds none; apps/hub logs in to both
+ * servers before it keeps anything, and the screen says the confirmation (B) or what to do: what
+ * the provider needs, which server failed and why. A certificate the phone does not trust, on
+ * typed or found servers, is shown (names, issuer, SHA-256) and accepted for that server only,
+ * never by default (the 9900's Server Exceptions, guide 7.1 p. 172, B: D here). Gmail and Outlook can also sign in through the system's browser (OAuth):
  * apps/hub gives the page and listens for its redirect, the screen waits for it once back.
  * The click on an account offers Edit (its signature, "Click an email account. Click Edit.", B)
  * and Delete, its mail staying on the server. Screens, rows and words are mine (D): the 9900 set
@@ -73,6 +76,9 @@ class MailAccountsActivity : Activity() {
     private lateinit var imapPort: EditText
     private lateinit var smtpHost: EditText
     private lateinit var smtpPort: EditText
+    private lateinit var user: EditText
+    private lateinit var imapTls: CheckBoxView
+    private lateinit var smtpTls: CheckBoxView
     private lateinit var next: TextView
     private lateinit var browserHint: TextView
     private lateinit var browserButton: TextView
@@ -99,16 +105,22 @@ class MailAccountsActivity : Activity() {
         imapPort = field(0, InputType.TYPE_CLASS_NUMBER)
         smtpHost = field(InputType.TYPE_TEXT_VARIATION_URI)
         smtpPort = field(0, InputType.TYPE_CLASS_NUMBER)
+        user = field(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS).apply { hint = getString(R.string.setup_user_hint) }
+        imapTls = security { s -> s.copy(imapSecurity = !s.imapStartTls) }
+        smtpTls = security { s -> s.copy(smtpSecurity = !s.smtpStartTls) }
         next = button(R.string.setup_continue) { submit() }
         browserButton = button(R.string.setup_browser) { submitBrowser() }
         browserHint = hint("")
         servers = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
+            addView(line(R.string.setup_user, user))
             addView(line(R.string.setup_imap, imapHost))
             addView(line(R.string.setup_port, imapPort))
+            addView(imapTls, LinearLayout.LayoutParams(match, CheckBoxView.HEIGHT))
             addView(line(R.string.setup_smtp, smtpHost))
             addView(line(R.string.setup_port, smtpPort))
+            addView(smtpTls, LinearLayout.LayoutParams(match, CheckBoxView.HEIGHT))
         }
         form = ScrollView(this).apply {
             visibility = View.GONE
@@ -163,7 +175,7 @@ class MailAccountsActivity : Activity() {
         })
         // No status bar of Android's: the 9900 shows the title bar alone (sim-296, C).
         window.hideStatusBar()
-        listOf(address, password, imapHost, imapPort, smtpHost, smtpPort).forEach {
+        listOf(address, password, user, imapHost, imapPort, smtpHost, smtpPort).forEach {
             it.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) = Unit
@@ -200,6 +212,23 @@ class MailAccountsActivity : Activity() {
         setTextColor(ListColors.Subtitle)
         setPadding(9, 12, 9, 0)
         this.text = text
+    }
+
+    /** Use STARTTLS for one server (D): [toggle] on the click; never in clear (Endpoint). */
+    private fun security(toggle: (SetupState) -> SetupState) = CheckBoxView(this).apply {
+        isFocusable = true
+        isClickable = true
+        setOnClickListener {
+            setup = setup?.let(toggle)
+            bindSecurity()
+        }
+        setOnFocusChangeListener { _, _ -> bindSecurity() }
+    }
+
+    private fun bindSecurity() {
+        val s = setup ?: return
+        imapTls.bind(getString(R.string.setup_starttls), s.imapStartTls, lit = imapTls.isFocused)
+        smtpTls.bind(getString(R.string.setup_starttls), s.smtpStartTls, lit = smtpTls.isFocused)
     }
 
     /** OS 7's button (ui_button, its focused image when the trackpad is on it; A). */
@@ -306,13 +335,14 @@ class MailAccountsActivity : Activity() {
         servers.visibility = View.GONE
         imapPort.setText("993")
         smtpPort.setText("465")
+        bindSecurity()
         bindBrowser()
         address.requestFocus()
     }
 
     private fun closeSetup() {
         setup = null
-        listOf(address, password, imapHost, smtpHost).forEach { it.setText("") }
+        listOf(address, password, user, imapHost, smtpHost).forEach { it.setText("") }
         title.bind(getString(R.string.accounts_title))
         form.visibility = View.GONE
         list.visibility = View.VISIBLE
@@ -364,20 +394,21 @@ class MailAccountsActivity : Activity() {
         setup = s.copy(
             address = address.text.toString(), password = password.text.toString(),
             imapHost = imapHost.text.toString(), imapPort = imapPort.text.toString(),
-            smtpHost = smtpHost.text.toString(), smtpPort = smtpPort.text.toString(),
+            smtpHost = smtpHost.text.toString(), smtpPort = smtpPort.text.toString(), user = user.text.toString(),
         )
+        bindSecurity()
     }
 
     private fun submit() {
         val s = setup ?: return
         if (s.busy || locked()) return
-        if (!s.ready) return status(this, getString(if (s.servers) R.string.setup_servers else R.string.setup_invalid))
+        if (!s.ready) return status(this, getString(if (s.servers) R.string.setup_servers else R.string.setup_invalid_address))
         setup = s.copy(busy = true, notice = null)
         status(this, getString(R.string.setup_busy))
         val g = graph
         g.ioThread.post {
-            val (result, _) = g.mail.add(s)
-            runOnUiThread { answered(s.address, result) }
+            val (answer, _) = g.mail.add(s)
+            runOnUiThread { answered(s.address, answer) }
         }
     }
 
@@ -393,9 +424,9 @@ class MailAccountsActivity : Activity() {
         setup = s.copy(busy = true, notice = null)
         val g = graph
         g.ioThread.post {
-            val (result, url) = g.mail.browserBegin(s.address)
+            val (answer, url) = g.mail.browserBegin(s.address)
             runOnUiThread {
-                if (result != MailResult.OK || url == null) return@runOnUiThread answered(s.address, result)
+                if (answer.result != MailResult.OK || url == null) return@runOnUiThread answered(s.address, answer)
                 val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     // A Custom Tab without the androidx library: the session extra alone asks for one.
                     .putExtras(Bundle().apply { putBinder("android.support.customtabs.extra.SESSION", null) })
@@ -417,34 +448,98 @@ class MailAccountsActivity : Activity() {
         val g = graph
         g.ioThread.post {
             val (result, _) = g.mail.browserFinish()
-            runOnUiThread { answered(s.address, result) }
+            runOnUiThread { answered(s.address, SetupAnswer(result)) }
         }
     }
 
-    private fun answered(typed: String, result: MailResult) {
-        val now = (setup ?: return).answered(result)
+    private fun answered(typed: String, answer: SetupAnswer) {
+        val now = (setup ?: return).answered(answer)
         setup = now
-        if (result == MailResult.OK) {
+        if (answer.result == MailResult.OK) {
             status(this, getString(R.string.setup_done, typed.trim()))
             closeSetup()
             return
         }
+        answer.found?.let {
+            // Servers apps/hub found and could not log in to: shown, to be corrected.
+            imapHost.setText(now.imapHost)
+            imapPort.setText(now.imapPort)
+            smtpHost.setText(now.smtpHost)
+            smtpPort.setText(now.smtpPort)
+            user.setText(now.user)
+        }
         if (now.servers && servers.visibility != View.VISIBLE) {
             servers.visibility = View.VISIBLE
+            bindSecurity()
             bindBrowser()
             imapHost.requestFocus()
         }
-        status(this, getString(when (now.notice) {
-            SetupNotice.AUTH -> R.string.setup_auth
-            SetupNotice.AUTH_GMAIL -> R.string.setup_auth_gmail
-            SetupNotice.AUTH_ICLOUD -> R.string.setup_auth_icloud
-            SetupNotice.CERTIFICATE -> R.string.setup_certificate
-            SetupNotice.NETWORK -> R.string.setup_network
-            SetupNotice.SERVERS -> R.string.setup_servers
-            SetupNotice.UNAVAILABLE -> R.string.setup_browser_unavailable
-            SetupNotice.CANCELLED -> R.string.setup_browser_cancelled
-            SetupNotice.REFUSED, SetupNotice.INVALID, null -> R.string.setup_refused
-        }))
+        val cert = now.certificate
+        if (now.notice == SetupNotice.CERTIFICATE && cert != null) return askCertificate(cert)
+        val server = now.server.orEmpty()
+        val text = when (now.notice) {
+            SetupNotice.AUTH -> if (server.isEmpty()) getString(R.string.setup_auth) else getString(R.string.setup_auth_server, server)
+            SetupNotice.PASSWORD, SetupNotice.INVALID -> getString(R.string.setup_invalid)
+            SetupNotice.AUTH_GMAIL -> getString(R.string.setup_auth_gmail)
+            SetupNotice.AUTH_ICLOUD -> getString(R.string.setup_auth_icloud)
+            SetupNotice.AUTH_YAHOO -> getString(R.string.setup_auth_yahoo)
+            SetupNotice.AUTH_AOL -> getString(R.string.setup_auth_aol)
+            SetupNotice.AUTH_GMX -> getString(R.string.setup_auth_gmx)
+            SetupNotice.AUTH_WEBDE -> getString(R.string.setup_auth_webde)
+            SetupNotice.AUTH_MAILCOM -> getString(R.string.setup_auth_mailcom)
+            SetupNotice.AUTH_ZOHO -> getString(R.string.setup_auth_zoho)
+            SetupNotice.AUTH_YANDEX -> getString(R.string.setup_auth_yandex)
+            SetupNotice.AUTH_ORANGE -> getString(R.string.setup_auth_orange)
+            SetupNotice.BROWSER -> getString(R.string.setup_outlook_browser)
+            SetupNotice.BROWSER_OFF -> getString(R.string.setup_outlook_off)
+            SetupNotice.WORK_ACCOUNT -> getString(R.string.setup_work_account)
+            SetupNotice.BRIDGE -> getString(R.string.setup_proton)
+            SetupNotice.CERTIFICATE -> getString(R.string.setup_certificate)
+            SetupNotice.HOST_UNKNOWN -> getString(R.string.setup_host_unknown, server.substringBeforeLast(':'))
+            SetupNotice.PORT_CLOSED -> getString(R.string.setup_port_closed, server)
+            SetupNotice.TIMEOUT -> getString(R.string.setup_timeout, server)
+            SetupNotice.NO_STARTTLS -> getString(R.string.setup_no_starttls, server)
+            SetupNotice.TLS -> getString(R.string.setup_tls, server)
+            SetupNotice.NO_PASSWORD_LOGIN -> getString(R.string.setup_no_password_login, server)
+            SetupNotice.NETWORK -> getString(R.string.setup_network)
+            SetupNotice.SERVERS -> getString(R.string.setup_servers)
+            SetupNotice.UNAVAILABLE -> getString(R.string.setup_browser_unavailable)
+            SetupNotice.CANCELLED -> getString(R.string.setup_browser_cancelled)
+            SetupNotice.REFUSED, null -> getString(R.string.setup_refused)
+        }
+        // The server's own words under a refused login: shown here only, never logged.
+        val said = now.detail?.takeIf { now.notice == SetupNotice.AUTH || now.notice?.name?.startsWith("AUTH_") == true }
+        notice(if (said == null) text else text + "\n" + getString(R.string.setup_server_said, said))
+    }
+
+    /**
+     * What went wrong and what to do: a dialog kept until OK, as OS 7 says an error (D): the
+     * provider's steps are too long for a status that leaves after two seconds.
+     */
+    private fun notice(text: String) =
+        Bold7Dialog(this, text, listOf(getString(dev.bold7.ui.R.string.ui_ok)), DialogIcon.EXCLAMATION, onButton = {}).show()
+
+    /**
+     * A certificate the phone does not trust: its names, issuer and SHA-256 shown; Accept keeps it
+     * for this server alone and tries again, Cancel (focused) keeps nothing. A known provider's is
+     * only said, never accepted.
+     */
+    private fun askCertificate(c: CertificatePrompt) {
+        val why = getString(
+            when {
+                c.selfSigned -> R.string.setup_cert_self_signed
+                c.expired -> R.string.setup_cert_expired
+                else -> R.string.setup_cert_untrusted
+            },
+        )
+        val names = c.names.joinToString(", ")
+        if (!c.acceptable) return notice(getString(R.string.setup_cert_refused, c.server, why, names, c.sha256))
+        val text = getString(R.string.setup_cert_question, c.server, why, names, c.issuer, c.sha256)
+        Bold7Dialog(this, text, listOf(getString(R.string.setup_cert_accept), getString(R.string.button_cancel)), DialogIcon.EXCLAMATION, focused = 1, onButton = {
+            if (it != 0 || locked()) return@Bold7Dialog
+            setup = setup?.accepted()
+            submit()
+        }).show()
     }
 
     override fun dispatchKeyEvent(e: KeyEvent): Boolean {

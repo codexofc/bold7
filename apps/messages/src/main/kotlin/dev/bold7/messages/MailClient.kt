@@ -51,9 +51,9 @@ class MailClient(context: Context) {
         call(MailContract.METHOD_SIGNATURE, id, Bundle().apply { text?.let { putString(MailContract.EXTRA_SIGNATURE, it) } }).result()
 
     /** The sign-in page of [address] for the system's browser, apps/hub listening for its redirect. */
-    fun browserBegin(address: String): Pair<MailResult, String?> {
+    fun browserBegin(address: String): Pair<SetupAnswer, String?> {
         val b = call(MailContract.METHOD_BROWSER_BEGIN, extras = Bundle().apply { putString(MailContract.EXTRA_ADDRESS, address.trim()) })
-        return b.result() to b?.getString(MailContract.EXTRA_URL)
+        return SetupAnswer(b.result(), b?.getString(MailContract.EXTRA_PROVIDER)) to b?.getString(MailContract.EXTRA_URL)
     }
 
     /** Back from the browser: the sign-in's result, waited for (both servers checked); the new account's id when OK. */
@@ -62,20 +62,47 @@ class MailClient(context: Context) {
         return b.result() to b?.getString(MailContract.EXTRA_ID)
     }
 
-    /** The account of [s] logged in to and kept by apps/hub; its id when [MailResult.OK]. */
-    fun add(s: SetupState): Pair<MailResult, String?> {
+    /** The account of [s] logged in to and kept by apps/hub, or why not; its id when [MailResult.OK]. */
+    fun add(s: SetupState): Pair<SetupAnswer, String?> {
         val x = Bundle().apply {
             putString(MailContract.EXTRA_ADDRESS, s.address.trim())
             putString(MailContract.EXTRA_PASSWORD, s.password)
             if (s.servers) {
                 putString(MailContract.EXTRA_IMAP_HOST, s.imapHost.trim())
                 putInt(MailContract.EXTRA_IMAP_PORT, port(s.imapPort) ?: 993)
+                putBoolean(MailContract.EXTRA_IMAP_STARTTLS, s.imapStartTls)
                 putString(MailContract.EXTRA_SMTP_HOST, s.smtpHost.trim())
                 putInt(MailContract.EXTRA_SMTP_PORT, port(s.smtpPort) ?: 465)
+                putBoolean(MailContract.EXTRA_SMTP_STARTTLS, s.smtpStartTls)
+                putString(MailContract.EXTRA_USER, s.user.trim())
+                putStringArray(MailContract.EXTRA_ACCEPT, s.accepted.toTypedArray())
             }
         }
         val b = call(MailContract.METHOD_ADD, extras = x)
-        return b.result() to b?.getString(MailContract.EXTRA_ID)
+        return answer(b) to b?.getString(MailContract.EXTRA_ID)
+    }
+
+    private fun answer(b: Bundle?): SetupAnswer {
+        val certificate = b?.getString(MailContract.EXTRA_CERT_SHA256)?.let {
+            CertificatePrompt(
+                server = b.getString(MailContract.EXTRA_SERVER).orEmpty(), sha256 = it,
+                names = b.getStringArray(MailContract.EXTRA_CERT_NAMES).orEmpty().toList(),
+                issuer = b.getString(MailContract.EXTRA_CERT_ISSUER).orEmpty(),
+                selfSigned = b.getBoolean(MailContract.EXTRA_CERT_SELF_SIGNED), expired = b.getBoolean(MailContract.EXTRA_CERT_EXPIRED),
+                acceptable = b.getBoolean(MailContract.EXTRA_CERT_ACCEPTABLE),
+            )
+        }
+        val found = b?.getString(MailContract.EXTRA_IMAP_HOST)?.let {
+            FoundServers(
+                it, b.getInt(MailContract.EXTRA_IMAP_PORT), b.getBoolean(MailContract.EXTRA_IMAP_STARTTLS),
+                b.getString(MailContract.EXTRA_SMTP_HOST).orEmpty(), b.getInt(MailContract.EXTRA_SMTP_PORT), b.getBoolean(MailContract.EXTRA_SMTP_STARTTLS),
+                b.getString(MailContract.EXTRA_USER).orEmpty(),
+            )
+        }
+        return SetupAnswer(
+            b.result(), b?.getString(MailContract.EXTRA_PROVIDER), b?.getString(MailContract.EXTRA_SERVER),
+            b?.getString(MailContract.EXTRA_DETAIL), certificate, found,
+        )
     }
 
     fun remove(id: String): MailResult = call(MailContract.METHOD_REMOVE, id).result()

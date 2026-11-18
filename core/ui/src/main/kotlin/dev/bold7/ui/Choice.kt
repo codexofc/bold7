@@ -9,12 +9,12 @@ data class ChoiceList(val count: Int, val chosen: Int) {
 
     /**
      * The list's top, its rows [row] px: the chosen value on the field's row ([rowTop]), moved to
-     * stay on a screen [screen] px high (D); taller than the screen, it keeps the chosen row in place
-     * as far as its ends allow.
+     * stay between [floor] (under the screen's title bar) and the bottom of a screen [screen] px high
+     * (D); taller than that room, it keeps the chosen row in place as far as its ends allow.
      */
-    fun top(rowTop: Int, row: Int, screen: Int): Int {
+    fun top(rowTop: Int, row: Int, screen: Int, floor: Int = 0): Int {
         val height = count * row
         val top = rowTop - chosen * row
-        return if (height <= screen) top.coerceIn(0, screen - height) else top.coerceIn(screen - height, 0)
+        return if (height <= screen - floor) top.coerceIn(floor, screen - height) else top.coerceIn(screen - height, floor)
     }
 }

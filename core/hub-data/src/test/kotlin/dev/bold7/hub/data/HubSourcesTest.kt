@@ -20,9 +20,9 @@ class FakeProviderRows : ProviderRows {
 class HubCategoryTest {
     @Test fun aNotificationKeepsItsCategoryAndItsStyle() {
         val p = Posted("k", "com.whatsapp", 5, 0, 0, false, "A", "hi", null, category = "msg", messaging = true)
-        assertEquals(HubItem("notifications", "k@5", ItemKind.NOTIFICATION, 5, "A", preview = "hi", folder = "com.whatsapp", conversationId = "k", category = "msg", messaging = true), p.toItem())
+        assertEquals(HubItem("notifications", "k@5", ItemKind.NOTIFICATION, 5, "A", preview = "hi", folder = "com.whatsapp", conversationId = "k", category = "msg", messaging = true), p.toItems().single())
         // No category is "" (known to have none), never null (unknown).
-        assertEquals("", p.copy(category = null, messaging = false).toItem().category)
+        assertEquals("", p.copy(category = null, messaging = false).toItems().single().category)
     }
 }
 
@@ -324,7 +324,7 @@ class HubSourcesTest {
     }
 
     @Test fun aConversationShowsItsLastMessageAndItsSender() = runTest {
-        sources.posted(gmail.copy(conversationTitle = "Team", lastSender = "Erin", lastMessage = "On my way", text = "2 new messages"))
+        sources.posted(gmail.copy(conversationTitle = "Team", group = true, messages = listOf(PostedMessage("On my way", 0, "Erin", "Erin")), userKey = "me", text = "2 new messages"))
         val item = stored("notifications").single()
         assertEquals("Erin", item.sender)
         assertEquals("Team", item.subject)
@@ -365,9 +365,12 @@ class HubSourcesTest {
     }
 
     @Test fun aNewSenderOrSubjectWithTheSameTextIsANewItem() = runTest {
-        sources.posted(gmail.copy(conversationTitle = "Team", lastSender = "Erin", lastMessage = "OK"))
-        assertEquals(1, sources.posted(gmail.copy(whenTime = 940, conversationTitle = "Team", lastSender = "Frank", lastMessage = "OK")))
-        assertEquals(1, sources.posted(gmail.copy(whenTime = 960, conversationTitle = "Other team", lastSender = "Frank", lastMessage = "OK")))
+        val erin = PostedMessage("OK", 880, "Erin", "Erin")
+        val frank = PostedMessage("OK", 940, "Frank", "Frank")
+        sources.posted(gmail.copy(conversationTitle = "Team", group = true, messages = listOf(erin)))
+        assertEquals(1, sources.posted(gmail.copy(whenTime = 940, conversationTitle = "Team", group = true, messages = listOf(erin, frank))))
+        // The group renamed: its two messages rewritten with their new subject, and the new one.
+        assertEquals(3, sources.posted(gmail.copy(whenTime = 960, conversationTitle = "Other team", group = true, messages = listOf(erin, frank, frank.copy(timestamp = 960)))))
         assertEquals(3, stored("notifications").size)
     }
 
