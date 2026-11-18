@@ -41,24 +41,35 @@ object OAuthServers {
         "https://mail.google.com/", "127.0.0.1", mapOf("access_type" to "offline", "prompt" to "consent"),
     )
 
-    // learn.microsoft.com, "Authenticate an IMAP, POP or SMTP connection using OAuth": personal
-    // accounts (outlook.com, hotmail, live), the consumers tenant.
-    val MICROSOFT = OAuthServer(
-        "microsoft", "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
-        "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
-        "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access", "localhost",
-        mapOf("prompt" to "select_account"),
-    )
+    /**
+     * Microsoft's tenant: "consumers" takes personal accounts only (outlook.com, hotmail, live), as
+     * Bold7's registration does today. "common" would also take work and school accounts
+     * (Microsoft 365), once the registration says "Accounts in any organizational directory and
+     * personal Microsoft accounts" (docs/MAIL.md §10.2): change it here, nowhere else.
+     */
+    const val MICROSOFT_TENANT = "consumers"
 
-    /** The server of MailProviders' [providerId], null when its accounts log in by app password only. */
+    // learn.microsoft.com, "Authenticate an IMAP, POP or SMTP connection using OAuth".
+    val MICROSOFT = microsoftServer(MICROSOFT_TENANT)
+
+    /** The server of MailProviders' [providerId], null when its accounts log in by password only. */
     fun forProvider(providerId: String): OAuthServer? = when (providerId) {
         MailProviders.GMAIL.id -> GOOGLE
         MailProviders.OUTLOOK.id -> MICROSOFT
+        MailProviders.MICROSOFT_365.id -> MICROSOFT.takeIf { MICROSOFT_TENANT != "consumers" }
         else -> null
     }
 
     fun byId(id: String): OAuthServer? = listOf(GOOGLE, MICROSOFT).firstOrNull { it.id == id }
 }
+
+/** Microsoft's endpoints for [tenant] ("consumers", "organizations", "common"). */
+fun microsoftServer(tenant: String) = OAuthServer(
+    "microsoft", "https://login.microsoftonline.com/$tenant/oauth2/v2.0/authorize",
+    "https://login.microsoftonline.com/$tenant/oauth2/v2.0/token",
+    "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access", "localhost",
+    mapOf("prompt" to "select_account"),
+)
 
 /** Bold7's registration with a server, from local.properties (never in git); a Desktop client of Google has a secret, Microsoft's public client none. */
 data class OAuthClient(val id: String, val secret: String? = null) {

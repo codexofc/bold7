@@ -42,6 +42,8 @@ class HubContractTest {
         assertEquals("p".repeat(HubContract.TEXT_MAX), read.preview)
         assertEquals("s".repeat(HubContract.TEXT_MAX), read.subject)
         assertEquals(full.preview, itemFromRow(throughCursor(itemRow(full, AccountColor.NONE))).first.preview)
+        // One conversation's thread: its texts whole.
+        assertEquals("p".repeat(5000), itemFromRow(throughCursor(itemRow(long, AccountColor.NONE, max = Int.MAX_VALUE))).first.preview)
     }
 
     @Test fun keysCrossACallAsTwoArraysOfTheSameLength() {

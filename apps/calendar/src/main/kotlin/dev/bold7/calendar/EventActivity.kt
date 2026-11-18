@@ -25,6 +25,7 @@ import dev.bold7.design.Typography
 import dev.bold7.platform.hideStatusBar
 import dev.bold7.platform.zoneChoices
 import dev.bold7.platform.zoneLabel
+import dev.bold7.ui.FieldMovement
 import dev.bold7.ui.useCaret
 import dev.bold7.ui.Bold7Dialog
 import dev.bold7.ui.CheckBoxView
@@ -159,6 +160,7 @@ class EventActivity : Activity() {
         useCaret()
         inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or if (single) 0 else InputType.TYPE_TEXT_FLAG_MULTI_LINE
         if (single) isSingleLine = true else minLines = 2
+        movementMethod = FieldMovement
         addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit

@@ -1,6 +1,9 @@
 package dev.bold7.messages
 
 import android.content.Context
+import android.net.Uri
+import dev.bold7.hub.data.DEFAULT_DISABLED_SOURCES
+import dev.bold7.hub.data.SOURCES_AUTHORITY
 
 /**
  * What Messages keeps for itself: its options and the keys of its saved messages,
@@ -9,7 +12,7 @@ import android.content.Context
  * Read once on the io thread ([load], first thing the graph posts there); the main thread only
  * reads the copies, so it never waits for the disk. Every write is on io.
  */
-class MessagesStore(context: Context) {
+class MessagesStore(private val context: Context) {
     private val prefs = context.getSharedPreferences("messages", Context.MODE_PRIVATE)
 
     @Volatile var options = MessagesOptions()
@@ -26,11 +29,20 @@ class MessagesStore(context: Context) {
             showTexts = prefs.getBoolean("show_texts", true),
             hiddenAccounts = prefs.getStringSet("hidden_accounts", emptySet()).orEmpty().toSet(),
             group = prefs.getBoolean("group", true),
+            hiddenApps = prefs.getStringSet("hidden_apps", emptySet()).orEmpty().toSet(),
+            disabledSources = disabledSources(),
         )
         saved = prefs.getStringSet("saved", emptySet()).orEmpty().toSet()
     }
 
+    /**
+     * The sources turned off, read from the file itself: SourcesProvider asks on a binder thread,
+     * maybe before [load]. Never saved yet: Signal alone ([DEFAULT_DISABLED_SOURCES]).
+     */
+    fun disabledSources(): Set<String> = prefs.getStringSet("disabled_sources", null)?.toSet() ?: DEFAULT_DISABLED_SOURCES
+
     fun update(o: MessagesOptions) {
+        val sourcesChanged = o.disabledSources != options.disabledSources
         options = o
         prefs.edit()
             .putBoolean("hide_sent", o.hideSent)
@@ -39,7 +51,11 @@ class MessagesStore(context: Context) {
             .putBoolean("show_texts", o.showTexts)
             .putBoolean("group", o.group)
             .putStringSet("hidden_accounts", o.hiddenAccounts)
-            .apply()
+            .putStringSet("hidden_apps", o.hiddenApps)
+            .putStringSet("disabled_sources", o.disabledSources)
+            .commit()
+        // The Hub reads them again (HubGraph.watchSourceChoice), once they are on disk.
+        if (sourcesChanged) context.contentResolver.notifyChange(Uri.parse("content://$SOURCES_AUTHORITY"), null)
     }
 
     fun save(key: String) = setSaved(saved + key)

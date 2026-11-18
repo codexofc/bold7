@@ -22,6 +22,7 @@ import dev.bold7.design.ListColors
 import dev.bold7.design.ListDimens
 import dev.bold7.design.Typography
 import dev.bold7.platform.hideStatusBar
+import dev.bold7.ui.FieldMovement
 import dev.bold7.ui.useCaret
 import dev.bold7.ui.Bold7Dialog
 import dev.bold7.ui.ChoiceList
@@ -217,6 +218,7 @@ class EditActivity : Activity() {
         isSingleLine = !multi
         if (multi) minLines = NOTES_LINES
         defaultFocusHighlightEnabled = false
+        movementMethod = FieldMovement
     }
 
     private fun watcher(then: (String) -> Unit) = object : TextWatcher {
@@ -427,7 +429,10 @@ class EditActivity : Activity() {
             val saved = g.tasks.save(task)
             runOnUiThread {
                 saving = false
-                if (saved == null) status(this, getString(R.string.not_saved)) else finish()
+                if (saved == null) return@runOnUiThread status(this, getString(R.string.not_saved))
+                // A new task's id, for the list's focus (sim-277, C).
+                if (e.id == null) setResult(RESULT_OK, Intent().putExtra(EXTRA_SAVED, saved))
+                finish()
             }
         }
         sweep(this, "saved")

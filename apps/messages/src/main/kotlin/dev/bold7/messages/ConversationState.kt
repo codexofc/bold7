@@ -24,6 +24,9 @@ enum class Notice {
 
     /** a file a text does not take, one unreadable, one too heavy for the carrier. */
     NOT_ATTACHABLE, NOT_ATTACHED, TOO_LARGE,
+
+    /** Another app's conversation: its reply gone with its notification, refused by the app, or never shown back (D). */
+    REPLY_GONE, REPLY_CANCELED, UNCONFIRMED,
 }
 
 data class ConversationState(
@@ -60,13 +63,24 @@ data class ConversationState(
     val notice: Notice? = null,
     /** A group's members' contact names, by number, for their bubbles. */
     val names: Map<String, String> = emptyMap(),
+    /** Another app's conversation: its notification's key, [threadId] [APP_THREAD]; null for Telephony's. */
+    val notification: String? = null,
+    /** That app's package. */
+    val app: String? = null,
+    /** Its live notification can be answered: the field takes text; otherwise "Reply in <App>" (D). */
+    val reply: Boolean = false,
 ) {
+    /** The field takes text: always in a text's thread, in an app's while its reply is there. */
+    val writable: Boolean get() = app == null || reply
+
     /**
      * The name above [m]'s bubble: [me] for a sent one; in a group, its sender's contact name or
      * number (gsm 023 names the contact, C); one person's, the band's name (D).
      */
     fun senderLabel(m: ThreadMessage, me: String): String {
         if (m.out) return me
+        // An app's group names its senders (appMessages); one person, the band's name.
+        if (app != null) return m.from ?: title
         val name = title.ifEmpty { recipients.singleOrNull()?.let { it.name ?: it.number }.orEmpty() }
         val from = m.from ?: return name
         val group = messages.mapNotNullTo(HashSet()) { it.from?.let(::numberKey) }.size > 1
@@ -76,7 +90,7 @@ data class ConversationState(
 
     /** Something to send: text, or an attachment alone. */
     val hasContent: Boolean get() = draft.isNotBlank() || attachment != null
-    val sendable: Boolean get() = hasContent && !sending && (threadId != null || addressed)
+    val sendable: Boolean get() = hasContent && !sending && (threadId != null || addressed) && writable
     val focusedMessage: ThreadMessage? get() = messages.getOrNull(focus)
 
     /** A new message's only chosen recipient (a number typed and not taken does not count); null otherwise. */
@@ -137,6 +151,10 @@ sealed interface ThreadEvent {
     data class Photo(val uri: String?) : ThreadEvent
     /** [number]'s one-to-one conversation in Telephony, null: none. Dropped when [number] is no longer alone in To. */
     data class Found(val number: String, val threadId: Long?) : ThreadEvent
+    /** An app's conversation: whether its notification can be answered now. */
+    data class Replyable(val reply: Boolean) : ThreadEvent
+    /** Something to say once, nothing else changed. */
+    data class Told(val notice: Notice) : ThreadEvent
 }
 
 /**
@@ -202,6 +220,8 @@ fun ConversationState.reduce(event: ThreadEvent): ConversationState = when (even
     }
     is ThreadEvent.ToTouched -> if (threadId != null) this else copy(focus = TO, line = event.line.coerceIn(0, recipients.size), pick = -1)
     is ThreadEvent.Photo -> copy(photo = event.uri)
+    is ThreadEvent.Replyable -> copy(reply = event.reply)
+    is ThreadEvent.Told -> copy(notice = event.notice)
     is ThreadEvent.Found -> {
         val n = single
         if (n == null || !sameNumber(n, event.number) || event.threadId == found) this
@@ -247,10 +267,12 @@ enum class ThreadAct {
     ATTACH, ATTACH_PICTURE, ATTACH_VIDEO, ATTACH_AUDIO, ATTACH_FILE, REMOVE_ATTACHMENT, OPEN_ATTACHMENT, SWITCH, CLOSE,
     /** The field's selection entries (core/ui's TextAct); named as it names them. */
     START_SELECTION, CUT, COPY, PASTE,
+    /** An app's conversation: "Open in <App>", and Mark Unread (D). */
+    OPEN_IN_APP, MARK_UNREAD,
 }
 
 /** Where Add Smiley and Attach apply: the field, and the To band of a new message, which has the field under it (sim-51, C; D). */
-private fun ConversationState.onField() = focus == COMPOSER || focus == SMILEY || (threadId == null && focus == TO)
+private fun ConversationState.onField() = writable && (focus == COMPOSER || focus == SMILEY || (threadId == null && focus == TO))
 
 /**
  * The thread's menu, full or short: on a bubble Delete Message ("to delete an individual message
@@ -268,19 +290,25 @@ private fun ConversationState.onField() = focus == COMPOSER || focus == SMILEY |
  */
 fun threadMenu(s: ConversationState, text: List<TextAct> = emptyList()): List<MenuEntry<ThreadAct>> {
     val groups = listOf(
+        // An app's conversation: the app itself first, as Open is in the inbox (D).
+        listOfNotNull(ThreadAct.OPEN_IN_APP.takeIf { s.app != null }),
         // "In the To field ... Press the Menu key > Choose Contact" (guide 7.1 p. 103, B); its place, D.
         listOfNotNull(ThreadAct.CHOOSE_CONTACT.takeIf { s.threadId == null && s.focus == TO }),
         listOfNotNull(
             ThreadAct.OPEN_ATTACHMENT.takeIf { s.focusedMessage?.opens != null },
-            ThreadAct.DELETE_MESSAGE.takeIf { s.focusedMessage != null },
+            // A reply on its way is the app's now: nothing to delete yet.
+            ThreadAct.DELETE_MESSAGE.takeIf { s.focusedMessage?.uri?.startsWith(PENDING_URI) == false },
         ),
-        listOfNotNull(ThreadAct.SEND.takeIf { s.hasContent }, ThreadAct.CLEAR_FIELD.takeIf { s.draft.isNotEmpty() }),
+        listOfNotNull(ThreadAct.SEND.takeIf { s.hasContent && s.writable }, ThreadAct.CLEAR_FIELD.takeIf { s.draft.isNotEmpty() }),
         listOfNotNull(
             ThreadAct.CLEAR_CONVERSATION.takeIf { s.threadId != null && s.messages.isNotEmpty() },
-        ) + (if (s.focus == COMPOSER || s.focus == SMILEY) text.map { ThreadAct.valueOf(it.name) } else emptyList()) + listOfNotNull(
+            // The latest received message unread again, the thread closed (D).
+            ThreadAct.MARK_UNREAD.takeIf { s.app != null && s.messages.any { !it.out } },
+        ) + (if (s.writable && (s.focus == COMPOSER || s.focus == SMILEY)) text.map { ThreadAct.valueOf(it.name) } else emptyList()) + listOfNotNull(
             ThreadAct.ADD_SMILEY.takeIf { s.onField() },
         ),
-        listOfNotNull((if (s.attachment == null) ThreadAct.ATTACH else ThreadAct.REMOVE_ATTACHMENT).takeIf { s.onField() }),
+        // An app's reply carries text only.
+        listOfNotNull((if (s.attachment == null) ThreadAct.ATTACH else ThreadAct.REMOVE_ATTACHMENT).takeIf { s.onField() && s.app == null }),
     ).filter { it.isNotEmpty() }
     // A line between two groups (sim-51, C).
     return groups.flatMapIndexed { g, acts -> acts.mapIndexed { i, a -> MenuEntry(a, separatorAbove = g > 0 && i == 0, submenu = a == ThreadAct.ATTACH) } }

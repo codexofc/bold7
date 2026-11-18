@@ -126,6 +126,13 @@ class InboxTest {
         assertEquals(listOf("n"), keys(Filter.NOTIFICATIONS))
     }
 
+    // A notification without a title: its app's name on the first line (D), never an empty line.
+    @Test fun aNotificationWithoutTitleIsNamedAfterItsApp() {
+        val s = snapshot(note("n", 12, 9, app = "com.chat", sender = ""), note("w", 12, 8, app = "com.chat", sender = " "), note("t", 12, 7, app = "com.chat"))
+        val names = inboxLines(s, Filter.ALL, null, format, appName = { if (it == "com.chat") "Chat" else it }).filterIsInstance<ItemLine>().map { it.sender }
+        assertEquals(listOf("Chat", "Chat", "Carol"), names)
+    }
+
     @Test fun searchLooksInEveryFieldWhateverTheCase() {
         val s = snapshot(sms("a", 12, 9, sender = "Alice", text = "Lunch?"), call("c", 12, 8, number = "+3319900"), note("n", 12, 7, text = "Your parcel"))
         fun found(q: String?) = lines(s, Filter.ALL, q).filterIsInstance<ItemLine>().map { it.item.sourceKey }

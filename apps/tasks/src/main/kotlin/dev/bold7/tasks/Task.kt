@@ -178,6 +178,8 @@ sealed interface ListEvent {
     /** A character typed into Search (sim-267, C), or the last one erased. */
     data class Typed(val char: Char) : ListEvent
     data object Erased : ListEvent
+    /** The form saved a new task, [id]: focused now, or at the next load if the list has not read it yet (sim-277, sim-280, C). */
+    data class Created(val id: Long) : ListEvent
 }
 
 data class TaskList(
@@ -189,6 +191,8 @@ data class TaskList(
     val sort: SortBy = SortBy.SUBJECT,
     /** What Search holds: each word typed starts a word of a task's title or notes. */
     val typed: String = "",
+    /** A task just created ([ListEvent.Created]) that the list has not read yet. */
+    val wanted: Long? = null,
 ) {
     val shown: List<Task> = ordered(all, sort).filter { (!hidden || it.status != Status.COMPLETED) && matchesWords(it.title + " " + it.notes, typed) }
 
@@ -200,7 +204,10 @@ data class TaskList(
     val focused: Row? get() = rows.getOrNull(focus)
 
     fun reduce(e: ListEvent): TaskList = when (e) {
-        is ListEvent.Loaded -> refocused(copy(all = e.tasks, sort = e.sort, loaded = true), first = !loaded)
+        is ListEvent.Loaded -> refocused(copy(all = e.tasks, sort = e.sort, loaded = true), first = !loaded).let { l ->
+            (wanted?.let(l::focusedOn) ?: l).copy(wanted = null)
+        }
+        is ListEvent.Created -> focusedOn(e.id) ?: copy(wanted = e.id)
         ListEvent.ToggleHidden -> refocused(copy(hidden = !hidden), first = false)
         is ListEvent.Step -> copy(focus = (focus + if (e.down) 1 else -1).coerceIn(0, rows.size - 1))
         is ListEvent.Moved -> copy(focus = e.row.coerceIn(0, rows.size - 1))
@@ -222,6 +229,9 @@ data class TaskList(
             else -> focus.coerceIn(0, next.rows.size - 1)
         })
     }
+
+    private fun focusedOn(id: Long): TaskList? =
+        rows.indexOfFirst { it is Entry && it.task.id == id }.takeIf { it >= 0 }?.let { copy(focus = it) }
 
     private val visibility get() = if (hidden) ListAct.SHOW else ListAct.HIDE
 

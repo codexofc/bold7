@@ -22,6 +22,9 @@ setsid "$MODDIR/bin/bold7-led" "$MODDIR" </dev/null >/dev/null 2>&1 &
 # storage is still encrypted: saisie-start.sh waits for it to open (15 minutes at most), then
 # selects Typing again if bold7_saisie is 1 and it is installed. Its output to bold7.log.
 setsid sh "$MODDIR/saisie-start.sh" "$MODDIR" </dev/null >/dev/null 2>&1 &
+# Texts Android 17 keeps restricted to the SMS app (lift-watch.sh): lifted as they come, until
+# reboot, woken only by writes to the messages' database. Its lines to bold7.log.
+setsid sh "$MODDIR/lift-watch.sh" "$MODDIR" </dev/null >>"$MODDIR/bold7.log" 2>&1 &
 # What tools/install.sh set from the Mac (setup.sh apply): once the user's storage is open,
 # each value saved at install set once (sounds, silence, End key, trackpad, HOME, DIALER, Typing), then
 # the apps' permissions, app-ops and accesses once per install. Nothing to do: it ends at once.

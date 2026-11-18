@@ -47,6 +47,9 @@ class MessagesGraph(app: Application) {
 
     val reader = AndroidInboxReader(app, drafts, store)
 
+    /** The other apps' names and row icons: worked out on [io] only. */
+    val looks = AppLooks(app)
+
     /** Google Messages' API: its calls on [io] only. */
     val api = GrpcMessagingApi(app)
     val threads = AndroidThreadReader(app)
@@ -65,6 +68,7 @@ class MessagesGraph(app: Application) {
         SwitchedInbox({ showcaseOn(app) }, { reader }, ShowcaseInbox({ showcaseEvent(app) }) { inboxFormat(app) }), io, scope,
         onError = { Log.e(TAG, "inbox not worked out: ${it.javaClass.name}") }, // its message could hold a text
         bridge = { calls -> calls.forEach { call -> apiCall(call) } },
+        appName = looks::name,
     )
 
     /** A call of the inbox to Google Messages: refused, it is logged; the Hub's state stays the user's. */
@@ -75,7 +79,7 @@ class MessagesGraph(app: Application) {
     }
 
     /** A thread's effects, for one activity. */
-    fun conversation(scope: CoroutineScope) = Conversation(threads, api, contacts, attachments, io, scope) {
+    fun conversation(scope: CoroutineScope) = Conversation(threads, api, contacts, attachments, reader, io, scope) {
         Log.w(TAG, "thread call failed: ${(it as? MessagingApiException)?.code ?: it.javaClass.name}")
     }
 }

@@ -240,12 +240,59 @@ data class MailAccountInfo(val id: String, val address: String, val signature: S
 /** The accounts, and the providers whose accounts this build signs in through the browser ("Gmail", "Outlook"). */
 data class MailAccounts(val list: List<MailAccountInfo> = emptyList(), val browser: List<String> = emptyList())
 
-/** What the setup of an account says when it fails (D: the 9900's are not captured). */
-enum class SetupNotice { INVALID, AUTH, AUTH_GMAIL, AUTH_ICLOUD, CERTIFICATE, NETWORK, REFUSED, SERVERS, UNAVAILABLE, CANCELLED }
+/**
+ * What the setup of an account says (D: the 9900's are not captured): what the provider needs
+ * (AUTH_*, also when no password was typed), why a server failed, or what cannot be done here.
+ */
+enum class SetupNotice {
+    INVALID, AUTH, PASSWORD,
+    AUTH_GMAIL, AUTH_ICLOUD, AUTH_YAHOO, AUTH_AOL, AUTH_GMX, AUTH_WEBDE, AUTH_MAILCOM, AUTH_ZOHO, AUTH_YANDEX, AUTH_ORANGE,
+    BROWSER, BROWSER_OFF, WORK_ACCOUNT, BRIDGE,
+    CERTIFICATE, HOST_UNKNOWN, PORT_CLOSED, TIMEOUT, NO_STARTTLS, TLS, NO_PASSWORD_LOGIN, NETWORK,
+    REFUSED, SERVERS, UNAVAILABLE, CANCELLED,
+}
+
+/** A certificate the phone does not trust, as apps/hub described it; [acceptable] for typed or found servers only. */
+data class CertificatePrompt(
+    val server: String,
+    val sha256: String,
+    val names: List<String>,
+    val issuer: String,
+    val selfSigned: Boolean,
+    val expired: Boolean,
+    val acceptable: Boolean,
+) {
+    /** What apps/hub keeps once the user accepts it, "host port sha256" (MailContract.EXTRA_ACCEPT). */
+    val pin: String get() = "${server.substringBeforeLast(':')} ${server.substringAfterLast(':')} $sha256"
+}
+
+/** Servers apps/hub found for the domain and could not log in to: shown for the user to correct. */
+data class FoundServers(
+    val imapHost: String,
+    val imapPort: Int,
+    val imapStartTls: Boolean,
+    val smtpHost: String,
+    val smtpPort: Int,
+    val smtpStartTls: Boolean,
+    val user: String,
+)
+
+/** apps/hub's answer to Next: the result, the provider ([provider], MailProviders' id), and for a failure the server, its words, its certificate. */
+data class SetupAnswer(
+    val result: MailResult,
+    val provider: String? = null,
+    val server: String? = null,
+    val detail: String? = null,
+    val certificate: CertificatePrompt? = null,
+    val found: FoundServers? = null,
+)
 
 /**
  * Email Setup (guide 7.1 p. 90, B: "follow the screens to set up your email address"): the
- * address and the app password; the servers only when apps/hub does not know the domain.
+ * address and its password; Next without a password asks apps/hub what the address needs. The
+ * servers only when apps/hub does not know the domain nor finds it, with the login name and each
+ * server's security (STARTTLS or SSL/TLS, the port's usual one until chosen: [imapSecurity],
+ * [smtpSecurity]), and the certificates the user [accepted].
  */
 data class SetupState(
     val address: String = "",
@@ -255,36 +302,94 @@ data class SetupState(
     val imapPort: String = "993",
     val smtpHost: String = "",
     val smtpPort: String = "465",
+    val user: String = "",
+    val imapSecurity: Boolean? = null,
+    val smtpSecurity: Boolean? = null,
+    val accepted: List<String> = emptyList(),
     val busy: Boolean = false,
     val notice: SetupNotice? = null,
+    val provider: String? = null,
+    val server: String? = null,
+    val detail: String? = null,
+    val certificate: CertificatePrompt? = null,
 ) {
-    val ready: Boolean get() = !busy && address.trim().matches(EMAIL) && password.isNotEmpty() &&
-        (!servers || (imapHost.isNotBlank() && smtpHost.isNotBlank() && port(imapPort) != null && port(smtpPort) != null))
+    val ready: Boolean get() = !busy && address.trim().matches(EMAIL) &&
+        (!servers || (password.isNotEmpty() && imapHost.isNotBlank() && smtpHost.isNotBlank() && port(imapPort) != null && port(smtpPort) != null))
 
-    fun answered(result: MailResult): SetupState = copy(
-        busy = false,
-        servers = servers || result == MailResult.SERVERS,
-        notice = when (result) {
-            MailResult.OK -> null
-            MailResult.AUTH -> refusedBy(address)
-            MailResult.SERVERS -> SetupNotice.SERVERS
-            MailResult.CERTIFICATE -> SetupNotice.CERTIFICATE
-            MailResult.NETWORK -> SetupNotice.NETWORK
-            MailResult.REFUSED -> SetupNotice.REFUSED
-            MailResult.UNAVAILABLE -> SetupNotice.UNAVAILABLE
-            MailResult.CANCELLED -> SetupNotice.CANCELLED
-        },
-    )
+    val imapStartTls: Boolean get() = imapSecurity ?: usualStartTls(imapPort)
+    val smtpStartTls: Boolean get() = smtpSecurity ?: usualStartTls(smtpPort)
+
+    fun answered(result: MailResult): SetupState = answered(SetupAnswer(result))
+
+    fun answered(a: SetupAnswer): SetupState {
+        val f = a.found
+        return copy(
+            busy = false,
+            servers = servers || a.result == MailResult.SERVERS || f != null,
+            imapHost = f?.imapHost ?: imapHost,
+            imapPort = f?.imapPort?.toString() ?: imapPort,
+            imapSecurity = f?.imapStartTls ?: imapSecurity,
+            smtpHost = f?.smtpHost ?: smtpHost,
+            smtpPort = f?.smtpPort?.toString() ?: smtpPort,
+            smtpSecurity = f?.smtpStartTls ?: smtpSecurity,
+            user = f?.user ?: user,
+            provider = a.provider ?: provider,
+            server = a.server,
+            detail = a.detail,
+            certificate = a.certificate,
+            notice = noticeOf(a.result, a.provider),
+        )
+    }
+
+    /** The certificate shown accepted, for its server only; nothing when apps/hub does not allow it. */
+    fun accepted(): SetupState {
+        val c = certificate?.takeIf { it.acceptable } ?: return this
+        return copy(accepted = accepted + c.pin, certificate = null)
+    }
 }
 
+private fun usualStartTls(port: String) = port(port).let { it == 143 || it == 587 }
+
 /**
- * A refused password: Gmail and iCloud only take an app password over IMAP, and the most common
- * mistake is the account's own password, so their notice says where to make one (D).
+ * What a provider asks of another app (docs/MAIL.md §11), by MailProviders' id: an app password,
+ * IMAP turned on in its web settings, or its own password for email apps. Null: the password.
  */
-private fun refusedBy(address: String): SetupNotice = when (address.trim().substringAfterLast('@').lowercase()) {
-    "gmail.com", "googlemail.com" -> SetupNotice.AUTH_GMAIL
-    "icloud.com", "me.com", "mac.com" -> SetupNotice.AUTH_ICLOUD
-    else -> SetupNotice.AUTH
+private fun needs(provider: String?): SetupNotice? = when (provider) {
+    "gmail" -> SetupNotice.AUTH_GMAIL
+    "icloud" -> SetupNotice.AUTH_ICLOUD
+    "yahoo" -> SetupNotice.AUTH_YAHOO
+    "aol" -> SetupNotice.AUTH_AOL
+    "gmx" -> SetupNotice.AUTH_GMX
+    "webde" -> SetupNotice.AUTH_WEBDE
+    "mailcom" -> SetupNotice.AUTH_MAILCOM
+    "zoho" -> SetupNotice.AUTH_ZOHO
+    "yandex" -> SetupNotice.AUTH_YANDEX
+    "orange" -> SetupNotice.AUTH_ORANGE
+    else -> null
+}
+
+private fun noticeOf(result: MailResult, provider: String?): SetupNotice? = when (result) {
+    MailResult.OK -> null
+    MailResult.AUTH -> needs(provider) ?: SetupNotice.AUTH
+    MailResult.PASSWORD -> needs(provider) ?: SetupNotice.PASSWORD
+    MailResult.BROWSER -> SetupNotice.BROWSER
+    MailResult.BRIDGE -> SetupNotice.BRIDGE
+    MailResult.UNAVAILABLE -> when (provider) {
+        "outlook" -> SetupNotice.BROWSER_OFF
+        "microsoft365" -> SetupNotice.WORK_ACCOUNT
+        else -> SetupNotice.UNAVAILABLE
+    }
+    MailResult.SERVERS -> SetupNotice.SERVERS
+    MailResult.CERTIFICATE -> SetupNotice.CERTIFICATE
+    MailResult.HOST_UNKNOWN -> SetupNotice.HOST_UNKNOWN
+    MailResult.PORT_CLOSED -> SetupNotice.PORT_CLOSED
+    MailResult.TIMEOUT -> SetupNotice.TIMEOUT
+    MailResult.NO_STARTTLS -> SetupNotice.NO_STARTTLS
+    MailResult.TLS -> SetupNotice.TLS
+    MailResult.NO_PASSWORD_LOGIN -> SetupNotice.NO_PASSWORD_LOGIN
+    MailResult.NETWORK -> SetupNotice.NETWORK
+    MailResult.REFUSED -> SetupNotice.REFUSED
+    MailResult.CANCELLED -> SetupNotice.CANCELLED
 }
 
 fun port(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in 1..65535 }

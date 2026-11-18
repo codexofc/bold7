@@ -32,9 +32,10 @@ private const val COLUMNS = HomeDimens.COLUMNS
 /**
  * Where [dir] takes [focus] in a view of [count] tiles, the tray raised or not ([expanded]), the
  * icon focused last at [last]; the first move only shows it. Down from the lowered row raises the tray, the focus staying on its
- * icon (sim-70, sim-71, C): the lowered tray never scrolls.
+ * icon (sim-70, sim-71, C): the lowered tray never scrolls. Without a notification ([notices]),
+ * the row's centre has nothing to open: the focus skips it for the speaker (D, every capture has one).
  */
-fun move(focus: Focus?, dir: Dir, count: Int, expanded: Boolean = true, last: Int = 0): FocusMove {
+fun move(focus: Focus?, dir: Dir, count: Int, expanded: Boolean = true, last: Int = 0, notices: Boolean = true): FocusMove {
     val f = focus?.let { valid(it, count) } ?: return FocusMove(if (count > 0) Focus.Icon(0) else Focus.Tab)
     return when (f) {
         is Focus.Icon -> if (!expanded && dir == Dir.DOWN) FocusMove(f, expand = true) else FocusMove(icon(f.index, dir, count))
@@ -46,8 +47,13 @@ fun move(focus: Focus?, dir: Dir, count: Int, expanded: Boolean = true, last: In
             Dir.UP -> FocusMove(Focus.Top(BannerFocus.NOTIFICATIONS))
         }
         is Focus.Top -> FocusMove(top(f.target, dir))
-    }
+    }.let { m -> if (notices || m.focus != NOTICES) m else m.copy(focus = skipped(dir)) }
 }
+
+private val NOTICES = Focus.Top(BannerFocus.NOTIFICATIONS)
+
+// Sideways, on past the empty centre; up or down, the speaker.
+private fun skipped(dir: Dir): Focus = if (dir == Dir.LEFT || dir == Dir.RIGHT) top(BannerFocus.NOTIFICATIONS, dir) else Focus.Top(BannerFocus.SPEAKER)
 
 private fun icon(i: Int, dir: Dir, n: Int): Focus {
     val column = i % COLUMNS

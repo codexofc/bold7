@@ -106,10 +106,14 @@ data class Posted(
     val title: String?,
     val text: String?,
     val bigText: String?,
-    /** MessagingStyle: the group's name, and its latest message with its sender (null: me). */
+    /** MessagingStyle: the conversation's name (a group's, or its contact's). */
     val conversationTitle: String? = null,
-    val lastSender: String? = null,
-    val lastMessage: String? = null,
+    /** MessagingStyle's messages (EXTRA_MESSAGES), oldest first: each one an item. */
+    val messages: List<PostedMessage> = emptyList(),
+    /** The user (EXTRA_MESSAGING_PERSON) as [PostedMessage.senderKey] names a sender. */
+    val userKey: String? = null,
+    /** EXTRA_IS_GROUP_CONVERSATION. */
+    val group: Boolean = false,
     /** Notification.category, null if none. */
     val category: String? = null,
     /** A MessagingStyle template. */
@@ -122,6 +126,15 @@ data class Posted(
         const val FLAG_GROUP_SUMMARY = 0x200
     }
 }
+
+/**
+ * One message of a MessagingStyle notification. [senderKey] is its sender Person's key, else its
+ * name, else the legacy sender text; null for a message of the user, as Android draws it.
+ */
+data class PostedMessage(val text: String, val timestamp: Long, val sender: String?, val senderKey: String?)
+
+/** The user's own message: no sender, or the user's Person (MessagingLayout's rule, D). */
+fun PostedMessage.fromMe(userKey: String?) = senderKey == null || senderKey == userKey
 
 /**
  * Not a message: ongoing and foreground service notifications, players, group
@@ -210,19 +223,48 @@ internal fun EventRow.toItem(now: Long) = (status != EventRow.INVITED || start <
     )
 }
 
-/**
- * One item per message: an update of the notification with a new time is a new item of the same
- * conversation (the notification's key), so a conversation keeps every message it showed.
- */
-/** The notification of an item of the Notifications account: its key without "@<time>" (toItem). */
+/** The notification of an item of the Notifications account: its key without "@<time>" (toItems). */
 fun notificationKeyOf(sourceKey: String) = sourceKey.substringBeforeLast('@')
 
-internal fun Posted.toItem() = HubItem(
-    HubAccounts.NOTIFICATIONS.id, "$key@${if (whenTime > 0) whenTime else postTime}", ItemKind.NOTIFICATION, postTime,
-    lastSender.orNull() ?: title.orEmpty(),
-    subject = conversationTitle.orNull(), preview = lastMessage ?: bigText ?: text.orEmpty(),
-    folder = packageName, conversationId = key, category = category.orEmpty(), messaging = messaging,
-)
+/**
+ * The items of [this]: one per MessagingStyle message, keyed by its time, so that an update showing
+ * the same messages again writes nothing new and a conversation keeps every message it showed. Two
+ * messages of one time are told apart by their text, the same text at the same time is one
+ * message. The user's own messages are sent ones, read, named after the conversation. A group's
+ * name is the subject (only a group's: a 1:1 conversation title is its contact). Without messages,
+ * one item of the title and text, keyed by Notification.when.
+ */
+internal fun Posted.toItems(): List<HubItem> {
+    val subject = conversationTitle.orNull()?.takeIf { group }
+    fun item(key: String, time: Long, sender: String, preview: String, mine: Boolean = false) = HubItem(
+        HubAccounts.NOTIFICATIONS.id, key, ItemKind.NOTIFICATION, time, sender, subject = subject, preview = preview,
+        box = if (mine) Box.SENT else Box.INBOX, folder = packageName, conversationId = this.key, read = mine, sourceRead = mine,
+        category = category.orEmpty(), messaging = messaging,
+    )
+    if (messages.isEmpty()) return listOf(item("$key@${if (whenTime > 0) whenTime else postTime}", postTime, title.orEmpty(), bigText ?: text.orEmpty()))
+    // My messages are named after the conversation: its title, else the one I write to (the last
+    // sender who is not me), never the notification's title, which some apps (Instagram) set to my name.
+    val other = conversationTitle.orNull() ?: messages.lastOrNull { !it.fromMe(userKey) }?.sender.orNull() ?: title.orEmpty()
+    val unique = messages.distinctBy { it.timestamp to it.text }
+    val sharing = unique.groupingBy { it.timestamp }.eachCount()
+    return unique.map { m ->
+        val time = if (m.timestamp > 0) m.timestamp else postTime
+        val shared = if ((sharing[m.timestamp] ?: 0) > 1) "#${Integer.toHexString(m.text.hashCode())}" else ""
+        val mine = m.fromMe(userKey)
+        item("$key@$time$shared", time, if (mine) other else m.sender.orNull() ?: title.orEmpty(), m.text, mine)
+    }
+}
+
+/** How long the Hub keeps what another app's notifications showed: 30 days (the maintainer's choice). */
+const val KEEP_NOTIFICATIONS_MS = 30 * 24 * 60 * 60_000L
+
+/**
+ * The keys of the notifications' items older than [KEEP_NOTIFICATIONS_MS] at [now], but those of
+ * the notifications still [posted]: forgotten, they would come back as new at the next update.
+ */
+fun expired(items: List<HubItem>, now: Long, posted: Set<String>): List<String> = items.filter {
+    it.accountId == HubAccounts.NOTIFICATIONS.id && it.timestamp < now - KEEP_NOTIFICATIONS_MS && it.conversationId !in posted
+}.map { it.sourceKey }
 
 /**
  * [fresh] as its source reads it again, with what the Hub holds of it ([stored]): the Hub's read
@@ -247,6 +289,8 @@ internal fun HubItem.sameMessage(stored: HubItem) = timestamp == stored.timestam
 /** How far the phone's clock may have been set back between a message's writing and the Hub's reading (D). */
 internal const val CLOCK_SLACK_MS = 10 * 60_000L
 
+private const val DAY_MS = 24 * 60 * 60_000L
+
 private fun HubItem.sameContent(other: HubItem) =
     sender == other.sender && subject == other.subject && preview == other.preview
 
@@ -257,8 +301,15 @@ private fun HubItem.sameContent(other: HubItem) =
 class HubSources(private val sink: HubSink, private val rows: ProviderRows, private val now: () -> Long) {
     private val accountsPut = HashSet<String>()
 
-    /** The latest item of each notification still posted, against reposts without anything new. */
-    private val last = HashMap<String, HubItem>()
+    /** The items of each notification still posted, by key, against reposts without anything new. */
+    private val last = HashMap<String, Map<String, HubItem>>()
+
+    /** The sources the user turned off ([disable]): account ids and packages. */
+    @Volatile var disabled: Set<String> = DEFAULT_DISABLED_SOURCES
+        private set
+
+    /** When the notifications last expired; once a day at most, on the sources' own writes. */
+    private var expiredAt: Long? = null
 
     private suspend fun account(account: Account) {
         if (accountsPut.add(account.id)) sink.putAccount(account)
@@ -280,7 +331,7 @@ class HubSources(private val sink: HubSink, private val rows: ProviderRows, priv
         adjust: (HubItem, HubItem?) -> HubItem = { f, _ -> f },
     ): Int {
         account(account)
-        if (emptyRead) return 0
+        if (emptyRead || account.id in disabled) return 0
         val kept = sink.items(account.id).associateBy { it.sourceKey }
         // A key given to another message: the earlier one goes, and the new one arrives as new
         // (its own arrival, nothing of the earlier's read or deleted state).
@@ -318,16 +369,55 @@ class HubSources(private val sink: HubSink, private val rows: ProviderRows, priv
         }
     }
 
-    /** Writes [posted] if it enters the Hub and shows something new. */
+    /** Writes what [posted] shows that is new, if it enters the Hub. */
     suspend fun posted(posted: Posted): Int {
-        if (!posted.entersHub()) return 0
-        val item = posted.toItem()
-        if (last[posted.key]?.sameContent(item) == true) return 0
-        account(HubAccounts.NOTIFICATIONS)
-        // The same message updated (its time kept): what the Hub set on it stays, as in sync.
-        sink.put(listOf(held(item, sink.item(item.accountId, item.sourceKey))))
-        last[posted.key] = item
-        return 1
+        expire()
+        if (!posted.entersHub() || posted.packageName in disabled) return 0
+        val items = posted.toItems()
+        val known = last[posted.key].orEmpty()
+        val written = if (posted.messages.isEmpty()) {
+            // Without messages, the same content again is nothing new, whatever its time.
+            if (known.values.maxByOrNull { it.timestamp }?.sameContent(items.single()) == true) return 0
+            items.map { held(it, sink.item(it.accountId, it.sourceKey)) }
+        } else {
+            val oldest = now() - KEEP_NOTIFICATIONS_MS
+            items.filter { it.timestamp >= oldest && known[it.sourceKey]?.sameContent(it) != true }.mapNotNull { item ->
+                // A message the Hub already has, read in its app since, stays as the Hub holds it.
+                val stored = sink.item(item.accountId, item.sourceKey)
+                if (stored != null && stored.sameContent(item) && stored.box == item.box) null else held(item, stored)
+            }
+        }
+        if (written.isNotEmpty()) {
+            account(HubAccounts.NOTIFICATIONS)
+            sink.put(written)
+        }
+        last[posted.key] = items.associateBy { it.sourceKey }
+        return written.size
+    }
+
+    /**
+     * Forgets the notifications' items older than [KEEP_NOTIFICATIONS_MS], once a day at most: no
+     * wake-up of its own, the next notification does it.
+     */
+    private suspend fun expire() {
+        val now = now()
+        if (expiredAt?.let { now - it < DAY_MS && now >= it } == true) return
+        expiredAt = now
+        val old = expired(sink.items(HubAccounts.NOTIFICATIONS.id), now, last.keys)
+        if (old.isNotEmpty()) sink.remove(HubAccounts.NOTIFICATIONS.id, old)
+    }
+
+    /**
+     * The user turned these sources off ([disabled]) or on again: the items of those now off are
+     * forgotten, what they write next is not stored (a mail account's, through [GatedSink]). The
+     * providers keep their texts, calls and invitations: those of a source turned on again come
+     * back at its next read. Returns how many items it forgot.
+     */
+    suspend fun disable(sources: Set<String>): Int {
+        disabled = sources
+        // What was compared to the items forgotten, or to those of a source off, is compared again.
+        last.clear()
+        return sink.forget(sources)
     }
 
     /**
@@ -346,14 +436,15 @@ class HubSources(private val sink: HubSink, private val rows: ProviderRows, priv
      * that reason alone, and marks nothing.
      */
     suspend fun connected(active: List<Posted>, complete: Boolean = true): Int {
+        expire()
         val keys = active.mapTo(HashSet()) { it.key }
         last.keys.retainAll(keys)
         val stored = sink.items(HubAccounts.NOTIFICATIONS.id)
         // The latest item of each notification still posted, which a new process does not remember.
         // Not one its source read (removed): the same content posted again is a new item. One
         // read in the Hub alone is still posted, and its reposts are nothing new.
-        stored.filter { !it.sourceRead && it.conversationId in keys }.sortedBy { it.timestamp }.associateBy { it.conversationId!! }
-            .forEach { (key, item) -> last.putIfAbsent(key, item) }
+        stored.filter { !it.sourceRead && it.conversationId in keys }.groupBy { it.conversationId!! }
+            .forEach { (key, items) -> last.putIfAbsent(key, items.associateBy { it.sourceKey }) }
         var written = active.sumOf { posted(it) }
         if (complete) {
             // Not removed yet only: the trace grows without limit, what is still posted does not.

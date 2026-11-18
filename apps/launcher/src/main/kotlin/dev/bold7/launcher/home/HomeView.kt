@@ -34,6 +34,8 @@ import dev.bold7.launcher.quickstep.WindowZoom
 import dev.bold7.launcher.quickstep.spring
 import dev.bold7.launcher.switcher.startSwitcher
 import dev.bold7.platform.RemoteLaunches
+import dev.bold7.ui.Bold7Dialog
+import dev.bold7.ui.DialogIcon
 import dev.bold7.ui.Menu
 import dev.bold7.ui.MenuEntry
 import dev.bold7.ui.MenuKey
@@ -79,8 +81,12 @@ private const val ICON_SIDE = (HomeDimens.COLUMN - HomeDimens.ICON) / 2f
 /** A moved icon held at the grid's edge scrolls it a row this often (by eye). */
 private const val EDGE_STEP_MS = 400L
 
-/** Rows the tray shows: 5 raised, 1 lowered (BBOS7-VISUEL §2, D). */
-internal fun shownRows(expanded: Boolean) = if (expanded) HomeDimens.ROWS_EXPANDED else 1
+/** Rows the tray shows: 5 raised, 4 in an open folder, under its tab, 1 lowered (BBOS7-VISUEL §2, D). */
+internal fun shownRows(expanded: Boolean, folder: Boolean = false) = when {
+    !expanded -> 1
+    folder -> (HomeDimens.ROWS_EXPANDED * HomeDimens.ROW - FOLDER_HEADER) / HomeDimens.ROW
+    else -> HomeDimens.ROWS_EXPANDED
+}
 
 /**
  * The BBOS 7 home as views (docs/BBOS7-VISUEL.md §1 to §3): the banner, the wallpaper's veil, the
@@ -197,7 +203,7 @@ class HomeView(
     private val today = CalendarDay()
 
 
-    private class Images(val banner: BannerImages, val tab: TabImages, val focus: FocusPatch, val folders: List<Bitmap>, val move: Bitmap, val new: Bitmap, val folderBand: Bitmap, val glyphs: Map<HomeAction, Bitmap>)
+    private class Images(val banner: BannerImages, val tab: TabImages, val focus: FocusPatch, val folders: List<Bitmap>, val move: Bitmap, val new: Bitmap, val folderTab: List<Bitmap>, val folderBottom: Bitmap, val glyphs: Map<HomeAction, Bitmap>)
 
     private fun HomeAction.label() = when (this) {
         HomeAction.LAUNCH -> R.string.home_launch
@@ -322,8 +328,20 @@ class HomeView(
             HomeAction.EDIT_FOLDER -> (index?.let(state::tileAt) as? Folder)?.let { folder ->
                 editFolder(R.string.home_edit_folder, R.string.folder_save, folder.name, folder.icon) { name, icon -> dispatch(HomeEvent.EditFolder(index, name, icon)) }
             }
-            HomeAction.DELETE_FOLDER -> index?.let { dispatch(HomeEvent.DeleteFolder(it)) }
+            HomeAction.DELETE_FOLDER -> (index?.let(state::tileAt) as? Folder)?.let { deleteFolder(index, it) }
         }
+    }
+
+    /**
+     * "Delete Zz?" with the question mark, Delete over Cancel, Cancel focused (sim-483, C); the
+     * folder deleted only if the tile at [index] is still a folder of its name when the answer comes.
+     */
+    private fun deleteFolder(index: Int, folder: Folder) {
+        val question = context.getString(R.string.folder_delete_question, folder.name)
+        val buttons = listOf(context.getString(R.string.folder_delete), context.getString(dev.bold7.ui.R.string.ui_cancel))
+        Bold7Dialog(context, question, buttons, DialogIcon.QUESTION, focused = 1, hideStatusBar = true, onButton = {
+            if (it == 0 && (state.tileAt(index) as? Folder)?.name == folder.name) dispatch(HomeEvent.DeleteFolder(index))
+        }).show()
     }
 
     /** Add Folder or Edit Folder (sim-472, sim-481, C): its name and its icon, chosen among the folders' images. */
@@ -369,6 +387,8 @@ class HomeView(
                 folderPanel.translationY = 0f
             }
             folderHeader.visibility = if (folder != null) VISIBLE else GONE
+            // Nothing of the folder's grid over its tab, whatever its scroll.
+            gridArea.clipBounds = Rect(0, if (folder != null) FOLDER_HEADER else 0, 720, HomeDimens.ROWS_EXPANDED * HomeDimens.ROW)
             showPanels(animate = false)
         }
         tab.hidden(next.hiddenPanels)
@@ -621,7 +641,7 @@ class HomeView(
      */
     private fun scroll() {
         val focusRow = (focus as? Focus.Icon)?.index?.div(HomeDimens.COLUMNS)
-        val row = scrollTo(shownFirst, focusRow, shownRows(state.expanded), shownPanel.rows) ?: return
+        val row = scrollTo(shownFirst, focusRow, shownRows(state.expanded, state.folder != null), shownPanel.rows) ?: return
         rows(row, animate = isAttachedToWindow)
     }
 
@@ -694,7 +714,7 @@ class HomeView(
     private var outOfFolder = false
     private var edge = 0
 
-    private fun gridTop() = GRID_TOP + gridArea.translationY
+    private fun gridTop() = GRID_TOP + (if (state.folder != null) FOLDER_HEADER else 0) + gridArea.translationY
 
     private var trayHidden = false
 
@@ -797,7 +817,7 @@ class HomeView(
                 dragging == null -> axis(dx, dy, slop)?.let { if (!menuOpen && downY >= TRAY_TOP + tab.translationY) startDrag(it, dy) }
                 dragging == Axis.SIDEWAYS -> slideBy(slideOrigin + dx)
                 raising -> place(raised(dragStart, dy, TAB_DOWN.toFloat()))
-                else -> shownPanel.translationY = scrolled(dragStart, dy, shownPanel.rows, shownRows(state.expanded))
+                else -> shownPanel.translationY = scrolled(dragStart, dy, shownPanel.rows, shownRows(state.expanded, state.folder != null))
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 val t = tracker
@@ -868,7 +888,7 @@ class HomeView(
     }
 
     private fun releaseScroll(vy: Float) {
-        rows(restRow(shownPanel.translationY, vy, shownPanel.rows, shownRows(state.expanded)), animate = true, velocity = vy)
+        rows(restRow(shownPanel.translationY, vy, shownPanel.rows, shownRows(state.expanded, state.folder != null)), animate = true, velocity = vy)
     }
 
     /** The moved icon at [index] lifted under the finger at ([x], [y]); lowered, the tray rises (D). */
@@ -905,7 +925,7 @@ class HomeView(
             is Drop.At -> if (!outOfFolder && drop.index != at) dispatch(HomeEvent.MoveTo(drop.index))
         }
         // Over the open folder's band the icon leaves the folder: no scroll up there.
-        val dir = if (outOfFolder) 0 else edgeScroll(gy, HomeDimens.ROW * shownRows(state.expanded).toFloat())
+        val dir = if (outOfFolder) 0 else edgeScroll(gy, HomeDimens.ROW * shownRows(state.expanded, state.folder != null).toFloat())
         if (dir != edge) {
             edge = dir
             removeCallbacks(edgeStep)
@@ -916,7 +936,7 @@ class HomeView(
     // At an edge, a row every EDGE_STEP_MS while the icon stays there (D).
     private val edgeStep = object : Runnable {
         override fun run() {
-            val max = (shownPanel.rows - shownRows(state.expanded)).coerceAtLeast(0)
+            val max = (shownPanel.rows - shownRows(state.expanded, state.folder != null)).coerceAtLeast(0)
             rows((shownFirst + edge).coerceIn(0, max), animate = true)
             carried?.let { carryTo(it.translationX + HomeDimens.COLUMN / 2f, it.translationY + HomeDimens.ROW / 2f) }
             if (edge != 0) postDelayed(this, EDGE_STEP_MS)
@@ -1033,13 +1053,14 @@ class HomeView(
     init {
         clipChildren = false
         addView(veil, LayoutParams(LayoutParams.MATCH_PARENT, 720 - TRAY_TOP).apply { topMargin = TRAY_TOP })
+        // Under the grid: its tab and darkened ground go to the screen's bottom.
+        addView(folderHeader, LayoutParams(LayoutParams.MATCH_PARENT, 720 - TRAY_TOP - HomeDimens.TAB).apply { topMargin = TRAY_TOP + HomeDimens.TAB })
         addView(gridArea, LayoutParams(LayoutParams.MATCH_PARENT, HomeDimens.ROWS_EXPANDED * HomeDimens.ROW).apply { topMargin = GRID_TOP })
         addView(tab, LayoutParams(LayoutParams.MATCH_PARENT, HomeDimens.TAB).apply { topMargin = TRAY_TOP })
         addView(banner, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        addView(folderHeader, LayoutParams(LayoutParams.MATCH_PARENT, FOLDER_HEADER).apply { topMargin = TRAY_TOP + HomeDimens.TAB })
         addView(menuView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(pickerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        gridArea.addView(folderPanel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        gridArea.addView(folderPanel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = FOLDER_HEADER })
         folderHeader.visibility = GONE
         folderPanel.transitionAlpha = 0f
         for (p in panels.values) gridArea.addView(p, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
@@ -1056,7 +1077,8 @@ class HomeView(
                     (0 until FOLDER_ICONS).map { decode(folderIcon(it)) },
                     decode("home_icon_move_underlay"),
                     decode("home_new_overlay"),
-                    decode("home_background_folderview"),
+                    (1..5).map { decode("home_background_folder_$it") },
+                    decode("home_background_folder_bottom"),
                     mapOf(
                         HomeAction.LAUNCH to "home_sm_launch",
                         HomeAction.MARK_FAVOURITE to "home_sm_mark_favourite",
@@ -1079,7 +1101,7 @@ class HomeView(
             folderImages = images.folders
             moveImage = images.move
             newImage = images.new
-            folderHeader.images(images.folderBand)
+            folderHeader.images(images.folderTab, images.folderBottom)
             folderPanel.focusImage = images.focus
             glyphs.putAll(images.glyphs)
             builtVersion = -1 // the folders' icon is in: build again

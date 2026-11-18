@@ -20,7 +20,7 @@ real() {
 }
 before=$(real)
 adb shell "rm -rf $T && mkdir -p $T/mod/layer/product/usr/keylayout"
-adb push src/setup.sh src/uninstall.sh src/saisie-start.sh $T/mod/ >/dev/null
+adb push src/setup.sh src/uninstall.sh src/saisie-start.sh src/lift.sh $T/mod/ >/dev/null
 adb push src/layer/product/usr/keylayout/Q25_keyboard.kl $T/mod/layer/product/usr/keylayout/ >/dev/null
 adb shell "cat > $T/run.sh" <<'EOF'
 T=$1 M=$1/mod F=$1/f
@@ -220,6 +220,12 @@ stock; echo main.BenOS-Valarie_stable-f6702fc408 > $F/prop-ro.build.display.id
 expect "a newer BenOS build, named otherwise, is taken" "$(setup check $M)" 0
 stock; touch $T/adb/metamodule
 expect "a metamodule is refused" "$(setup check $M)" 1
+stock; mkdir -p $T/adb/modules/hybrid_mount; echo "name=Hybrid Mount" > $T/adb/modules/hybrid_mount/module.prop; ln -s $T/adb/modules/hybrid_mount $T/adb/metamodule
+expect "a metamodule is refused, named" "$(setup check $M) $(grep -c 'metamodule, Hybrid Mount' $T/out)" "1 1"
+stock; mkdir -p $T/adb/modules/bb10launcher_quickstep
+expect "JL10 QuickStep on is refused" "$(setup check $M) $(grep -c 'JL10 QuickStep is on' $T/out)" "1 1"
+touch $T/adb/modules/bb10launcher_quickstep/disable
+expect "JL10 QuickStep off is taken" "$(setup check $M)" 0
 stock; mkdir -p $T/adb/modules_update/cascade
 expect "the BB10 module waiting is refused" "$(setup check $M)" 1
 stock; echo x > $F/pkg/dev.cascade.hub
@@ -270,7 +276,7 @@ expect "Vector installed from the module's folder" "$(calls ksud)" "ksud module 
 expect "and marked as Bold7's" "$([ -e $S/vector.installe ] && echo yes)" yes
 expect "the apps, Messages after the Hub and the Phone" "$(calls '^install' | sed 's/install //g')" \
   "dev.bold7.hub dev.bold7.phone dev.bold7.messages dev.bold7.saisie dev.bold7.clock dev.bold7.calendar dev.bold7.contacts dev.bold7.calculator dev.bold7.flashlight dev.bold7.memopad dev.bold7.tasks dev.bold7.pictures dev.bold7.help dev.bold7.sysui "
-expect "the zip's copies removed, the access to give again" "$(ls $M | tr '\n' ' ')$([ -e $S/acces.fait ] || echo again)" "layer saisie-start.sh setup.sh uninstall.sh again"
+expect "the zip's copies removed, the access to give again" "$(ls $M | tr '\n' ' ')$([ -e $S/acces.fait ] || echo again)" "layer lift.sh saisie-start.sh setup.sh uninstall.sh again"
 stock; setup save $M >/dev/null; echo /data/app/dev.bold7.launcher/base.apk > $F/pkg/dev.bold7.launcher
 expect "a launcher of /data that is not a system app: left as it is, said" "$(setup install $M) $(calls usu)$(calls 'uninstall dev.bold7.launcher') $(grep -c 'installed as an ordinary app' $T/out) $(cat $F/pkg/dev.bold7.launcher)" "0  1 /data/app/dev.bold7.launcher/base.apk"
 # The next boot: the priv-app mounted, Android takes the copy of /data for its update.

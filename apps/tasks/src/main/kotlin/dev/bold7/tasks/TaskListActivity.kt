@@ -152,6 +152,14 @@ class TaskListActivity : Activity() {
         if (!getSystemService(NotificationManager::class.java).areNotificationsEnabled()) status(this, getString(R.string.no_notifications))
     }
 
+    // The task just created takes the focus, now or once the list has read it (ListEvent.Created).
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val id = data?.getLongExtra(EXTRA_SAVED, -1L) ?: -1L
+        if (requestCode == NEW_TASK && resultCode == RESULT_OK && id >= 0) update(ListEvent.Created(id))
+    }
+
     /** The database and the options read again off the main thread (the screen came back from the form or the options). */
     private fun load() {
         val g = graph
@@ -200,7 +208,7 @@ class TaskListActivity : Activity() {
     private fun act(a: ListAct) {
         val t = (state.focused as? Entry)?.task
         when (a) {
-            ListAct.NEW -> startActivity(Intent(this, EditActivity::class.java))
+            ListAct.NEW -> startActivityForResult(Intent(this, EditActivity::class.java), NEW_TASK)
             ListAct.OPEN -> t?.let { startActivity(EditActivity.open(this, it.id)) }
             // Mark Completed (guide p. 207, B): a recurring task moves to its next occurrence ([completed]).
             ListAct.COMPLETE -> t?.let { done -> write { it.get(done.id)?.let { cur -> it.save(cur.completed(System.currentTimeMillis())) } != null } }
@@ -337,6 +345,11 @@ class TaskListActivity : Activity() {
 
 /** Set by Calendar's New Task: open the new task form. */
 const val EXTRA_NEW = "dev.bold7.tasks.NEW"
+
+/** The id of the task the form has just created, in its result. */
+const val EXTRA_SAVED = "dev.bold7.tasks.SAVED"
+
+private const val NEW_TASK = 1
 
 /** The short and full menus' image of each action (sm_*.png of the theme, A; the match D); the others have none. */
 fun glyphOf(a: ListAct): String? = when (a) {

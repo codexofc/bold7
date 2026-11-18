@@ -1,13 +1,20 @@
 package dev.bold7.messages
 
+import dev.bold7.hub.data.Box
+import dev.bold7.hub.data.HubAccounts
+import dev.bold7.hub.data.HubContract
+import dev.bold7.hub.data.ItemKey
+import dev.bold7.hub.data.ReplyResult
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The made-up thread's id: no thread of Telephony is negative. */
 const val DEMO_THREAD = -1L
@@ -83,20 +90,38 @@ interface MessagingApi {
  * messages sent, created and deleted. Never a message lost without a word: a send that fails
  * keeps its text in the field and sets a [Notice]; what Google Messages accepts it copies into
  * Telephony, where the thread reads it with its state (sending, sent, delivered, failed).
+ * Another app's conversation ([openApp]) is the Hub's instead ([apps]): its items, its
+ * notification's reply, nothing of Telephony nor of Google Messages.
  */
 class Conversation(
     private val reader: ThreadReader,
     private val api: MessagingApi,
     private val contacts: ContactBook,
     private val store: AttachmentStore,
+    private val apps: AppThreads,
     private val io: CoroutineDispatcher,
     private val scope: CoroutineScope,
+    private val now: () -> Long = System::currentTimeMillis,
     /** A call that failed: logged by the caller (never its text). */
     private val onError: (RuntimeException) -> Unit,
 ) {
     private val mutable = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = mutable.asStateFlow()
     private val reading = AtomicBoolean(false)
+
+    // An app's conversation, on [io] only: the Hub's bubbles, the replies awaiting their echo, those
+    // already said not confirmed, and whether the thread was left (Mark Unread: nothing read again).
+    private var hubMessages = emptyList<ThreadMessage>()
+    private var pending = emptyList<Pending>()
+    private val told = HashSet<Long>()
+    private var replies = 0L
+    @Volatile private var left = false
+
+    /** Another app's conversation, the notification [key]'s, under [title]. */
+    fun openApp(key: String, app: String, title: String) {
+        mutable.value = ConversationState(threadId = APP_THREAD, title = title, notification = key, app = app)
+        reload()
+    }
 
     /** Shows [threadId]'s thread under [title], or a new message (null). */
     fun open(threadId: Long?, title: String) {
@@ -186,9 +211,11 @@ class Conversation(
 
     /** Reads the thread again (Telephony changed); marks it read when it shows an unread message. Changes coming during a read make one more. */
     fun reload() {
-        if (isMadeUp(mutable.value.threadId) || reading.getAndSet(true)) return
+        val s = mutable.value
+        if ((s.notification == null && isMadeUp(s.threadId)) || reading.getAndSet(true)) return
         scope.launch(io) {
             reading.set(false)
+            s.notification?.let { return@launch readApp(it) }
             val thread = mutable.value.shownThread ?: return@launch
             val messages = reader.read(thread) ?: return@launch
             // The history of a recipient taken out meanwhile is not shown.
@@ -199,11 +226,76 @@ class Conversation(
     }
 
     /**
+     * The Hub's items of the conversation [key], and whether its notification can be answered; its
+     * received messages read in the Hub alone: the app's own "mark as read" waits for the user's
+     * Mark Opened in the inbox (D).
+     */
+    private fun readApp(key: String) {
+        if (left) return
+        val items = call { apps.items(key) } ?: return
+        hubMessages = appMessages(items)
+        event(ThreadEvent.Replyable(call { apps.canReply(key) } == true))
+        showApp()
+        val unread = items.filter { !it.read && !it.deleted && it.box == Box.INBOX }
+        if (unread.isNotEmpty()) call { apps.write(HubContract.METHOD_MARK_READ, unread.map { ItemKey(it.accountId, it.sourceKey) }, hubOnly = true) }
+    }
+
+    /** The Hub's bubbles with the replies awaiting their echo; a reply past [ECHO_MS] without one is said once. */
+    private fun showApp() {
+        val at = now()
+        val (messages, waiting) = withPending(hubMessages, pending, at)
+        pending = waiting
+        event(ThreadEvent.Loaded(messages))
+        if (waiting.any { at - it.at >= ECHO_MS && told.add(it.id) }) event(ThreadEvent.Told(Notice.UNCONFIRMED))
+    }
+
+    /**
+     * An app's conversation: the field's text through its notification's reply, by the Hub, which
+     * checks the lock when it sends. Handed over, the text shows as sending until the app shows it
+     * back; refused or gone, it stays in the field and the screen says why.
+     */
+    private fun reply(s: ConversationState, key: String) {
+        if (!s.sendable) return
+        val text = s.draft
+        event(ThreadEvent.Sending)
+        scope.launch(io) {
+            when (call { apps.reply(key, text) }) {
+                ReplyResult.SENT -> {
+                    pending = pending + pendingReply(replies++, text, now(), hubMessages)
+                    event(ThreadEvent.Sent(text))
+                    showApp()
+                    scope.launch(io) {
+                        delay(ECHO_MS)
+                        showApp()
+                    }
+                }
+                ReplyResult.NO_REPLY -> {
+                    event(ThreadEvent.Replyable(false))
+                    event(ThreadEvent.Failed(Notice.REPLY_GONE))
+                }
+                ReplyResult.CANCELED -> event(ThreadEvent.Failed(Notice.REPLY_CANCELED))
+                // Locked, or the Hub unreachable.
+                ReplyResult.REFUSED, null -> event(ThreadEvent.Failed(Notice.NOT_SENT))
+            }
+        }
+    }
+
+    /** Mark Unread in an app's conversation: its latest received message, then nothing more is read (the thread closes). */
+    suspend fun markUnread() {
+        left = true
+        withContext(io) {
+            val last = hubMessages.lastOrNull { !it.out } ?: return@withContext
+            call { apps.write(HubContract.METHOD_MARK_UNREAD, listOf(ItemKey(HubAccounts.NOTIFICATIONS.id, last.uri.removePrefix(HUB_URI))), hubOnly = false) }
+        }
+    }
+
+    /**
      * Send: the conversation created first for a new message (one recipient's, or a group of
      * several), then the text; what fails is said, the text stays.
      */
     fun send(now: Long = System.currentTimeMillis()) {
         val s = mutable.value
+        s.notification?.let { return reply(s, it) }
         if (isMadeUp(s.threadId)) {
             // The showcase's story (capture.sh): the text shows as sent in this screen only, nothing leaves.
             if (isShowcaseThread(s.threadId!!) && s.draft.isNotBlank() && !s.sending) {
@@ -263,10 +355,21 @@ class Conversation(
 
     /** Delete Message or Clear Conversation: each message deleted in Google Messages, then read again. */
     fun delete(uris: List<String>) {
+        if (mutable.value.notification != null) return deleteInHub(uris)
         if (isMadeUp(mutable.value.threadId)) return
         scope.launch(io) {
             // Stops at the first refusal: what went is gone, the rest stays, and the screen says so.
             if (uris.any { call { api.run(ApiCall.Delete(it)) } == null }) event(ThreadEvent.Failed(Notice.NOT_DELETED))
+            reload()
+        }
+    }
+
+    /** An app's messages deleted in the Hub (its notification cancelled once all are, HubEffects); a reply on its way is not the Hub's. */
+    private fun deleteInHub(uris: List<String>) {
+        val keys = uris.filter { it.startsWith(HUB_URI) }.map { ItemKey(HubAccounts.NOTIFICATIONS.id, it.removePrefix(HUB_URI)) }
+        if (keys.isEmpty()) return
+        scope.launch(io) {
+            if (call { apps.write(HubContract.METHOD_DELETE, keys, hubOnly = false) } == null) event(ThreadEvent.Failed(Notice.NOT_DELETED))
             reload()
         }
     }

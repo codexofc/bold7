@@ -304,7 +304,7 @@ class BubbleView(context: Context, private val images: ThreadImages, private val
 
     private fun textWidth(width: Int) = (width - D.BUBBLE_NEAR - D.BUBBLE_FAR - D.TEXT_X - D.PAD).coerceAtLeast(1)
 
-    /** Row and column of net_rim_Message-icons32x32.png (A): row 1 the texts' (9 check, 10 D, 11 R, 12 cross, 5 clock), row 2 col 15 and 16 the orange and grey dots (gsm 023: grey on a received message, C). */
+    /** Row and column of net_rim_Message-icons32x32.png (A): row 1 the texts' (9 check, 10 D, 11 R, 12 cross, 5 clock, 8 waves), row 2 col 15 and 16 the orange and grey dots (gsm 023: grey on a received message, C). */
     private fun iconCell(d: Delivery): Pair<Int, Int> = when (d) {
         Delivery.UNREAD -> 2 to 15
         Delivery.RECEIVED -> 2 to 16
@@ -312,6 +312,8 @@ class BubbleView(context: Context, private val images: ThreadImages, private val
         Delivery.SENT -> 1 to 9
         Delivery.DELIVERED -> 1 to 10
         Delivery.FAILED -> 1 to 12
+        // The waves of "transmitting" (A, read by eye): handed over, not known to have gone (D).
+        Delivery.UNCONFIRMED -> 1 to 8
     }
 
     override fun onDraw(canvas: Canvas) {

@@ -66,6 +66,18 @@ class ActionsTest {
         assertEquals(listOf(false, true, false), m.entries.take(3).map { it.separatorAbove }) // alone in its group
     }
 
+    // On a date field both menus open on Compose Email: the short one of a date field focuses
+    // Compose (vid-06, C), the full one of Messages Compose Email (sim-44, sim-289, C).
+    @Test fun aDateFieldsMenusOpenOnCompose() {
+        val full = menuOf(rows[0])
+        assertEquals(Act.COMPOSE_EMAIL, full.entries[full.highlighted!!].action)
+        val short = shortMenu(rows[0])
+        assertEquals(Act.COMPOSE_EMAIL, short[menuFocus(short, rows[0])].action)
+        // A message's: Open; a range's: its first action, the date field it ends on or not.
+        assertEquals(Act.OPEN, shortMenu(rows[2]).let { it[menuFocus(it, rows[2])].action })
+        assertEquals(Act.MARK_READ, shortMenu(rows[0], range = true).let { it[menuFocus(it, rows[0], range = true)].action })
+    }
+
     @Test fun theShortMenuIsTheFullOnesActions() {
         // Without the submenus and the rows OS 7's short menu has no cell for (D).
         assertEquals(listOf(Act.OPEN, Act.MARK_READ, Act.DELETE, Act.COMPOSE_EMAIL, Act.COMPOSE, Act.SEARCH, Act.VIEW_FOLDER, Act.OPTIONS), shortMenu(rows[2]).map { it.action })

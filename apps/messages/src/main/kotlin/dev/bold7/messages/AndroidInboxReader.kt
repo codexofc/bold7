@@ -17,6 +17,7 @@ import dev.bold7.hub.data.HubContract
 import dev.bold7.hub.data.HubItem
 import dev.bold7.hub.data.ItemKey
 import dev.bold7.hub.data.ItemKind
+import dev.bold7.hub.data.ReplyResult
 import dev.bold7.hub.data.itemFromRow
 import dev.bold7.hub.data.keyArrays
 import java.time.ZoneId
@@ -31,7 +32,7 @@ const val DEMO_MAX = 500
  * taken from the launcher's hub/AndroidHubReader.kt. Blocking binder calls: on the feed's thread
  * only (MessagesGraph).
  */
-class AndroidInboxReader(private val context: Context, private val drafts: Drafts, private val store: MessagesStore) : InboxReader {
+class AndroidInboxReader(private val context: Context, private val drafts: Drafts, private val store: MessagesStore) : InboxReader, AppThreads {
     private val resolver = context.contentResolver
     private val hub = Uri.parse("content://${HubContract.AUTHORITY}")
 
@@ -93,13 +94,37 @@ class AndroidInboxReader(private val context: Context, private val drafts: Draft
 
     override fun format() = inboxFormat(context)
 
-    override fun write(method: String, keys: List<ItemKey>) {
+    override fun write(method: String, keys: List<ItemKey>) = write(method, keys, hubOnly = false)
+
+    override fun write(method: String, keys: List<ItemKey>, hubOnly: Boolean) {
         val (accounts, sourceKeys) = keyArrays(keys)
         val extras = Bundle().apply {
             putStringArray(HubContract.EXTRA_ACCOUNTS, accounts)
             putStringArray(HubContract.EXTRA_KEYS, sourceKeys)
+            putBoolean(HubContract.EXTRA_HUB_ONLY, hubOnly)
         }
         resolver.call(hub, method, null, extras)
+    }
+
+    // Another app's conversation, as read() logs: the class only, never a text.
+    override fun items(key: String): List<HubItem>? = try {
+        resolver.query(Uri.parse("${HubContract.CONVERSATION_URI}/${Uri.encode(key)}"), null, null, null, null)?.use(::items)
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "Hub conversation unreadable: ${e.javaClass.name}")
+        null
+    }
+
+    override fun canReply(key: String): Boolean = try {
+        resolver.call(hub, HubContract.METHOD_CAN_REPLY, key, null)?.getBoolean(HubContract.EXTRA_CAN_REPLY) == true
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "Hub reply unknown: ${e.javaClass.name}")
+        false
+    }
+
+    // No answer (refused while locked): REFUSED. What the Hub throws reaches the caller.
+    override fun reply(key: String, text: String): ReplyResult {
+        val answer = resolver.call(hub, HubContract.METHOD_REPLY, key, Bundle().apply { putString(HubContract.EXTRA_TEXT, text) })
+        return answer?.getString(HubContract.EXTRA_REPLY_RESULT)?.let { name -> ReplyResult.entries.firstOrNull { it.name == name } } ?: ReplyResult.REFUSED
     }
 
     override fun markSeen(upTo: Map<String, Long>) {

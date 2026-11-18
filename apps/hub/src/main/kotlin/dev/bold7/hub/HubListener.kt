@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import dev.bold7.hub.data.Posted
+import dev.bold7.hub.data.PostedMessage
 import java.io.FileDescriptor
 import java.io.PrintWriter
 
@@ -69,14 +70,22 @@ class HubListener : NotificationListenerService() {
 }
 
 /**
- * MessagingStyle's messages are bundles whose keys ("text", "sender", "sender_person") the
- * platform reads itself (Notification.MessagingStyle.Message.getMessagesFromBundleArray, hidden).
+ * MessagingStyle's messages are bundles whose keys ("text", "time", "sender", "sender_person") the
+ * platform reads itself (Notification.MessagingStyle.Message.getMessagesFromBundleArray, hidden);
+ * one without text is dropped, as the platform drops it.
  */
 @Suppress("DEPRECATION") // The untyped getters: the array is a Parcelable[], not a Bundle[].
 private fun copy(sbn: StatusBarNotification): Posted {
     val n = sbn.notification
     val x = n.extras
-    val last = x.getParcelableArray(Notification.EXTRA_MESSAGES)?.lastOrNull() as? Bundle
+    val title = x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()
+    val messages = x.getParcelableArray(Notification.EXTRA_MESSAGES).orEmpty().mapNotNull { it as? Bundle }.mapNotNull { m ->
+        val text = m.getCharSequence("text")?.toString() ?: return@mapNotNull null
+        val person = m.getParcelable("sender_person") as? Person
+        val name = (person?.name ?: m.getCharSequence("sender"))?.toString()
+        PostedMessage(text, m.getLong("time"), name, person?.key ?: name)
+    }
+    val user = x.getParcelable(Notification.EXTRA_MESSAGING_PERSON) as? Person
     return Posted(
         key = sbn.key,
         packageName = sbn.packageName,
@@ -88,9 +97,11 @@ private fun copy(sbn: StatusBarNotification): Posted {
         title = x.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
         text = x.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
         bigText = x.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString(),
-        conversationTitle = x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString(),
-        lastSender = ((last?.getParcelable("sender_person") as? Person)?.name ?: last?.getCharSequence("sender"))?.toString(),
-        lastMessage = last?.getCharSequence("text")?.toString(),
+        conversationTitle = title,
+        messages = messages,
+        userKey = user?.key ?: user?.name?.toString(),
+        // Android's own fallback for an app that does not say: a conversation title makes a group.
+        group = x.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, title != null),
         category = n.category,
         messaging = x.getString(Notification.EXTRA_TEMPLATE)?.contains("Messaging") == true,
     )

@@ -22,6 +22,14 @@ package dev.bold7.hub.data
  *   in the Hub, on the items named by [EXTRA_ACCOUNTS] and [EXTRA_KEYS] ([keyArrays], at most
  *   [KEYS_MAX] a call). Marked read, a notification's own "mark as read" action is sent too when
  *   it has one; deleted, a notification is cancelled in Android as well. Refused while locked.
+ *   With [EXTRA_HUB_ONLY] true, a read is the Hub's alone and the app's action is not sent:
+ *   the thread of OS 7 opened, rather than Mark Opened asked from a menu.
+ * - [CONVERSATION_URI]/<key>: the items of one notification's conversation (its key, encoded),
+ *   their texts whole, as [ITEM_COLUMNS]: the thread of OS 7 of another app's messages.
+ * - [METHOD_CAN_REPLY]: with a notification's key as its arg, whether its live notification has a
+ *   reply that takes free text, in [EXTRA_CAN_REPLY]; [METHOD_REPLY]: the same, with
+ *   [EXTRA_TEXT], fills that reply's RemoteInput and sends its PendingIntent, the answer a
+ *   [ReplyResult] name in [EXTRA_REPLY_RESULT]. Refused while locked, checked when it is sent.
  * - [METHOD_MARK_SEEN]: the accounts named by [EXTRA_ACCOUNTS] were seen in the
  *   Hub up to the arrival ([HubItem.addedAt]) given at the same place in [EXTRA_SEEN_UP_TO], the
  *   newest new item the caller showed: those items stop being new (the splat), and what arrived
@@ -57,8 +65,17 @@ object HubContract {
     const val NEW = "new"
     const val SEEN = "seen"
 
+    const val CONVERSATION_URI = "content://$AUTHORITY/conversation"
+
     const val METHOD_OPEN = "open"
     const val EXTRA_INTENT = "intent"
+
+    const val METHOD_CAN_REPLY = "canReply"
+    const val EXTRA_CAN_REPLY = "canReply"
+    const val METHOD_REPLY = "reply"
+    const val EXTRA_TEXT = "text"
+    const val EXTRA_REPLY_RESULT = "replyResult"
+    const val EXTRA_HUB_ONLY = "hubOnly"
 
     const val METHOD_MARK_READ = "markRead"
     const val METHOD_MARK_UNREAD = "markUnread"
@@ -87,10 +104,10 @@ object HubContract {
 
 private fun Boolean.bit() = if (this) 1L else 0L
 
-/** [item] as a row of the items' cursor: only Long, String and null, what a cursor carries. */
-fun itemRow(item: HubItem, color: AccountColor): Array<Any?> = with(item) {
+/** [item] as a row of the items' cursor: only Long, String and null, what a cursor carries; texts cut at [max]. */
+fun itemRow(item: HubItem, color: AccountColor, max: Int = HubContract.TEXT_MAX): Array<Any?> = with(item) {
     arrayOf(
-        accountId, sourceKey, kind.name, timestamp, sender, address, subject?.take(HubContract.TEXT_MAX), preview.take(HubContract.TEXT_MAX), box.name, folder,
+        accountId, sourceKey, kind.name, timestamp, sender, address, subject?.take(max), preview.take(max), box.name, folder,
         conversationId, read.bit(), flagged.bit(), importance.name, level1.bit(), attachmentCount.toLong(), addedAt, color.name,
         sourceRead.bit(), deleted.bit(), category, messaging.bit(),
     )

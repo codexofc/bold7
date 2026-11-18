@@ -56,6 +56,13 @@ data class Dialer(
     fun back(): Dialer? = if (typed.isEmpty()) null else copy(typed = "").refocused(null)
 
     /**
+     * A call placed: the Phone comes back as it opens, its field focused, nothing typed, no row in
+     * blue (sim-141, C). A focus left on a row would follow it by its id below the new call, and
+     * a click would call that row's number (D).
+     */
+    fun placed(): Dialer = copy(typed = "", focus = FIELD)
+
+    /**
      * What the Send key calls: the number typed; a name typed calls the call found, else its keypad
      * digits (guide p. 63); nothing typed, the focused call.
      */

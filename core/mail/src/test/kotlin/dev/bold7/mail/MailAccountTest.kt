@@ -24,7 +24,7 @@ class MailAccountTest {
         assertNull(MailProviders.forAddress("alice@example.org"))
         assertNull(MailProviders.forAddress("gmail.com"))
         assertNull(MailProviders.forAddress("alice@"))
-        assertNull(MailProviders.byId("yahoo"))
+        assertNull(MailProviders.byId("nowhere"))
     }
 
     @Test

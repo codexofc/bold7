@@ -2,8 +2,10 @@ package dev.bold7.messages
 
 import dev.bold7.hub.data.Account
 import dev.bold7.hub.data.Box
+import dev.bold7.hub.data.DEFAULT_DISABLED_SOURCES
 import dev.bold7.hub.data.HubItem
 import dev.bold7.hub.data.isNotMessage
+import dev.bold7.hub.data.isSystemNotification
 import dev.bold7.hub.data.HubRow
 import dev.bold7.hub.data.HubView
 import dev.bold7.hub.data.ItemKind
@@ -49,6 +51,36 @@ enum class Filter { ALL, INCOMING, OUTGOING, TEXT, CALLS, UNREAD, NOTIFICATIONS,
 /** View Folder's views: View Saved Messages is a row of the menu, not of this list (sim-44, C). */
 val FOLDER_VIEWS = Filter.entries.filter { it != Filter.SAVED }
 
+/** A row of View Folder: a view, or the notifications of one [app] (D: the 9900 had no third-party apps there). */
+data class FolderView(val filter: Filter, val app: String? = null)
+
+/** View Folder's rows: [FOLDER_VIEWS], then one per app of [apps] ([messagingApps]). */
+fun folderViews(apps: List<String>): List<FolderView> = FOLDER_VIEWS.map { FolderView(it) } + apps.map { FolderView(Filter.NOTIFICATIONS, it) }
+
+/**
+ * The apps whose messages the Hub holds, the most recent first: those with a view of their own.
+ * Not the SMS app's (its chats are texts), not the system's, not one turned off.
+ */
+fun messagingApps(snapshot: Snapshot): List<String> {
+    val newest = HashMap<String, Long>()
+    for (item in snapshot.items) {
+        val app = item.folder ?: continue
+        if (item.kind != ItemKind.NOTIFICATION || item.deleted || item.isNotMessage() || app == snapshot.smsApp || app in snapshot.options.disabledSources) continue
+        newest.merge(app, item.timestamp, ::maxOf)
+    }
+    return newest.entries.sortedByDescending { it.value }.map { it.key }
+}
+
+/**
+ * Message Sources' apps: those of [messagingApps], then those turned off, which the Hub no longer
+ * holds; one turned off by default ([DEFAULT_DISABLED_SOURCES]) only once [installed].
+ */
+fun sourceApps(snapshot: Snapshot, installed: (String) -> Boolean): List<String> {
+    val seen = messagingApps(snapshot)
+    val off = snapshot.options.disabledSources.filter { isAppSource(it) && it !in seen && (it !in DEFAULT_DISABLED_SOURCES || installed(it)) }.sorted()
+    return seen + off
+}
+
 /**
  * Whether [filter] shows [item]. A notification of the [smsApp] is a text: an RCS chat that
  * Google Messages did not copy into Telephony reaches the Hub only so (D). Only missed calls
@@ -79,17 +111,27 @@ fun HubItem.matches(query: String): Boolean =
  * The items [filter] and [search] show, without the notifications that repeat another item, nor the
  * deleted ones; only [account]'s when an account's icon opened Messages (gsm 029).
  */
-fun Snapshot.shown(filter: Filter, search: String?, account: String? = null, searchIn: SearchIn = SearchIn.ANY): List<HubItem> {
+fun Snapshot.shown(filter: Filter, search: String?, account: String? = null, searchIn: SearchIn = SearchIn.ANY, app: String? = null): List<HubItem> {
     val query = search?.trim().orEmpty()
     val saved = filter == Filter.SAVED
     return items.withoutEchoes(smsApp, dialer).filter {
         // A saved message stays in the saved view once deleted from the inbox (guide p. 93, B).
-        (if (saved) it.savedKey() in this.saved else !it.deleted && options.keeps(it, filter, account, smsApp)) &&
-            (account == null || it.accountId == account) && filter.shows(it, smsApp) && (query.isEmpty() || it.matches(query, searchIn))
+        (if (saved) it.savedKey() in this.saved else !it.deleted && options.keeps(it, filter, account, smsApp, app)) &&
+            (account == null || it.accountId == account) && (app == null || it.folder == app) && filter.shows(it, smsApp) && (query.isEmpty() || it.matches(query, searchIn))
     }.let { found -> if (saved) found.map { it.copy(deleted = false) } else found } // shown as saved, whatever the inbox did (the Hub's views leave out the deleted)
 }
 
-enum class Strip { MESSAGE, PHONE }
+/** A strip of status icons and the side of its cells. */
+enum class Strip(val cell: Int) {
+    MESSAGE(42),
+    PHONE(42),
+
+    /** facebook_ML_40.png of net_rim_bb_facebook_resource (A), the largest under the row's 42 px. */
+    FACEBOOK(40),
+
+    /** twitter_ML_icons40.png of net_rim_bb_twitter_resources_small (A), the same. */
+    TWITTER(40),
+}
 
 /**
  * A row's status icon, a cell of a 42 px strip of the theme (A): net_rim_Message-icons42x42.png of
@@ -117,6 +159,31 @@ enum class MessageIcon(val strip: Strip, val row: Int, val column: Int) {
     SYSTEM_READ(Strip.MESSAGE, 3, 23),
     CALL_MISSED_UNREAD(Strip.PHONE, 0, 2),
     CALL_MISSED_READ(Strip.PHONE, 0, 3),
+
+    // The "ML" (message list) strips the Facebook and Twitter apps of OS 7 added to Messages,
+    // read by eye (A): Facebook's blue "f" unread, grey read, waves sending, tick sent (its fifth
+    // cell, a red cross, failed: no notification says so); Twitter's blue bird unread, white read,
+    // tick sent (its fourth, a cross, failed).
+    FACEBOOK_UNREAD(Strip.FACEBOOK, 0, 0),
+    FACEBOOK_READ(Strip.FACEBOOK, 0, 1),
+    FACEBOOK_SENDING(Strip.FACEBOOK, 0, 2),
+    FACEBOOK_SENT(Strip.FACEBOOK, 0, 3),
+    TWITTER_UNREAD(Strip.TWITTER, 0, 0),
+    TWITTER_READ(Strip.TWITTER, 0, 1),
+    TWITTER_SENT(Strip.TWITTER, 0, 2),
+}
+
+/** The packages of the apps of OS 7 whose own strips Messages draws. */
+private val FACEBOOK = setOf("com.facebook.katana", "com.facebook.lite")
+private val TWITTER = setOf("com.twitter.android")
+
+/**
+ * The app whose own icon a notification's row shows in place of its strip cell (D: OS 7 showed
+ * an app's icon only for those that brought one, Facebook and Twitter): any app but the system's,
+ * the SMS app (its chats are texts) and the two with a strip. Its BBOS 7 icon, drawn at 42 px.
+ */
+fun HubItem.appIcon(smsApp: String?): String? = folder?.takeIf {
+    kind == ItemKind.NOTIFICATION && !isSystemNotification() && it != smsApp && it !in FACEBOOK && it !in TWITTER
 }
 
 /**
@@ -139,6 +206,10 @@ fun HubRow.Entry.icon(smsApp: String?): MessageIcon {
         ItemKind.MISSED_CALL -> if (unread) MessageIcon.CALL_MISSED_UNREAD else MessageIcon.CALL_MISSED_READ
         ItemKind.NOTIFICATION -> when {
             item.isSmsAppNotification(smsApp) -> sms()
+            item.folder in FACEBOOK -> of(MessageIcon.FACEBOOK_UNREAD, MessageIcon.FACEBOOK_READ, MessageIcon.FACEBOOK_SENT, MessageIcon.FACEBOOK_SENDING)
+            // No cell of Twitter's for waiting: its tick (D).
+            item.folder in TWITTER -> of(MessageIcon.TWITTER_UNREAD, MessageIcon.TWITTER_READ, MessageIcon.TWITTER_SENT, MessageIcon.TWITTER_SENT)
+            // An app's own icon ([appIcon]) covers this one once drawn.
             unread -> MessageIcon.SYSTEM_UNREAD
             else -> MessageIcon.SYSTEM_READ
         }
@@ -168,6 +239,8 @@ data class ItemLine(
     val related: String,
     /** In the saved messages: Save is not offered again. */
     val saved: Boolean = false,
+    /** The app whose icon covers [icon] once drawn ([appIcon]). */
+    val app: String? = null,
 ) : InboxLine
 
 /** "Fri 16 Sep 2011" (gsm 027, C), in the phone's language as the home's banner writes its date (dots dropped). */
@@ -182,6 +255,13 @@ private fun HubItem.secondLine(): String = when (kind) {
     else -> preview
 }.replace('\n', ' ')
 
+/**
+ * A group conversation's name, a notification's subject (only a group's has one, HubSources):
+ * the row's first line, the sender before the text on the second, as OS 7 named a thread by its
+ * participants and BBM Groups by the group (D: no capture of a group in the inbox).
+ */
+private fun HubItem.groupName(): String? = subject?.takeIf { kind == ItemKind.NOTIFICATION && messaging }
+
 /** A 64-bit hash of the row's conversation, never negative (days are): String.hashCode's 32 bits collide in a few thousand rows. */
 private fun rowId(item: HubItem, single: Boolean): Long {
     var h = 1125899906842597L
@@ -192,12 +272,13 @@ private fun dayId(date: LocalDate) = -1 - date.toEpochDay()
 
 /**
  * The inbox's lines for [filter] and [search]: newest first, a date field before each day, a
- * conversation as one row at its latest message (the Hub's choice, kept: D).
+ * conversation as one row at its latest message (the Hub's choice, kept: D). [appName] names an
+ * app (AppLooks), for a notification without a title.
  */
-fun inboxLines(snapshot: Snapshot, filter: Filter, search: String?, format: InboxFormat, account: String? = null, searchIn: SearchIn = SearchIn.ANY): List<InboxLine> {
+fun inboxLines(snapshot: Snapshot, filter: Filter, search: String?, format: InboxFormat, account: String? = null, searchIn: SearchIn = SearchIn.ANY, app: String? = null, appName: (String) -> String = { it }): List<InboxLine> {
     // Single Messages (Display Style), and the saved messages, one row each.
     val single = !snapshot.options.group || filter == Filter.SAVED
-    val rows = hubRows(snapshot.shown(filter, search, account, searchIn), HubView(), format.zone, conversations = !single)
+    val rows = hubRows(snapshot.shown(filter, search, account, searchIn, app), HubView(), format.zone, conversations = !single)
     val times = timeFormatter(format)
     val dates = dayFormatter(format.locale)
     return rows.map { row ->
@@ -205,14 +286,16 @@ fun inboxLines(snapshot: Snapshot, filter: Filter, search: String?, format: Inbo
             is HubRow.Day -> DayLine(dayId(row.date), dates.format(row.date).replace(".", ""), row.date)
             is HubRow.Entry -> ItemLine(
                 id = rowId(row.item, single),
-                sender = row.item.sender,
+                // A notification without a title: its app's name (D), never an empty line.
+                sender = row.item.groupName() ?: row.item.sender.ifBlank { row.item.folder?.let(appName) ?: row.item.sender },
                 time = times.format(Instant.ofEpochMilli(row.item.timestamp).atZone(format.zone)),
-                preview = row.item.secondLine(),
+                preview = row.item.groupName()?.let { if (row.item.box == Box.INBOX) "${row.item.sender}: ${row.item.secondLine()}" else null } ?: row.item.secondLine(),
                 icon = row.icon(snapshot.smsApp),
                 unread = row.unread > 0,
                 item = row.item,
                 related = row.item.address?.takeIf { it.isNotBlank() } ?: row.item.sender,
                 saved = row.item.savedKey() in snapshot.saved,
+                app = row.item.appIcon(snapshot.smsApp),
             )
         }
     }
@@ -227,11 +310,11 @@ fun inboxLines(snapshot: Snapshot, filter: Filter, search: String?, format: Inbo
  * time, not item by item: a text that came as a notification of the SMS app sees the other apps'
  * notifications that arrived before it (D).
  */
-fun toSee(snapshot: Snapshot, filter: Filter = Filter.ALL, account: String? = null): Map<String, Long> {
+fun toSee(snapshot: Snapshot, filter: Filter = Filter.ALL, account: String? = null, app: String? = null): Map<String, Long> {
     val seen = snapshot.accounts.associate { it.id to it.seenAt }
     val newest = HashMap<String, Long>()
     for (item in snapshot.items.withoutEchoes(snapshot.smsApp, snapshot.dialer)) {
-        if (account != null && item.accountId != account) continue
+        if (account != null && item.accountId != account || app != null && item.folder != app) continue
         val since = seen[item.accountId] ?: continue
         if (item.isUnread() && item.addedAt > since && filter.shows(item, snapshot.smsApp)) newest.merge(item.accountId, item.addedAt, ::maxOf)
     }

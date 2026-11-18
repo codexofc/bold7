@@ -317,14 +317,14 @@ class PhoneActivity : Activity() {
         if (number.isNullOrEmpty()) return
         scope.launch {
             val placed = withContext(graph.io) { graph.log.place(number) }
-            if (!placed) status(this@PhoneActivity, getString(R.string.call_refused)) else set(state.back() ?: state)
+            if (!placed) status(this@PhoneActivity, getString(R.string.call_refused)) else set(state.placed())
         }
     }
 
     /** Call Voice Mail (guide p. 77): Telecom dials the SIM's voice mail number; none set, OS 7's status message says so (D). */
     private fun callVoiceMail() = scope.launch {
         when (withContext(graph.io) { graph.log.voiceMail() }) {
-            VoiceMailResult.PLACED -> set(state.back() ?: state)
+            VoiceMailResult.PLACED -> set(state.placed())
             VoiceMailResult.NO_NUMBER -> status(this@PhoneActivity, getString(R.string.no_voice_mail))
             VoiceMailResult.REFUSED -> status(this@PhoneActivity, getString(R.string.call_refused))
         }

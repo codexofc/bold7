@@ -87,3 +87,12 @@ Source: https://github.com/JingMatrix/Vector (commit 88f8e1fa, release v2.2)
   Shipped as-is inside the module zip (vector/vector.zip, sha256 checked by the build) and
   installed by the module only when Vector is missing. It is a separate program: Bold7 does not
   link to it. Its license: https://www.gnu.org/licenses/gpl-3.0.html
+
+Thunderbird ISPDB (autoconfig), Mozilla Public License 2.0
+Source: https://autoconfig.thunderbird.net/v1.1/ (repository https://github.com/thunderbird/autoconfig),
+answers fetched in November 2026, unmodified. Test resources only, never in an APK; the domain lists of
+Outlook.com, Yahoo, AOL and GMX in MailProviders are facts read from it:
+  core/mail/src/test/resources/autoconfig/gmx.net.xml
+  core/mail/src/test/resources/autoconfig/free.fr.xml
+  core/mail/src/test/resources/autoconfig/outlook.com.xml
+  core/mail/src/test/resources/autoconfig/yahoo.com.xml

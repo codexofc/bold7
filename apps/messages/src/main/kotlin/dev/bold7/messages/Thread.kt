@@ -28,8 +28,11 @@ data class MmsRecord(
 /** An MMS part neither text, SMIL nor image ([uri] content://mms/part/<id>): a video, a sound, a card. */
 data class MediaPart(val uri: String, val type: String)
 
-/** A bubble's state icon (net_rim_Message-icons32x32.png, docs/BBOS7-VISUEL.md §16). */
-enum class Delivery { UNREAD, RECEIVED, SENDING, SENT, DELIVERED, FAILED }
+/**
+ * A bubble's state icon (net_rim_Message-icons32x32.png, docs/BBOS7-VISUEL.md §16); UNCONFIRMED: a
+ * reply handed to another app that did not show it back (D).
+ */
+enum class Delivery { UNREAD, RECEIVED, SENDING, SENT, DELIVERED, FAILED, UNCONFIRMED }
 
 data class ThreadMessage(
     /** Telephony's URI, what DeleteMessage takes. */

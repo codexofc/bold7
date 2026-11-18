@@ -1,5 +1,9 @@
 package dev.bold7.launcher.keys
 
+import dev.bold7.launcher.home.App
+import dev.bold7.launcher.home.HomeState
+import dev.bold7.launcher.home.Hiding
+import dev.bold7.launcher.home.component
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -59,6 +63,20 @@ class TypingTest {
         assertEquals(3, appForLetter('M', labels))
         assertNull(appForLetter('z', labels))
         assertNull(appForLetter('1', labels))
+    }
+
+    // On the Q25, Google's Calculator and Google Messages stay installed, hidden behind Bold7's
+    // apps under the same names, and sort before them: the letter must open the app the grid shows.
+    @Test fun `a letter never opens an app the grid hides`() {
+        val googleCalc = App("com.google.android.calculator", "com.android.calculator2.Calculator", "Calculator")
+        val calc = App("dev.bold7.calculator", "dev.bold7.calculator.CalculatorActivity", "Calculator")
+        val googleMessages = App("com.google.android.apps.messaging", "com.google.android.apps.messaging.ui.ConversationListActivity", "Messages")
+        val messages = App("dev.bold7.messages", "dev.bold7.messages.MessagesActivity", "Messages")
+        val hidden = Hiding(choices = mapOf(googleCalc.component to true, googleMessages.component to true))
+        val home = HomeState(apps = listOf(googleCalc, calc, googleMessages, messages), hiding = hidden)
+        assertEquals(calc, home.appForLetter('c'))
+        assertEquals(messages, home.appForLetter('M'))
+        assertNull(HomeState(apps = listOf(googleCalc), hiding = hidden).appForLetter('c'))
     }
 
     @Test fun `M opens Messages even with MemoPad before it (sim-288)`() {

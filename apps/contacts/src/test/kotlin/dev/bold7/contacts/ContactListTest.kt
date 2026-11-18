@@ -15,6 +15,16 @@ class ContactListTest {
 
     private fun ContactList.type(text: String) = text.fold(this) { s, c -> s.reduce(ListEvent.Typed(c)) }
 
+    @Test fun aContactJustSavedTakesTheFocusWhetherTheListReloadsBeforeOrAfter() {
+        // sim-193 (C): Save of a new contact, back to the list, the new contact focused.
+        val alice = Person(9, "Alice", phone = null, email = null)
+        val onNew = loaded.reduce(ListEvent.Moved(0))
+        val again = ListEvent.Loaded(listOf(alice, batman, deeDee, dexter, eloise))
+        assertEquals(Entry(alice), onNew.reduce(ListEvent.Created(9)).reduce(again).focused)
+        assertEquals(Entry(alice), onNew.reduce(again).reduce(ListEvent.Created(9)).focused)
+        assertEquals(NewContact, onNew.reduce(ListEvent.Created(9)).reduce(again).reduce(ListEvent.Moved(0)).reduce(again).focused)
+    }
+
     @Test fun newContactComesFirstThenTheContactsInTheirOrder() {
         assertEquals(listOf(NewContact, Entry(batman), Entry(deeDee), Entry(dexter), Entry(eloise)), loaded.rows)
     }

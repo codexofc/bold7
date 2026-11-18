@@ -31,6 +31,8 @@
     <string name="home_folder_root">Home</string>
     <string name="folder_add">Add</string>
     <string name="folder_save">Save</string>
+    <string name="folder_delete">Delete</string>
+    <string name="folder_delete_question">Delete %1$s?</string>
     <!-- The universal search typed from the home: the names of the categories as the
          tiles of OS 7 write them (sim-54), docs/BBOS7-VISUEL.md, § 9; "Composer" is D. -->
     <string name="search_dial">Dial:</string>

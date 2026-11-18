@@ -126,6 +126,7 @@ class LauncherActivity : Activity() {
                 bannerSource.counts(it.badges.counts, it.badges.appCounts)
                 home.showBadges(it.badges)
                 notices.render(it.notices)
+                keys.noticesChanged()
             }
         }
     }

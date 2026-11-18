@@ -11,11 +11,16 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.util.Log
+import dev.bold7.hub.data.EXTRA_DISABLED
+import dev.bold7.hub.data.GatedSink
 import dev.bold7.hub.data.HubSources
+import dev.bold7.hub.data.METHOD_DISABLED_SOURCES
+import dev.bold7.hub.data.SOURCES_AUTHORITY
 import dev.bold7.hub.data.hubStore
 import java.io.PrintWriter
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
@@ -30,17 +35,25 @@ internal const val TAG = "Bold7/Hub"
 class HubGraph(private val app: Context) {
     private val thread = Executors.newSingleThreadExecutor { Thread(it, "hub-sources") }
     private val rows = AndroidRows(app)
-    private val sources = HubSources(hubStore(app), rows, System::currentTimeMillis)
+    private val store = hubStore(app)
+    private val sources = HubSources(store, rows, System::currentTimeMillis)
     val diagnostics = Diagnostics()
 
-    /** Mail: its accounts, their sync and push, Messages' calls. */
-    val mail = MailHost(app, hubStore(app))
+    /** Mail: its accounts, their sync and push, Messages' calls; nothing of an account turned off. */
+    val mail = MailHost(app, GatedSink(store) { sources.disabled }) { sources.disabled }
+
+    /** The providers' reads ([watch]), read again when a source is turned on. */
+    private val reads = CopyOnWriteArrayList<() -> Unit>()
 
     /** Sources whose permission was missing, started by [retryRefused] once it is granted. */
     private val refused = ConcurrentHashMap<String, Pair<String, () -> Unit>>()
 
     fun start() {
-        watch("texts", Manifest.permission.READ_SMS, listOf(Telephony.Sms.CONTENT_URI, Telephony.Mms.CONTENT_URI)) { syncTexts() }
+        // First: what the user turned off never enters, not even at the first reads.
+        watchSourceChoice()
+        // content://mms-sms/ too: a whole conversation deleted (Google Messages, Delete) is notified
+        // there only, and its texts stayed in the Hub until the next text.
+        watch("texts", Manifest.permission.READ_SMS, listOf(Telephony.Sms.CONTENT_URI, Telephony.Mms.CONTENT_URI, Telephony.MmsSms.CONTENT_URI)) { syncTexts() }
             ?.let(::watchContacts)
         watch("calls", Manifest.permission.READ_CALL_LOG, listOf(CallLog.Calls.CONTENT_URI)) { syncCalls() }
         watch("invitations", Manifest.permission.READ_CALENDAR, listOf(CalendarContract.CONTENT_URI)) { syncInvitations() }
@@ -102,7 +115,39 @@ class HubGraph(private val app: Context) {
         }
         uris.forEach { app.contentResolver.registerContentObserver(it, true, observer) }
         schedule()
+        reads += ::schedule
         return ::schedule
+    }
+
+    /**
+     * The sources turned off in Messages Options, kept by Messages: read through its provider
+     * (READ_HUB, signature) at start and at each change it announces. Unreadable (Messages absent,
+     * not yet unlocked, refused), the last choice read stays, Signal off before any.
+     */
+    private fun watchSourceChoice() {
+        val uri = Uri.parse("content://$SOURCES_AUTHORITY")
+        fun read() = run("sources", { 0 }) {
+            val off = try {
+                app.contentResolver.call(uri, METHOD_DISABLED_SOURCES, null, null)?.getStringArray(EXTRA_DISABLED)?.toSet()
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "sources turned off: unreadable, ${e.javaClass.simpleName}")
+                null
+            } ?: return@run 0
+            if (off == disabled) return@run 0
+            val turnedOn = disabled - off
+            disable(off).also {
+                mail.sourcesChanged()
+                if (turnedOn.isNotEmpty()) reads.forEach { read -> read() }
+            }
+        }
+        try {
+            app.contentResolver.registerContentObserver(uri, false, object : ContentObserver(null) {
+                override fun onChange(selfChange: Boolean) = read()
+            })
+        } catch (e: SecurityException) {
+            Log.w(TAG, "sources turned off: not observed, ${e.javaClass.simpleName}")
+        }
+        read()
     }
 
     /**

@@ -238,6 +238,19 @@ without_service() {
 }
 
 # --- check ---------------------------------------------------------------------------------------
+# A metamodule (Hybrid Mount, meta-overlayfs...) mounts whole partitions with the source KSU, which
+# Zygisk detaches in apps, Bold7's mounts with them: named, with how to check that nothing else
+# needs it ($ADB/metamodule is a link to its folder).
+metamodule_refusal() {
+    local name
+    name=$(sed -n 's/^name=//p' "$ADB/metamodule/module.prop" 2>/dev/null | head -n 1)
+    echo "Your phone has a metamodule${name:+, $name}. Bold7 places its own files and cannot run beside one: Zygisk would hide both from your apps. Open Modules and check that no other module needs it (its card says what it mounts; 0 means nothing), remove it, restart, then install Bold7 again. Your other modules keep working."
+}
+# JL10's module makes another home screen the recents provider: enabled, it fights Bold7 for the
+# home and the recent apps. Off or being removed, it does nothing.
+JL10=$ADB/modules/bb10launcher_quickstep
+JL10_REFUSAL="JL10 QuickStep is on: it takes the home screen and the recent apps Bold7 needs. Turn it off or remove it in Modules, restart, then install Bold7 again."
+jl10_off() { [ ! -d "$JL10" ] || [ -e "$JL10/disable" ] || [ -e "$JL10/remove" ]; }
 # keylayout <moddir>: the module's Q25_keyboard.kl is the phone's own with End (key 172) as ENDCALL,
 # made here from it, so that a BenOS update that changes the file keeps its changes and installs.
 # Without the stock file, or without key 172 as HOME in it, the module places none: End keeps what
@@ -262,7 +275,8 @@ do_check() {
     # ro.benos_timestamp is BenOS's own.
     case $id in *[Bb][Ee][Nn][Oo][Ss]*) ;; *) [ -n "$(gp ro.benos_timestamp)" ] ||
         die "This is Bold7 for BenOS, and your Q25 runs '$id'. On LineageOS 24, install Bold7 for LineageOS 24 (bold7-<version>-lineage24.zip) from the releases page." ;; esac
-    [ ! -e "$ADB/metamodule" ] || die "A metamodule is installed ($ADB/metamodule), and Bold7 places its files itself. Remove that module in Modules, restart, then install Bold7 again."
+    [ ! -e "$ADB/metamodule" ] || die "$(metamodule_refusal)"
+    jl10_off || die "$JL10_REFUSAL"
     [ ! -e "$WRAPPER" ] || die "Bold7 is still finishing its removal. Unlock your phone, wait a minute, then install Bold7 again."
     if [ -e "$ADB/modules/cascade" ] || [ -e "$ADB/modules_update/cascade" ] || "$TOOLS/pm" list packages -u dev.cascade 2>/dev/null | grep -q .; then
         die "The BB10 build of this project (cascade) is still installed. Remove it first (tools/uninstall.sh of its tag bb10-final), restart, then install Bold7 again."

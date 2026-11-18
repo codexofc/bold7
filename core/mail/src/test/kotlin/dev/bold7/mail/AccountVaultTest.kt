@@ -34,6 +34,19 @@ class AccountVaultTest {
     }
 
     @Test
+    fun `a login name, accepted certificates and the provider's way of logging in survive a round trip`() {
+        val pin = Pin("mail.example.org", 993, (1..32).joinToString(":") { "AB" })
+        val typed = MailAccount("alice@example.org", "pw", MailProviders.custom("mail.example.org", 993, "smtp.example.org", 587), user = "alice", pins = listOf(pin))
+        vault.save(typed)
+        assertEquals(typed, AccountVault(file) { key }.load())
+        val outlook = MailAccount("alice@hotmail.fr", "1//refresh", MailProviders.OUTLOOK, oauth = "microsoft")
+        vault.save(outlook)
+        assertEquals(outlook, AccountVault(file) { key }.load())
+        assertEquals(pin, Pin.parse(pin.toString()))
+        assertNull(Pin.parse("mail.example.org 993 not-a-fingerprint"))
+    }
+
+    @Test
     fun `nothing of the account is stored in clear`() {
         vault.save(account)
         val stored = String(file.readBytes(), Charsets.ISO_8859_1)

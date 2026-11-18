@@ -101,12 +101,14 @@ class MailTest {
     fun `setup asks for the servers only when the domain is unknown, and says why it failed`() {
         var s = SetupState(address = "alice@example.org", password = "pw")
         assertTrue(s.ready)
+        assertTrue(SetupState(address = "alice@example.org").ready, "Next without a password asks what the address needs")
         assertFalse(SetupState(address = "alice", password = "pw").ready)
         s = s.answered(MailResult.SERVERS)
         assertTrue(s.servers)
         assertFalse(s.ready, "the servers are to be typed")
         s = s.copy(imapHost = "imap.example.org", smtpHost = "smtp.example.org")
         assertTrue(s.ready)
+        assertFalse(s.copy(password = "").ready, "typed servers need the password")
         assertFalse(s.copy(imapPort = "x").ready)
         assertEquals(SetupNotice.AUTH, s.answered(MailResult.AUTH).notice)
         assertEquals(SetupNotice.NETWORK, s.answered(MailResult.NETWORK).notice)
@@ -114,15 +116,69 @@ class MailTest {
     }
 
     @Test
-    fun `a password refused by Gmail or iCloud says where to make an app password`() {
-        fun refused(address: String) = SetupState(address = address, password = "pw").answered(MailResult.AUTH).notice
-        assertEquals(SetupNotice.AUTH_GMAIL, refused("alice@gmail.com"))
-        assertEquals(SetupNotice.AUTH_GMAIL, refused(" Alice@GoogleMail.com "))
-        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@icloud.com"))
-        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@me.com"))
-        assertEquals(SetupNotice.AUTH_ICLOUD, refused("alice@mac.com"))
-        assertEquals(SetupNotice.AUTH, refused("alice@example.org"))
-        assertEquals(SetupNotice.AUTH, refused("alice@notgmail.com"))
+    fun `each provider says what it needs, for a refused password as for none typed`() {
+        fun notice(result: MailResult, provider: String?) = SetupState(address = "a@b.c").answered(SetupAnswer(result, provider)).notice
+        val needs = mapOf(
+            "gmail" to SetupNotice.AUTH_GMAIL, "icloud" to SetupNotice.AUTH_ICLOUD, "yahoo" to SetupNotice.AUTH_YAHOO,
+            "aol" to SetupNotice.AUTH_AOL, "gmx" to SetupNotice.AUTH_GMX, "webde" to SetupNotice.AUTH_WEBDE,
+            "mailcom" to SetupNotice.AUTH_MAILCOM, "zoho" to SetupNotice.AUTH_ZOHO, "yandex" to SetupNotice.AUTH_YANDEX,
+            "orange" to SetupNotice.AUTH_ORANGE,
+        )
+        for ((provider, n) in needs) {
+            assertEquals(n, notice(MailResult.AUTH, provider), provider)
+            assertEquals(n, notice(MailResult.PASSWORD, provider), provider)
+        }
+        // A normal password (the French ISPs, typed servers): the plain words.
+        for (provider in listOf("free", "sfr", "laposte", "bbox", "custom", null)) {
+            assertEquals(SetupNotice.AUTH, notice(MailResult.AUTH, provider))
+            assertEquals(SetupNotice.PASSWORD, notice(MailResult.PASSWORD, provider))
+        }
+        assertEquals(SetupNotice.BROWSER, notice(MailResult.BROWSER, "outlook"))
+        assertEquals(SetupNotice.BROWSER_OFF, notice(MailResult.UNAVAILABLE, "outlook"), "Outlook without a client in this build: said, never tried")
+        assertEquals(SetupNotice.WORK_ACCOUNT, notice(MailResult.UNAVAILABLE, "microsoft365"))
+        assertEquals(SetupNotice.UNAVAILABLE, notice(MailResult.UNAVAILABLE, "yahoo"))
+        assertEquals(SetupNotice.BRIDGE, notice(MailResult.BRIDGE, "proton"))
+        for (r in listOf(MailResult.HOST_UNKNOWN, MailResult.PORT_CLOSED, MailResult.TIMEOUT, MailResult.NO_STARTTLS, MailResult.TLS, MailResult.NO_PASSWORD_LOGIN)) {
+            assertEquals(r.name, notice(r, "custom")!!.name)
+        }
+    }
+
+    @Test
+    fun `the security of a typed server follows its port until chosen`() {
+        val s = SetupState(servers = true, imapPort = "143", smtpPort = "465")
+        assertTrue(s.imapStartTls)
+        assertFalse(s.smtpStartTls)
+        assertFalse(s.copy(imapPort = "993").imapStartTls)
+        assertFalse(s.copy(imapSecurity = false).imapStartTls, "chosen: kept whatever the port")
+        assertTrue(s.copy(smtpSecurity = true).smtpStartTls)
+    }
+
+    @Test
+    fun `servers found by apps-hub come back to be corrected, with their login name`() {
+        val found = FoundServers("imap.example.org", 993, false, "smtp.example.org", 587, true, "alice")
+        val s = SetupState(address = "alice@example.org", password = "pw").answered(SetupAnswer(MailResult.AUTH, "custom", "imap.example.org:993", "Invalid credentials", found = found))
+        assertTrue(s.servers)
+        assertEquals("imap.example.org", s.imapHost)
+        assertEquals("587", s.smtpPort)
+        assertEquals(true, s.smtpSecurity)
+        assertEquals("alice", s.user)
+        assertEquals("imap.example.org:993", s.server)
+        assertEquals("Invalid credentials", s.detail)
+    }
+
+    @Test
+    fun `a certificate is accepted for its server only, when apps-hub allows it`() {
+        val sha = (1..32).joinToString(":") { "0A" }
+        val cert = CertificatePrompt("mail.example.org:993", sha, listOf("other.example.net"), "other.example.net", selfSigned = true, expired = false, acceptable = true)
+        var s = SetupState(address = "alice@example.org", password = "pw", servers = true).answered(SetupAnswer(MailResult.CERTIFICATE, "custom", "mail.example.org:993", certificate = cert))
+        assertEquals(SetupNotice.CERTIFICATE, s.notice)
+        assertEquals(cert, s.certificate)
+        s = s.accepted()
+        assertEquals(listOf("mail.example.org 993 $sha"), s.accepted)
+        assertNull(s.certificate)
+        // Not acceptable (a known provider's): accepting does nothing.
+        val known = SetupState().answered(SetupAnswer(MailResult.CERTIFICATE, "gmail", certificate = cert.copy(acceptable = false)))
+        assertEquals(emptyList(), known.accepted().accepted)
     }
 
     // OS 7's signature is "added to your email after you send it" (guide 7.1 p. 90, B),

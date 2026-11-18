@@ -49,6 +49,8 @@ import dev.bold7.ui.themeBitmap
  */
 open class ContactsActivity : Activity() {
     companion object {
+        private const val NEW_CONTACT = 1
+
         private const val EXTRA_ROWS = "rows"
         private const val DEMO_MAX = 2000
     }
@@ -203,6 +205,14 @@ open class ContactsActivity : Activity() {
 
     private fun update(e: ListEvent) = set(state.reduce(e))
 
+    // The contact just saved takes the focus, now or once the list has read it (sim-193, C).
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (requestCode == NEW_CONTACT && resultCode == RESULT_OK && uri != null) update(ListEvent.Created(ContentUris.parseId(uri)))
+    }
+
     private fun set(next: ContactList) {
         val old = state
         state = next
@@ -247,7 +257,7 @@ open class ContactsActivity : Activity() {
         if (demo && a != ListAct.NEW) return
         when (a) {
             // What is typed becomes the new contact's first name (D, after sim-189's note).
-            ListAct.NEW -> startActivity(Intent(this, EditActivity::class.java).putExtra(EditActivity.EXTRA_NAME, state.field.trim()))
+            ListAct.NEW -> startActivityForResult(Intent(this, EditActivity::class.java).putExtra(EditActivity.EXTRA_NAME, state.field.trim()), NEW_CONTACT)
             ListAct.VIEW -> p?.let { startActivity(Intent(this, CardActivity::class.java).putExtra(CardActivity.EXTRA_ID, it.id)) }
             ListAct.EDIT -> p?.let { startActivity(Intent(this, EditActivity::class.java).putExtra(CardActivity.EXTRA_ID, it.id)) }
             ListAct.DELETE -> p?.let { deleteContact(it.id, it.name) { load() } }

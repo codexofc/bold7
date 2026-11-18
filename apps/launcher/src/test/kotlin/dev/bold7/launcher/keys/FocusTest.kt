@@ -48,6 +48,17 @@ class FocusTest {
         assertEquals(FocusMove(tab), move(top(BannerFocus.SEARCH), Dir.DOWN, 8))
     }
 
+    @Test fun withoutNotificationsTheRowsCentreIsSkippedForTheSpeaker() {
+        fun bare(f: Focus, dir: Dir) = move(f, dir, 8, notices = false)
+        assertEquals(FocusMove(top(BannerFocus.SPEAKER)), bare(tab, Dir.UP))
+        assertEquals(FocusMove(top(BannerFocus.SPEAKER)), bare(top(BannerFocus.BANNER), Dir.DOWN))
+        assertEquals(FocusMove(top(BannerFocus.SPEAKER)), bare(top(BannerFocus.SEARCH), Dir.LEFT))
+        assertEquals(FocusMove(top(BannerFocus.SEARCH)), bare(top(BannerFocus.SPEAKER), Dir.RIGHT))
+        // Left on the centre as the last notification goes.
+        assertEquals(FocusMove(top(BannerFocus.SPEAKER)), bare(top(BannerFocus.NOTIFICATIONS), Dir.LEFT))
+        assertEquals(FocusMove(top(BannerFocus.SEARCH)), bare(top(BannerFocus.NOTIFICATIONS), Dir.RIGHT))
+    }
+
     @Test fun sidewaysOnTheTabChangesTheViewDownEntersIt() {
         assertEquals(FocusMove(tab, panel = -1), move(tab, Dir.LEFT, 8))
         assertEquals(FocusMove(tab, panel = 1), move(tab, Dir.RIGHT, 8))

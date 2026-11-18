@@ -35,3 +35,10 @@ data class Travel(val x: Float = 0f, val y: Float = 0f) {
 
 /** Pointer counts per focus step, eyeballed: to tune on the Q25. */
 const val TRACKPAD_STEP = Dimens.TRACKPAD_STEP
+
+/**
+ * Whether a trackpad step up or [down] leaves a text field whose caret is on [line] of [lines]
+ * for the next field (FieldMovement): from its first or last line at once, where Android's first
+ * step only takes the caret to the text's start or end (a one-line field is both).
+ */
+fun leavesField(line: Int, lines: Int, down: Boolean): Boolean = if (down) line >= lines - 1 else line <= 0

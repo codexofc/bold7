@@ -319,4 +319,37 @@ class ConversationStateTest {
         assertEquals(listOf(ThreadAct.ATTACH_PICTURE, ThreadAct.ATTACH_VIDEO, ThreadAct.ATTACH_AUDIO, ThreadAct.ATTACH_FILE), attachMenu().map { it.action })
         assertTrue(threadMenu(thread).first { it.action == ThreadAct.ATTACH }.submenu)
     }
+
+    // Another app's conversation
+
+    private val app = ConversationState(threadId = APP_THREAD, title = "Erin", notification = "k", app = "com.instagram.android", reply = true)
+        .reduce(ThreadEvent.Loaded(listOf(msg(1), msg(2, out = true))))
+
+    @Test fun anAppThreadsMenuOpensTheAppMarksUnreadAndAttachesNothing() {
+        assertEquals(
+            listOf(ThreadAct.OPEN_IN_APP, ThreadAct.CLEAR_CONVERSATION, ThreadAct.MARK_UNREAD, ThreadAct.ADD_SMILEY),
+            threadMenu(app).map { it.action },
+        )
+        val typed = app.reduce(ThreadEvent.Typed('a'))
+        assertEquals(listOf(ThreadAct.OPEN_IN_APP, ThreadAct.SEND, ThreadAct.CLEAR_FIELD, ThreadAct.CLEAR_CONVERSATION, ThreadAct.MARK_UNREAD, ThreadAct.ADD_SMILEY), threadMenu(typed).map { it.action })
+        assertEquals(1, defaultEntry(threadMenu(typed)))
+        // On a bubble: Delete Message; nothing received, no Mark Unread.
+        val onBubble = app.copy(messages = listOf(msg(2, out = true))).reduce(ThreadEvent.Step(down = false))
+        assertEquals(listOf(ThreadAct.OPEN_IN_APP, ThreadAct.DELETE_MESSAGE, ThreadAct.CLEAR_CONVERSATION), threadMenu(onBubble).map { it.action })
+    }
+
+    @Test fun withoutAReplyTheFieldTakesNothingAndTheMenuOffersNoSend() {
+        val shut = app.reduce(ThreadEvent.Typed('a')).reduce(ThreadEvent.Replyable(false))
+        // The text stays in the field, nothing can leave.
+        assertEquals("a", shut.draft)
+        assertFalse(shut.writable)
+        assertFalse(shut.sendable)
+        assertEquals(listOf(ThreadAct.OPEN_IN_APP, ThreadAct.CLEAR_FIELD, ThreadAct.CLEAR_CONVERSATION, ThreadAct.MARK_UNREAD), threadMenu(shut, textActs(selected = false, canPaste = true)).map { it.action })
+        assertTrue(shut.reduce(ThreadEvent.Replyable(true)).sendable)
+    }
+
+    @Test fun aReplyOnItsWayCannotBeDeleted() {
+        val waiting = app.reduce(ThreadEvent.Loaded(listOf(msg(1), ThreadMessage("${PENDING_URI}0", 9, true, "On my way", Delivery.SENDING)))).reduce(ThreadEvent.Step(down = false))
+        assertFalse(ThreadAct.DELETE_MESSAGE in threadMenu(waiting).map { it.action })
+    }
 }

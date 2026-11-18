@@ -28,6 +28,22 @@ class DialerTest {
         assertEquals(FIELD, Dialer().reduce(DialEvent.Loaded(emptyList())).focus)
     }
 
+    // Essai of 17/11: 666 typed and called, the log came back with the call on top and the focus on
+    // the row below, the old first row, followed by its id: one click called another number.
+    @Test fun afterACallThePhoneIsBackOnItsFieldWithNoRowFocused() {
+        val test = LogEntry(5, "666", "", "", LogType.OUTGOING, at(8, 25, 1, 38), isNew = false)
+        val typed = "666".fold(loaded) { d, c -> d.reduce(DialEvent.Typed(c)) }
+        val back = typed.placed().reduce(DialEvent.Loaded(listOf(test) + log))
+        assertEquals("", back.typed)
+        assertEquals(FIELD, back.focus)
+        assertNull(back.focused)
+        assertNull(back.toCall())
+        // A call placed from a focused row: the same.
+        val row = loaded.reduce(DialEvent.Moved(1)).placed().reduce(DialEvent.Loaded(listOf(unknown.copy(id = 6)) + log))
+        assertEquals(FIELD, row.focus)
+        assertNull(row.toCall())
+    }
+
     @Test fun theTrackpadGoesUpToTheFieldAndStopsAtTheEnd() {
         assertEquals(FIELD, loaded.reduce(DialEvent.Moved(0)).reduce(DialEvent.Step(down = false)).focus)
         assertEquals(FIELD, loaded.reduce(DialEvent.Step(down = false)).reduce(DialEvent.Step(down = false)).focus)

@@ -108,13 +108,21 @@ class Extractor internal constructor(
     }
 }
 
-/** The files of [dir] that have the size of a known [Firmware]: only those are worth hashing. */
-internal fun candidates(dir: File): List<File> =
-    dir.listFiles { f -> f.isFile && Firmware.entries.any { it.size == f.length() } }.orEmpty().sortedBy { it.name }
+/**
+ * [dir], then its folders, one level down: a zip of the 9900's file unpacked on the phone leaves it
+ * in Download/<the zip's name>/ (as the icons pack, system/module/src/icons.sh).
+ */
+private fun lookedIn(dir: File): List<File> = listOf(dir) + dir.listFiles { f -> f.isDirectory }.orEmpty().sortedBy { it.name }
 
-/** The files of [dir] named like a known [Firmware] but not of its size: a partial download, most likely. */
-internal fun misnamed(dir: File): List<File> =
-    dir.listFiles { f -> f.isFile && Firmware.entries.any { it.fileName == f.name && it.size != f.length() } }.orEmpty().sortedBy { it.name }
+/** The files of [dir] and its folders that have the size of a known [Firmware]: only those are worth hashing. */
+internal fun candidates(dir: File): List<File> = lookedIn(dir).flatMap { d ->
+    d.listFiles { f -> f.isFile && Firmware.entries.any { it.size == f.length() } }.orEmpty().sortedBy { it.name }
+}
+
+/** The files of [dir] and its folders named like a known [Firmware] but not of its size: a partial download, most likely. */
+internal fun misnamed(dir: File): List<File> = lookedIn(dir).flatMap { d ->
+    d.listFiles { f -> f.isFile && Firmware.entries.any { it.fileName == f.name && it.size != f.length() } }.orEmpty().sortedBy { it.name }
+}
 
 internal fun sha256(file: File): String {
     val md = MessageDigest.getInstance("SHA-256")

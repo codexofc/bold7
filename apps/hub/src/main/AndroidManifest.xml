@@ -5,6 +5,9 @@
     <permission
         android:name="dev.bold7.permission.READ_HUB"
         android:protectionLevel="signature" />
+    <!-- Held too: the sources turned off are read from Messages' provider, behind it
+         (dev.bold7.hub.data.SOURCES_AUTHORITY). -->
+    <uses-permission android:name="dev.bold7.permission.READ_HUB" />
 
     <!-- The sources without a role, granted once by tools/install.sh, never
          asked on screen. READ_SMS and READ_CALL_LOG are hard restricted: install.sh exempts them

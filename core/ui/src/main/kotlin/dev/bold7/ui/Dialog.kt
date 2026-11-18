@@ -115,7 +115,8 @@ class Bold7Dialog(
     onCancel: () -> Unit = {},
     image: Bitmap? = null,
     hideStatusBar: Boolean = false,
-) : FocusDialog<DialogView>(context, DialogView(context, text, buttons, icon, image).also { it.focused = focused }, buttons.size, hideStatusBar) {
+    armMs: Long = 0,
+) : FocusDialog<DialogView>(context, DialogView(context, text, buttons, icon, image).also { it.focused = focused }, buttons.size, hideStatusBar, armMs = armMs) {
     init {
         window?.setTitle(text)
         setOnCancelListener { onCancel() }
@@ -127,8 +128,7 @@ class Bold7Dialog(
 
     override fun onOtherKey(e: KeyEvent): Boolean {
         val i = mnemonic(buttons, e.displayLabel) ?: return false
-        dismiss()
-        onButton(i)
+        choose(i)
         return true
     }
 }

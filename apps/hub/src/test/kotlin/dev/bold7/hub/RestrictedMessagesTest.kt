@@ -26,4 +26,33 @@ class RestrictedMessagesTest {
             liftArgs("content://mms", 7),
         )
     }
+
+    private class Busy : RuntimeException("database is locked (code 5 SQLITE_BUSY)")
+
+    @Test fun aLockedRowIsTriedAgainThenLifted() {
+        var calls = 0
+        val waits = mutableListOf<Int>()
+        // As ContentProviderProxy throws it, wrapped by the reflection that called update.
+        val done = liftRetrying(tries = 5, pause = { waits += it }) {
+            calls++
+            if (calls < 3) throw java.lang.reflect.InvocationTargetException(Busy())
+        }
+        assertEquals(true, done)
+        assertEquals(3, calls)
+        assertEquals(listOf(1, 2), waits)
+    }
+
+    @Test fun aRowStillLockedIsLeftNotTheWholeRun() {
+        var calls = 0
+        val done = liftRetrying(tries = 4, pause = {}) { calls++; throw java.lang.reflect.InvocationTargetException(Busy()) }
+        assertEquals(false, done)
+        assertEquals(4, calls)
+    }
+
+    @Test fun anotherFailureIsLeftAtOnce() {
+        var calls = 0
+        val done = liftRetrying(tries = 4, pause = {}) { calls++; throw IllegalStateException("no such row") }
+        assertEquals(false, done)
+        assertEquals(1, calls)
+    }
 }

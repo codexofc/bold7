@@ -46,7 +46,8 @@
 #              PNG), the short menu's sm_* images; the thread's state icons, picture,
 #              field (9-patch) and smiley button; the 45 px emoticons of Add Smiley; mail's
 #              send button, form field and reply, forward and draft images; the three
-#              icons of Messages Options' rows, the picker's folder and the player's controls
+#              icons of Messages Options' rows, the picker's folder and the player's controls;
+#              the Facebook and Twitter apps' 40 px "ML" strips for their messages' rows
 #   saisie     saisie/assets/os7/substitution/en.tsv: OS 7's English word substitution (autotext_en.tsv);
 #              saisie/assets/os7/dictionary/fr.tsv, en.tsv: OS 7's part of the word lists, the lines of
 #              the merged lists of AOSP and OS 7 (merged_fr.tsv; merged_en.tsv, British English with the
@@ -168,7 +169,10 @@ HOME_IMAGES=(
   homescreen_mask_p        # 640x47, the tab's dark edges over the neighbouring views' names
   folder                   # 92x92, a folder's icon in the grid
   net_rim_bb_ribbon_app    # 92x92, the Home Screen icon of the app switcher (sim-05)
-  background_folderview    # 480x39, the open folder's header band
+  # The open folder's tab, 50 px high: left end 38, 1 px stretched, slant 52, 1 px stretched, right
+  # end 38 (sim-16, sim-374, sim-482); then the darkened ground under it, 360x380, 40 % black.
+  background_folder_1 background_folder_2 background_folder_3 background_folder_4 background_folder_5
+  background_folder_bottom
   icon_move_underlay       # 90x95, the icon being moved (arrows)
   new_overlay              # 92x92, the red star over an icon with something new (sim-15)
   # The short menu's glyphs (82x55, core/ui draws them).
@@ -559,6 +563,13 @@ messages() {
     need "$THEME/$img.png"
     cp "$THEME/$img.png" "$dir/msg_player_$img.png"
   done
+  # The status icons the Facebook and Twitter apps of OS 7 gave their messages in the
+  # inbox (their "ML", message list, strips: unread, read, sending, sent, failed), at 40 px,
+  # the largest under the row's 42, drawn at their pixels.
+  local fb=$OS7/images/net_rim_bb_facebook_resource/res tw=$OS7/images/net_rim_bb_twitter_resources_small/res
+  need "$fb/facebook_ML_40.png" "$tw/twitter_ML_icons40.png"
+  cp "$fb/facebook_ML_40.png" "$dir/msg_facebook_icons.png"
+  cp "$tw/twitter_ML_icons40.png" "$dir/msg_twitter_icons.png"
   echo "messages: $(ls "$dir"/msg_*.png | wc -l | tr -d ' ') theme images in $dir"
 }
 

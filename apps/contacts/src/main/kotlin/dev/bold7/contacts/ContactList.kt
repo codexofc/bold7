@@ -25,6 +25,8 @@ sealed interface ListEvent {
     data class Step(val down: Boolean) : ListEvent
     /** A touch on the row at [row]. */
     data class Moved(val row: Int) : ListEvent
+    /** A new contact saved, [id]: focused now, or at the next load if the list has not read it yet (sim-193, C). */
+    data class Created(val id: Long) : ListEvent
 }
 
 data class ContactList(
@@ -35,6 +37,8 @@ data class ContactList(
     /** Select Contact (another app's pick): the same rows (sim-183, C), its click chooses. */
     val picking: Boolean = false,
     val loaded: Boolean = false,
+    /** A contact just created ([ListEvent.Created]) that the list has not read yet. */
+    val wanted: Long? = null,
 ) {
     val shown: List<Person> = filter(all, typed)
 
@@ -50,13 +54,15 @@ data class ContactList(
             val id = (focused as? Entry)?.person?.id
             val next = copy(all = e.people, loaded = true)
             val at = next.rows.indexOfFirst { it is Entry && it.person.id == id }
-            next.copy(focus = when {
+            val kept = next.copy(focus = when {
                 at >= 0 -> at
                 // First loaded: the first contact (sim-178, C).
                 !loaded -> next.firstMatch()
                 else -> focus.coerceIn(0, next.rows.size - 1)
             })
+            (wanted?.let(kept::focusedOn) ?: kept).copy(wanted = null)
         }
+        is ListEvent.Created -> focusedOn(e.id) ?: copy(wanted = e.id)
         is ListEvent.Typed -> retyped(typed + e.char)
         ListEvent.Erased -> if (typed.isEmpty()) this else retyped(typed.dropLast(1))
         is ListEvent.Step -> copy(focus = (focus + if (e.down) 1 else -1).coerceIn(0, rows.size - 1))
@@ -65,6 +71,9 @@ data class ContactList(
 
     /** Escape: what is typed goes first (as the Phone's field, sim-144, C); null leaves the screen. */
     fun back(): ContactList? = if (typed.isEmpty()) null else retyped("")
+
+    private fun focusedOn(id: Long): ContactList? =
+        rows.indexOfFirst { it is Entry && it.person.id == id }.takeIf { it >= 0 }?.let { copy(focus = it) }
 
     /** The first contact's row; New Contact's when none is shown (sim-190, C). */
     private fun firstMatch() = rows.indexOfFirst { it is Entry }.coerceAtLeast(0)

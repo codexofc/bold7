@@ -2,7 +2,6 @@ package dev.bold7.messages
 
 import android.app.Activity
 import android.app.ActivityManager
-import android.app.ActivityOptions
 import android.app.Dialog
 import android.app.KeyguardManager
 import android.app.PendingIntent
@@ -113,6 +112,8 @@ class MessagesActivity : Activity() {
     @Volatile private var showcase = false
 
     private val strips = IconStrips()
+    /** The other apps' names, from AppLooks: main thread only. */
+    private val appNames = HashMap<String, String>()
     private val glyphs = arrayOfNulls<Bitmap>(Act.entries.size)
 
     private lateinit var root: FrameLayout
@@ -188,7 +189,7 @@ class MessagesActivity : Activity() {
         folders = bb10List(ListView(this), 0).apply {
             adapter = folderAdapter
             isFocusable = false
-            setOnItemClickListener { _, _, position, _ -> update(InboxEvent.Filtered(FOLDER_VIEWS[position])) }
+            setOnItemClickListener { _, _, position, _ -> folderViews(state.apps).getOrNull(position)?.let { update(InboxEvent.Filtered(it.filter, it.app)) } }
         }
         folderPage = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -324,6 +325,8 @@ class MessagesActivity : Activity() {
         val decoded = withContext(graph.io) {
             strips.message = decode("msg_message_icons")
             strips.phone = decode("msg_phone_icons")
+            strips.facebook = decode("msg_facebook_icons")
+            strips.twitter = decode("msg_twitter_icons")
             arrows.up = decode("msg_scroll_up")
             arrows.down = decode("msg_scroll_down")
             sm.mapValues { decode(it.value) }
@@ -340,8 +343,25 @@ class MessagesActivity : Activity() {
 
     /** The feed's lines, kept only when worked out for the view shown. */
     private fun fed(f: FeedState) {
-        if (!f.loaded || f.filter != state.filter || f.search != state.search || f.account != state.account || f.searchIn != state.searchIn) return
-        update(InboxEvent.Shown(f.lines))
+        if (!f.loaded || f.filter != state.filter || f.search != state.search || f.account != state.account || f.searchIn != state.searchIn || f.app != state.app) return
+        update(InboxEvent.Shown(f.lines, f.apps))
+        lookUp(f.apps + f.lines.mapNotNull { (it as? ItemLine)?.app })
+    }
+
+    /** The other apps' names and icons, worked out off the main thread; the rows and View Folder drawn again once they are. */
+    private fun lookUp(apps: List<String>) {
+        val wanted = apps.distinct().filter { it !in appNames }
+        if (wanted.isEmpty()) return
+        scope.launch {
+            val names = withContext(graph.io) {
+                graph.looks.load(wanted)
+                wanted.associateWith(graph.looks::name)
+            }
+            appNames.putAll(names)
+            list.invalidateViews()
+            folderAdapter.notifyDataSetChanged()
+            showTitle(state)
+        }
     }
 
     private fun update(event: InboxEvent) {
@@ -358,8 +378,8 @@ class MessagesActivity : Activity() {
 
     private fun render(old: InboxState) {
         val s = state
-        if (s.filter != old.filter || s.search != old.search || s.account != old.account || s.searchIn != old.searchIn) graph.feed.show(s.filter, s.search, s.account, s.searchIn)
-        if (s.filter != old.filter || s.account != old.account) showTitle(s)
+        if (s.filter != old.filter || s.search != old.search || s.account != old.account || s.searchIn != old.searchIn || s.app != old.app) graph.feed.show(s.filter, s.search, s.account, s.searchIn, s.app)
+        if (s.filter != old.filter || s.account != old.account || s.app != old.app) showTitle(s)
         listPage.visibility = if (s.screen == Screen.LIST) View.VISIBLE else View.GONE
         folderPage.visibility = if (s.screen == Screen.FOLDERS) View.VISIBLE else View.GONE
         search.visibility = if (s.search == null) View.GONE else View.VISIBLE
@@ -379,10 +399,13 @@ class MessagesActivity : Activity() {
             s.lines !== old.lines -> lines.notifyDataSetChanged()
             s.focus != old.focus || s.anchor != old.anchor -> rebindShown()
         }
+        // A view's first lines: the list on its top, whatever the old view's scroll or a pending
+        // keepInSight (a data change before the layout keeps the old first position).
+        if (old.opening && !s.opening) list.setSelectionFromTop(0, 0)
         // Only when the focus goes to another line: not on a reload, nor when a message arriving
         // above moves its line down; a list scrolled by touch stays where the finger left it.
         if (s.focus >= 0 && (s.focusedLine?.id != old.focusedLine?.id || s.screen != old.screen)) keepInSight(s.focus)
-        if (s.screen == Screen.FOLDERS && (s.folder != old.folder || s.screen != old.screen)) {
+        if (s.screen == Screen.FOLDERS && (s.folder != old.folder || s.screen != old.screen || s.apps != old.apps)) {
             folderAdapter.notifyDataSetChanged()
             folders.setSelection(s.folder)
         }
@@ -446,7 +469,7 @@ class MessagesActivity : Activity() {
      * and the unified box none, so that the bar names the network (sim-43, C).
      */
     private fun viewTitle(s: InboxState): String? =
-        s.account?.takeIf { s.filter == s.base }?.let { a -> mail.firstOrNull { it.id == a }?.address }
+        s.app?.let { appNames[it] ?: it } ?: s.account?.takeIf { s.filter == s.base }?.let { a -> mail.firstOrNull { it.id == a }?.address }
             ?: if (s.filter == Filter.ALL) null else getString(folderName(s.filter))
 
     private fun showTitle(s: InboxState) {
@@ -479,7 +502,9 @@ class MessagesActivity : Activity() {
     /** The short menu over the focused line; none on the search field or View Folder. */
     private fun holdLine(): Boolean {
         if (state.screen != Screen.LIST || state.focus == FIELD) return false
-        show(Menu(shortMenu(state.focusedLine, state.filter, state.span() != null), line = state.focus.coerceAtLeast(0), highlighted = 0))
+        val range = state.span() != null
+        val entries = shortMenu(state.focusedLine, state.filter, range)
+        show(Menu(entries, line = state.focus.coerceAtLeast(0), highlighted = menuFocus(entries, state.focusedLine, range)))
         return true
     }
 
@@ -683,6 +708,8 @@ class MessagesActivity : Activity() {
                 val app = o.app?.let { withContext(graph.io) { packageManager.getLaunchIntentForPackage(it) } }
                 if (app == null || !start(app)) unable(line)
             }
+            // A messaging app's conversation: the thread of OS 7, the Hub's.
+            is Opening.AppThread -> startActivity(ConversationActivity.appIntent(this, o.key, o.app, line.sender))
             // The thread of OS 7; the door shut, Google Messages on sms:a;b;c, every
             // member of a group, as AOSP's Mms app writes its recipients.
             is Opening.Conversation -> {
@@ -746,21 +773,14 @@ class MessagesActivity : Activity() {
     private fun callPrompt(number: String) =
         Intent("dev.bold7.phone.CALL_PROMPT", Uri.fromParts("tel", number, null)).setPackage("dev.bold7.phone")
 
-    /** Sends a notification's contentIntent as the shade does, lending it this foreground app's right to start an activity. */
-    private fun send(intent: PendingIntent): Boolean = try {
-        val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-        intent.send(this, 0, null, null, null, null, options.toBundle())
-        true
-    } catch (e: PendingIntent.CanceledException) {
-        false
-    }
+    private fun send(intent: PendingIntent): Boolean = sendFromForeground(this, intent)
 
     // Keys and the trackpad
 
     /** A click: a message opens (guide p. 94: "Open a message: press Enter"), a date field shows its short menu (D). */
     private fun clicked() {
         when (state.screen) {
-            Screen.FOLDERS -> update(InboxEvent.Filtered(FOLDER_VIEWS[state.folder]))
+            Screen.FOLDERS -> folderViews(state.apps).getOrNull(state.folder)?.let { update(InboxEvent.Filtered(it.filter, it.app)) }
             Screen.LIST -> when (state.focusedLine) {
                 is ItemLine -> perform(Act.OPEN)
                 is DayLine -> holdLine()
@@ -908,20 +928,23 @@ class MessagesActivity : Activity() {
         override fun getItemViewType(position: Int) = if (state.lines[position] is DayLine) 0 else 1
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val view = convertView ?: if (state.lines[position] is DayLine) ListHeaderView(this@MessagesActivity) else MessageRowView(this@MessagesActivity, strips)
+            val view = convertView ?: if (state.lines[position] is DayLine) ListHeaderView(this@MessagesActivity) else MessageRowView(this@MessagesActivity, strips, graph.looks::icon)
             bind(view, position)
             return view
         }
     }
 
     private inner class FoldersAdapter : BaseAdapter() {
-        override fun getCount() = FOLDER_VIEWS.size
-        override fun getItem(position: Int) = FOLDER_VIEWS[position]
+        override fun getCount() = folderViews(state.apps).size
+        override fun getItem(position: Int) = folderViews(state.apps)[position]
         override fun getItemId(position: Int) = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
             ((convertView as? ListItemView) ?: ListItemView(this@MessagesActivity)).apply {
-                bind(getString(folderName(FOLDER_VIEWS[position])), "", lit = position == state.folder)
+                val view = folderViews(state.apps)[position]
+                // An app's view under its name (D), its icon beside it once drawn.
+                val name = view.app?.let { appNames[it] ?: it } ?: getString(folderName(view.filter))
+                bind(name, "", lit = position == state.folder, icon = view.app?.let(graph.looks::icon))
             }
     }
 

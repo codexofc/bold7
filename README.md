@@ -29,6 +29,8 @@
   <a href="#install">Install</a> ·
   <a href="INSTALL-LINEAGEOS24.md">Guide: LineageOS 24</a> ·
   <a href="INSTALL-BENOS.md">Guide: BenOS</a> ·
+  <a href="USER-GUIDE.md">User guide</a> ·
+  <a href="EMAIL-SETUP.md">Email setup</a> ·
   <a href="#performance">Performance</a> ·
   <a href="#for-developers">For developers</a> ·
   <a href="#legal">Legal</a>
@@ -97,7 +99,7 @@ Bold7 is not a theme. It is a launcher, a set of apps, an input method, a System
 - Sound profiles: Normal, Loud, Medium, Vibrate Only, Silent, Phone Calls Only, All Alerts Off.
 - Manage Connections, the volume window, the power-off dialog and shutdown screen, status messages in place of toasts.
 - The OS 7 lock screen and password entry. Options, Security sets, changes and removes the device password in OS 7 boxes, with Lock After and Message on Lock Screen. Checking the code stays with Android (see [Device safety](#device-safety)).
-- Help: the 9900's own help pages, decoded on the phone from your 9900 file, opened by H on the home screen or Help in every app's menu.
+- Help: the 9900's own help pages, decoded on the phone from your 9900 file, opened from Help in every app's menu, or by H on the home screen when Launch by Typing is set to Application Shortcuts.
 - Dialogs, menus, date and time pickers and choice lists of the Android framework restyled, so third-party apps follow.
 - BBAlpha Sans as the system font, the 9900's other fonts as fallbacks, its colour palette, its transitions and its boot animation.
 - Ringtones, notification and alarm sounds of the 9900's Normal profile; Android's interface sounds (charger, lock, touch) silenced as on the 9900.
@@ -106,7 +108,7 @@ Bold7 is not a theme. It is a launcher, a set of apps, an input method, a System
 
 | App | What it does |
 |---|---|
-| Messages | Unified inbox: text messages, email and app notifications. SMS, MMS and RCS threads drawn in OS 7 through the external API of Google Messages, which keeps the SMS role. Email over IMAP with push (IDLE), browser sign-in for Gmail and Outlook, per-account signatures, attachments, OS 7 emoticons. |
+| Messages | Unified inbox: text messages, email and app notifications. SMS, MMS and RCS threads drawn in OS 7 through the external API of Google Messages, which keeps the SMS role. Email over IMAP with push (IDLE), app passwords for Gmail and iCloud, per-account signatures, attachments, OS 7 emoticons. |
 | Phone | Holds the dialer role: incoming, outgoing and in-call screens, call log, missed calls, contact search in the dial field. |
 | Contacts | OS 7 contacts on Android's contacts provider. Nothing is copied. Answers other apps that ask for a contact. |
 | Calendar | Day, Week, Month and Agenda views on Android's calendar provider. |
@@ -126,6 +128,8 @@ Bold7 is not a theme. It is a launcher, a set of apps, an input method, a System
 ## Install
 
 **Step-by-step guides, from a stock phone to the first unlock:** [LineageOS 24](INSTALL-LINEAGEOS24.md) (LineageOS, Google apps, root with KernelSU Next, NeoZygisk, then Bold7) and [BenOS](INSTALL-BENOS.md). The summary follows.
+
+**Once installed:** the [user guide](USER-GUIDE.md) lists every key, menu and shortcut, app by app, and [adding an email account](EMAIL-SETUP.md) goes through the common providers one by one (app passwords, IMAP, browser sign-in).
 
 Pick the release of your system on the [releases page](https://github.com/codexofc/bold7/releases). Each zip checks the system it runs on and refuses the other one, and the KernelSU manager only ever offers updates of the line you installed.
 

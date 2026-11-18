@@ -2,7 +2,9 @@ package dev.bold7.messages
 
 import android.app.Activity
 import android.app.Dialog
+import android.app.ActivityOptions
 import android.app.KeyguardManager
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -28,6 +30,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import dev.bold7.design.ThreadColors
 import dev.bold7.design.ThreadDimens
+import dev.bold7.hub.data.HubContract
 import dev.bold7.platform.hideStatusBar
 import dev.bold7.showcase.avatar
 import dev.bold7.showcase.isAvatar
@@ -67,6 +70,10 @@ import kotlinx.coroutines.withContext
  * over the lock screen, and every write checks the keyguard again. Renders [ConversationState],
  * decides nothing.
  *
+ * Another app's conversation ([appIntent]) is shown by the same screen: the Hub's
+ * items of its notification, the field answering through that notification's reply while it has
+ * one, "Reply in <App>" otherwise (D).
+ *
  * `su -c 'am start -n dev.bold7.messages/.ConversationActivity --ei rows 500'`: made-up bubbles,
  * nothing read nor sent (tools/perf.sh, APP mode).
  */
@@ -79,6 +86,9 @@ class ConversationActivity : Activity() {
         private const val EXTRA_TO = "to"
         /** The field's first text (Send Contact Card of Contacts); with no To, a new message to anyone. */
         private const val EXTRA_BODY = "body"
+        /** Another app's conversation: its notification's key and its package. */
+        private const val EXTRA_NOTIFICATION = "notification"
+        private const val EXTRA_APP = "app"
 
         /** Choose Contact: Select Contact of Bold7's Contacts (SELECT_CONTACT, signature). */
         private const val CONTACTS = "dev.bold7.contacts"
@@ -91,6 +101,10 @@ class ConversationActivity : Activity() {
         /** The thread [threadId] under [title]; null: a new message (Compose Text Message). */
         fun intent(context: Context, threadId: Long?, title: String): Intent =
             Intent(context, ConversationActivity::class.java).putExtra(EXTRA_TITLE, title).apply { if (threadId != null) putExtra(EXTRA_THREAD, threadId) }
+
+        /** The conversation of [app]'s notification [key], under [title]. */
+        fun appIntent(context: Context, key: String, app: String, title: String): Intent =
+            Intent(context, ConversationActivity::class.java).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_NOTIFICATION, key).putExtra(EXTRA_APP, app)
     }
 
     private val graph get() = (application as MessagesApp).graph
@@ -115,6 +129,8 @@ class ConversationActivity : Activity() {
     private var thumbnail: Pair<String, Bitmap?>? = null
     /** The contact's picture in the band (gsm 023, C), decoded off the main thread. */
     private var photo: Bitmap? = null
+    /** An app's conversation: the app's name (AppLooks), read off the main thread with the images; its package until then. */
+    @Volatile private var appName: String? = null
     /** The phone's zone, language and clock, read off the main thread with the images. */
     @Volatile private var format: InboxFormat? = null
 
@@ -153,9 +169,15 @@ class ConversationActivity : Activity() {
             })
             setOnCapturedPointerListener { _, e -> onPointer(e) }
             setOnTouchListener { _, e ->
+                // "Reply in <App>": a touch opens the app.
+                if (!state.writable) {
+                    if (e.actionMasked == MotionEvent.ACTION_UP) openInApp()
+                    return@setOnTouchListener true
+                }
                 if (e.actionMasked == MotionEvent.ACTION_DOWN) conversation.event(ThreadEvent.FieldTouched)
                 false
             }
+            setHintTextColor(ThreadColors.Sender)
         }
         list = bb10List(ListView(this), 0).apply {
             adapter = bubbles
@@ -221,6 +243,8 @@ class ConversationActivity : Activity() {
         val rows = intent.getIntExtra(EXTRA_ROWS, 0)
         val thread = if (intent.hasExtra(EXTRA_THREAD)) intent.getLongExtra(EXTRA_THREAD, -1) else null
         val to = intent.getStringExtra(EXTRA_TO)?.takeIf { it.isNotBlank() }
+        val notification = intent.getStringExtra(EXTRA_NOTIFICATION)
+        val app = intent.getStringExtra(EXTRA_APP)
         // The showcase shows nothing real: a real thread, or a new message from another app (Contacts'
         // Text), closes. Android's settings cache makes the read a memory one.
         if (rows == 0 && (thread == null || !isShowcaseThread(thread)) && showcaseOn(this)) return finish()
@@ -228,6 +252,8 @@ class ConversationActivity : Activity() {
             rows > 0 -> conversation.demo(rows, System.currentTimeMillis())
             // The showcase's rows open its own threads (ShowcaseInbox): nothing real is read.
             thread != null && isShowcaseThread(thread) -> showcaseConversation(thread, System.currentTimeMillis(), showcaseEvent(this))?.let(conversation::show) ?: finish()
+            // A source turned off in Message Sources has no thread (Signal by default): the Hub holds nothing of it.
+            notification != null && app != null -> if (app in graph.store.options.disabledSources) return finish() else conversation.openApp(notification, app, intent.getStringExtra(EXTRA_TITLE).orEmpty())
             to != null -> conversation.compose(to, intent.getStringExtra(EXTRA_TITLE).orEmpty())
             else -> conversation.open(thread, intent.getStringExtra(EXTRA_TITLE).orEmpty())
         }
@@ -242,9 +268,11 @@ class ConversationActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        // Telephony notifies content://mms-sms/ for every SMS and MMS row, RCS included.
+        // Telephony notifies content://mms-sms/ for every SMS and MMS row, RCS included; the Hub
+        // notifies its counters' URI at each write, an app's conversation and its notification's removal included.
+        val watched = if (state.notification != null) Uri.parse(HubContract.COUNTS_URI) else Uri.parse("content://mms-sms/")
         graph.ioThread.post {
-            contentResolver.registerContentObserver(Uri.parse("content://mms-sms/"), true, observer)
+            contentResolver.registerContentObserver(watched, true, observer)
             contentResolver.registerContentObserver(Settings.Global.getUriFor(SHOWCASE_EVENT_SETTING), false, story)
         }
         conversation.reload()
@@ -290,7 +318,8 @@ class ConversationActivity : Activity() {
      * that has it.
      */
     private fun takeFocus() {
-        val view = if (state.focus == TO) root else composer.editor
+        // "Reply in <App>": nothing is typed, the keys are the thread's.
+        val view = if (state.focus == TO || !state.writable) root else composer.editor
         view.requestFocus()
         view.requestPointerCapture()
     }
@@ -301,7 +330,7 @@ class ConversationActivity : Activity() {
             ThreadAct.CLEAR_CONVERSATION to "msg_sm_cancel_generic", ThreadAct.DELETE_MESSAGE to "msg_sm_delete",
             ThreadAct.ADD_SMILEY to "msg_sm_add_emoticon", ThreadAct.CHOOSE_CONTACT to "msg_sm_address_book_app",
             ThreadAct.ATTACH to "msg_sm_add_attachment", ThreadAct.OPEN_ATTACHMENT to "msg_sm_open_attachment",
-            ThreadAct.REMOVE_ATTACHMENT to "msg_sm_delete",
+            ThreadAct.REMOVE_ATTACHMENT to "msg_sm_delete", ThreadAct.OPEN_IN_APP to "msg_sm_open", ThreadAct.MARK_UNREAD to "msg_sm_mark_unread",
         )
         val kinds = mapOf(
             AttachIcon.PICTURE to "msg_attachment_generic_picture", AttachIcon.VIDEO to "msg_attachment_generic_video",
@@ -316,11 +345,13 @@ class ConversationActivity : Activity() {
             EmoticonStrip.decode(this@ConversationActivity)
             images.smileys45 = decode("msg_smileys_45")
             format = graph.reader.format()
+            appName = state.app?.let(graph.looks::name)
             sm.mapValues { decode(it.value) } to kinds.mapValues { decode(it.value) }
         }
         decoded.first.forEach { (act, bitmap) -> glyphs[act.ordinal] = bitmap }
         attachIcons.putAll(decoded.second)
         bindAttachment(state.attachment)
+        bindField(state)
         band.invalidate()
         composer.invalidate()
         composer.editor.invalidate()
@@ -343,7 +374,8 @@ class ConversationActivity : Activity() {
             proposed.notifyDataSetChanged()
             if (next.pick >= 0) proposals.smoothScrollToPosition(next.pick)
         }
-        composer.bind(next.focus == COMPOSER, next.sending, next.focus == SMILEY)
+        composer.bind(next.focus == COMPOSER && next.writable, next.sending || !next.writable, next.focus == SMILEY)
+        bindField(next)
         // The latest draft, not this render's: an edit reported since must not be undone.
         val draft = conversation.state.value.draft
         val editor = composer.editor
@@ -353,7 +385,7 @@ class ConversationActivity : Activity() {
             editor.setSelection(draft.length)
             binding = false
         }
-        if ((next.focus == TO) != (old.focus == TO)) takeFocus()
+        if ((next.focus == TO) != (old.focus == TO) || next.writable != old.writable) takeFocus()
         if (next.messages !== old.messages || next.focus != old.focus) bubbles.notifyDataSetChanged()
         if (next.messages.size > old.messages.size) list.setSelection(next.messages.lastIndex)
         if (next.focus >= 0 && next.focus != old.focus) list.smoothScrollToPosition(next.focus)
@@ -368,9 +400,28 @@ class ConversationActivity : Activity() {
                 Notice.NOT_ATTACHABLE -> getString(R.string.not_attachable)
                 Notice.NOT_ATTACHED -> getString(R.string.not_attached)
                 Notice.TOO_LARGE -> getString(R.string.too_large)
+                Notice.REPLY_GONE -> getString(R.string.reply_gone, appName())
+                Notice.REPLY_CANCELED -> getString(R.string.reply_canceled, appName())
+                Notice.UNCONFIRMED -> getString(R.string.reply_unconfirmed, appName())
             })
         }
         loadPictures(next.messages)
+    }
+
+    private fun appName() = appName ?: state.app.orEmpty()
+
+    /**
+     * An app's conversation without a reply: the field takes no focus nor key, its text stays
+     * (grey, as a text leaving), and empty it reads "Reply in <App>" in grey (D).
+     */
+    private fun bindField(s: ConversationState) {
+        val e = composer.editor
+        if (e.isFocusable != s.writable) {
+            e.isFocusable = s.writable
+            e.isFocusableInTouchMode = s.writable
+        }
+        val hint = if (s.writable) null else getString(R.string.thread_reply_in, appName())
+        if (e.hint?.toString() != hint) e.hint = hint
     }
 
     /** The contact's band, or a new message's To lines, the caret on To's focused line. */
@@ -428,7 +479,7 @@ class ConversationActivity : Activity() {
 
     // Menus
 
-    private fun label(act: ThreadAct) = getString(
+    private fun label(act: ThreadAct): String = if (act == ThreadAct.OPEN_IN_APP) getString(R.string.thread_open_in, appName()) else getString(
         when (act) {
             ThreadAct.SEND -> R.string.thread_send
             ThreadAct.DELETE_MESSAGE -> R.string.thread_delete_message
@@ -446,6 +497,8 @@ class ConversationActivity : Activity() {
             ThreadAct.REMOVE_ATTACHMENT -> R.string.thread_remove_attachment
             ThreadAct.OPEN_ATTACHMENT -> R.string.thread_open_attachment
             ThreadAct.START_SELECTION, ThreadAct.CUT, ThreadAct.COPY, ThreadAct.PASTE -> FieldSelection.label(TextAct.valueOf(act.name))
+            ThreadAct.MARK_UNREAD -> R.string.act_mark_unread
+            ThreadAct.OPEN_IN_APP -> R.string.thread_open_in
         },
     )
 
@@ -508,6 +561,34 @@ class ConversationActivity : Activity() {
             ThreadAct.REMOVE_ATTACHMENT -> conversation.removeAttachment()
             ThreadAct.OPEN_ATTACHMENT -> state.focusedMessage?.opens?.let(::open)
             ThreadAct.START_SELECTION, ThreadAct.CUT, ThreadAct.COPY, ThreadAct.PASTE -> selection.perform(composer.editor, TextAct.valueOf(act.name))
+            ThreadAct.OPEN_IN_APP -> openInApp()
+            // Unread again in the Hub, the thread closed: open, it would be read again (D).
+            ThreadAct.MARK_UNREAD -> scope.launch {
+                conversation.markUnread()
+                finish()
+            }
+        }
+    }
+
+    /**
+     * Open in <App>, and "Reply in <App>": its notification's contentIntent while it lives, else
+     * the app's launcher, as the inbox opens it (MessagesActivity); neither, OS 7's status message.
+     */
+    private fun openInApp() {
+        if (locked()) return
+        val key = state.notification ?: return
+        val app = state.app ?: return
+        scope.launch {
+            val intent = withContext(graph.io) { graph.reader.open(key) }
+            if (intent != null && sendFromForeground(this@ConversationActivity, intent)) return@launch
+            val launch = withContext(graph.io) { packageManager.getLaunchIntentForPackage(app) }
+            val started = launch != null && try {
+                startActivity(launch)
+                true
+            } catch (e: ActivityNotFoundException) {
+                false
+            }
+            if (!started) status(this@ConversationActivity, getString(R.string.unable_to_open, appName()))
         }
     }
 
@@ -604,7 +685,7 @@ class ConversationActivity : Activity() {
 
     /** Add Smiley's list (sim-145, C), from the button, its touch or the menus; nothing while locked. */
     private fun openSmileys() {
-        if (locked()) return
+        if (locked() || !state.writable) return
         smileys?.dismiss()
         smileys = EmoticonDialog(this, images, ::putEmoticon).also { it.show() }
     }
@@ -637,6 +718,8 @@ class ConversationActivity : Activity() {
      */
     private fun clicked() {
         if (state.focus == COMPOSER && state.sendable) return perform(ThreadAct.SEND)
+        // "Reply in <App>": the app.
+        if (state.focus == COMPOSER && !state.writable) return openInApp()
         if (state.focus == SMILEY) return openSmileys()
         // A bubble with an attachment: opened (D); held, the short menu as before.
         state.focusedMessage?.opens?.let { return open(it) }
@@ -824,4 +907,16 @@ fun fieldKey(code: Int): FieldKey = when (code) {
     KeyEvent.KEYCODE_MENU -> FieldKey.MENU
     KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> FieldKey.DELETE
     else -> FieldKey.TEXT
+}
+
+/**
+ * Sends a notification's contentIntent as the shade does, lending it [activity]'s right, as the
+ * app in the foreground, to start an activity; false when the app cancelled it.
+ */
+fun sendFromForeground(activity: Activity, intent: PendingIntent): Boolean = try {
+    val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+    intent.send(activity, 0, null, null, null, null, options.toBundle())
+    true
+} catch (e: PendingIntent.CanceledException) {
+    false
 }

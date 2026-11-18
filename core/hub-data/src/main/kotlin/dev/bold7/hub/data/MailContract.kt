@@ -15,9 +15,15 @@ package dev.bold7.hub.data
  * - [METHOD_BROWSER_FINISH]: once back from the browser: waits for the sign-in and both servers'
  *   check, then [EXTRA_RESULT] and [EXTRA_ID] as [METHOD_ADD]; [MailResult.CANCELLED] when the
  *   browser never came back with a code.
- * - [METHOD_ADD]: [EXTRA_ADDRESS], [EXTRA_PASSWORD], and for a domain apps/hub does not know
- *   [EXTRA_IMAP_HOST], [EXTRA_IMAP_PORT], [EXTRA_SMTP_HOST], [EXTRA_SMTP_PORT]; both servers are
- *   logged in to before anything is kept. Answers [EXTRA_RESULT], and [EXTRA_ID] when [MailResult.OK].
+ * - [METHOD_ADD]: [EXTRA_ADDRESS], [EXTRA_PASSWORD] (empty: only what the address needs is
+ *   answered), and for typed servers [EXTRA_IMAP_HOST], [EXTRA_IMAP_PORT], [EXTRA_IMAP_STARTTLS],
+ *   [EXTRA_SMTP_HOST], [EXTRA_SMTP_PORT], [EXTRA_SMTP_STARTTLS], [EXTRA_USER] (the login name, the
+ *   address when empty) and [EXTRA_ACCEPT] (certificates the user accepted, "host port sha256");
+ *   for any other address apps/hub knows the provider or looks its servers up. Both servers are
+ *   logged in to before anything is kept. Answers [EXTRA_RESULT], [EXTRA_ID] when [MailResult.OK],
+ *   [EXTRA_PROVIDER] (MailProviders' id) once it is known, and on a failure [EXTRA_SERVER],
+ *   [EXTRA_DETAIL] (the server's words) and for a certificate [EXTRA_CERT_SHA256] and the others;
+ *   servers it found by itself come back in the same extras as typed ones, for the user to correct.
  * - [METHOD_REMOVE]: the account whose id is the arg, its password and its items forgotten.
  * - [METHOD_OPEN]: the mail item named by HubContract.EXTRA_ACCOUNTS and EXTRA_KEYS (one key): its
  *   headers and text ([EXTRA_FROM]… [EXTRA_TEXT], at most [TEXT_MAX] characters), or [EXTRA_RESULT].
@@ -63,6 +69,21 @@ object MailContract {
     const val EXTRA_SIGNATURE = "signature"
     const val EXTRA_BROWSER = "browser"
     const val EXTRA_URL = "url"
+    const val EXTRA_IMAP_STARTTLS = "imapStartTls"
+    const val EXTRA_SMTP_STARTTLS = "smtpStartTls"
+    const val EXTRA_USER = "user"
+    const val EXTRA_ACCEPT = "accept"
+    const val EXTRA_PROVIDER = "provider"
+    /** The server that failed, "host:port". */
+    const val EXTRA_SERVER = "server"
+    const val EXTRA_DETAIL = "detail"
+    const val EXTRA_CERT_SHA256 = "certSha256"
+    const val EXTRA_CERT_NAMES = "certNames"
+    const val EXTRA_CERT_ISSUER = "certIssuer"
+    const val EXTRA_CERT_SELF_SIGNED = "certSelfSigned"
+    const val EXTRA_CERT_EXPIRED = "certExpired"
+    /** Whether the user may accept this certificate: typed or found servers only, never a known provider's. */
+    const val EXTRA_CERT_ACCEPTABLE = "certAcceptable"
     /** The account's own address, for Reply All to leave it out. */
     const val EXTRA_OWN = "own"
 
@@ -83,8 +104,35 @@ object MailContract {
 enum class MailResult {
     OK,
 
-    /** The address or the app password refused by a server. */
+    /** The login name or the password refused by a server. */
     AUTH,
+
+    /** No password typed: [MailContract.EXTRA_PROVIDER] says what this address needs. */
+    PASSWORD,
+
+    /** This address signs in through the browser only (Outlook.com): no password is tried. */
+    BROWSER,
+
+    /** Proton Mail: only through Proton Mail Bridge on a computer, never from this phone. */
+    BRIDGE,
+
+    /** No such server name. */
+    HOST_UNKNOWN,
+
+    /** Nothing answers on that port. */
+    PORT_CLOSED,
+
+    /** The server did not answer in time. */
+    TIMEOUT,
+
+    /** STARTTLS chosen, the server does not offer it. */
+    NO_STARTTLS,
+
+    /** SSL/TLS chosen, the server does not start it (a STARTTLS port, most often). */
+    TLS,
+
+    /** The server offers no login by password. */
+    NO_PASSWORD_LOGIN,
 
     /** A domain apps/hub does not know: its servers are to be typed. */
     SERVERS,
@@ -98,7 +146,10 @@ enum class MailResult {
     /** Locked, an account or a message it does not know, an account already there. */
     REFUSED,
 
-    /** No browser sign-in for this address: another provider, or no OAuth client in this build. */
+    /**
+     * No browser sign-in for this address: another provider, or no OAuth client in this build; for
+     * [MailContract.METHOD_ADD], an address that signs in through the browser only, when this build cannot.
+     */
     UNAVAILABLE,
 
     /** Back from the browser without a sign-in: closed, refused by the user, or too late. */

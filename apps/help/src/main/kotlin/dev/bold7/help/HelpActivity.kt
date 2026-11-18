@@ -86,7 +86,11 @@ class HelpActivity : Activity() {
     private enum class Act { CONTENTS, CLOSE, SWITCH }
 
     private lateinit var files: HelpFiles
-    private lateinit var web: WebView
+    /** Created once the first frame is out (Chromium's first load in the process costs 100 to 200 ms). */
+    private var web: WebView? = null
+    /** The page asked for before [web] exists, loaded as soon as it does. */
+    private var pending: String? = null
+    private lateinit var pages: FrameLayout
     private lateinit var field: SearchField
     private lateinit var list: ListView
     private lateinit var menuView: MenuView<Act>
@@ -106,7 +110,36 @@ class HelpActivity : Activity() {
         files = HelpFiles(this, "width=${m.widthPixels}, initial-scale=$scale, maximum-scale=$scale, user-scalable=no")
         val match = ViewGroup.LayoutParams.MATCH_PARENT
         field = SearchField(this, getString(R.string.search)).apply { isFocusable = false }
-        web = WebView(this).apply {
+        pages = FrameLayout(this)
+        list = bb10List(ListView(this), 0).apply {
+            adapter = this@HelpActivity.adapter
+            isFocusable = false
+            visibility = View.GONE
+            setOnItemClickListener { _, _, position, _ -> set(screen.copy(focus = position)); open() }
+        }
+        menuView = MenuView(this, glyph = { null }, label = ::label, onEntry = ::chosen, onExpand = { menu?.let { show(it.expand()) } }, onClose = { show(null) })
+        window.hideStatusBar()
+        setContentView(FrameLayout(this).apply {
+            // White, as the pages (style.css, A): the area waits for the WebView without a flash.
+            setBackgroundColor(ListColors.Background)
+            addView(LinearLayout(this@HelpActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TitleBar(this@HelpActivity, getString(R.string.title)), LinearLayout.LayoutParams(match, TitleBar.HEIGHT))
+                addView(field, LinearLayout.LayoutParams(match, SearchField.HEIGHT))
+                addView(pages.apply { addView(list, FrameLayout.LayoutParams(match, match)) }, LinearLayout.LayoutParams(match, 0, 1f))
+            })
+            addView(menuView)
+        })
+        window.decorView.viewTreeObserver.registerFrameCommitCallback { if (!isDestroyed) createWeb() }
+        openTopic(intent)
+        io.post {
+            val s = HelpSearch(files.text("searchContent.txt").orEmpty())
+            runOnUiThread { search = s }
+        }
+    }
+
+    private fun createWeb() {
+        val w = WebView(this).apply {
             settings.apply {
                 javaScriptEnabled = false
                 allowFileAccess = false
@@ -123,33 +156,24 @@ class HelpActivity : Activity() {
             }
             isHapticFeedbackEnabled = false
             webViewClient = Locked()
+            visibility = if (screen.searching) View.INVISIBLE else View.VISIBLE
         }
-        list = bb10List(ListView(this), 0).apply {
-            adapter = this@HelpActivity.adapter
-            isFocusable = false
-            visibility = View.GONE
-            setOnItemClickListener { _, _, position, _ -> set(screen.copy(focus = position)); open() }
+        // Under the search's list, as before.
+        pages.addView(w, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        web = w
+        pending?.let {
+            pending = null
+            w.loadUrl(BASE + it)
+            w.requestFocus()
         }
-        menuView = MenuView(this, glyph = { null }, label = ::label, onEntry = ::chosen, onExpand = { menu?.let { show(it.expand()) } }, onClose = { show(null) })
-        window.hideStatusBar()
-        setContentView(FrameLayout(this).apply {
-            setBackgroundColor(ListColors.Background)
-            addView(LinearLayout(this@HelpActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(TitleBar(this@HelpActivity, getString(R.string.title)), LinearLayout.LayoutParams(match, TitleBar.HEIGHT))
-                addView(field, LinearLayout.LayoutParams(match, SearchField.HEIGHT))
-                addView(FrameLayout(this@HelpActivity).apply {
-                    addView(web, FrameLayout.LayoutParams(match, match))
-                    addView(list, FrameLayout.LayoutParams(match, match))
-                }, LinearLayout.LayoutParams(match, 0, 1f))
-            })
-            addView(menuView)
-        })
-        openTopic(intent)
-        io.post {
-            val s = HelpSearch(files.text("searchContent.txt").orEmpty())
-            runOnUiThread { search = s }
-        }
+    }
+
+    /** Shows [page], at once or once the WebView exists; [fresh] forgets the pages before (a new topic). */
+    private fun load(page: String, fresh: Boolean = false) {
+        val w = web ?: run { pending = page; return }
+        if (fresh) w.clearHistory()
+        w.loadUrl(BASE + page)
+        if (fresh) w.requestFocus()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -159,7 +183,7 @@ class HelpActivity : Activity() {
     }
 
     override fun onDestroy() {
-        web.destroy()
+        web?.destroy()
         super.onDestroy()
     }
 
@@ -168,11 +192,7 @@ class HelpActivity : Activity() {
         val topic = intent?.getStringExtra(Help.EXTRA_TOPIC)
         io.post {
             val page = files.text("index.html")?.let { HelpPages.topicPage(it, topic) } ?: "index.html"
-            runOnUiThread {
-                web.clearHistory()
-                web.loadUrl(BASE + page)
-                web.requestFocus()
-            }
+            runOnUiThread { load(page, fresh = true) }
         }
     }
 
@@ -207,12 +227,12 @@ class HelpActivity : Activity() {
         screen = next
         if (next.query != was.query) field.setText(next.query)
         list.visibility = if (next.searching) View.VISIBLE else View.GONE
-        web.visibility = if (next.searching) View.INVISIBLE else View.VISIBLE
+        web?.visibility = if (next.searching) View.INVISIBLE else View.VISIBLE
         adapter.notifyDataSetChanged()
         // New words: the list from its top band; else the focused row kept in view.
         if (next.query != was.query) list.setSelection(0)
         else if (next.searching && (next.focus < list.firstVisiblePosition || next.focus > list.lastVisiblePosition)) list.setSelection(next.focus)
-        if (!next.searching && was.searching) web.requestFocus()
+        if (!next.searching && was.searching) web?.requestFocus()
     }
 
     private fun find(q: String) = search?.find(q).orEmpty()
@@ -221,7 +241,7 @@ class HelpActivity : Activity() {
         when (val r = screen.rows.getOrNull(screen.focus)) {
             is Result -> {
                 set(HelpScreen())
-                web.loadUrl(BASE + r.found.page)
+                load(r.found.page)
             }
             // Extended Search, Device: the words to the home's search (D: the home searches the
             // phone as the 9900's universal search does).
@@ -249,7 +269,7 @@ class HelpActivity : Activity() {
         when (a) {
             Act.CONTENTS -> {
                 set(HelpScreen())
-                web.loadUrl(BASE + "index.html")
+                load("index.html")
             }
             Act.CLOSE -> finish()
             Act.SWITCH -> SwitchApplication.start(this)
@@ -290,7 +310,7 @@ class HelpActivity : Activity() {
             val back = screen.back()
             when {
                 back != null -> set(back)
-                web.canGoBack() -> web.goBack()
+                web?.canGoBack() == true -> web?.goBack()
                 else -> finish()
             }
             return true

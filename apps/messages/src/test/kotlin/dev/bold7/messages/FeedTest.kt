@@ -133,7 +133,7 @@ class FeedTest {
     @Test fun anActOnTextsAsksGoogleMessagesTooBeforeTheHub() {
         val bridged = mutableListOf<List<ApiCall>>()
         val reader = FakeReader(snapshot(sms("sms:5", 12, 9, thread = "8"), sms("sms:4", 12, 8, thread = "8"), call("c", 12, 7)))
-        val feed = Feed(reader, dispatcher, scope, { errors += it }) { bridged += it }
+        val feed = Feed(reader, dispatcher, scope, { errors += it }, bridge = { bridged += it })
         feed.reload()
         scope.advanceUntilIdle()
         feed.act(Request(Act.MARK_READ, item = reader.snapshot!!.items[0]))

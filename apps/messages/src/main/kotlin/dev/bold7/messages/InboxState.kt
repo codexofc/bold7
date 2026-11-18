@@ -45,8 +45,12 @@ data class InboxState(
     /** The trackpad's focus: a line, or [FIELD]. */
     val focus: Int = 0,
     val screen: Screen = Screen.LIST,
-    /** The focused view of View Folder, an index of [FOLDER_VIEWS]. */
+    /** The focused view of View Folder, an index of [folderViews] of [apps]. */
     val folder: Int = 0,
+    /** The app whose view is shown (View Folder), within [filter] NOTIFICATIONS; null for none. */
+    val app: String? = null,
+    /** The apps with a view of their own ([messagingApps]), from the feed. */
+    val apps: List<String> = emptyList(),
     /** The view the home's icon opened: ALL for Messages, TEXT for Text Messages. */
     val base: Filter = Filter.ALL,
     /** The mail account whose icon opened Messages: only its items (gsm 029); null for all. */
@@ -56,6 +60,11 @@ data class InboxState(
      * "Delete a message", M); the range runs from it to the focus ([span]).
      */
     val anchor: Long? = null,
+    /**
+     * The lines are still those of the view left (another [filter], [search], [account],
+     * [searchIn] or [app]): the next ones open on their top.
+     */
+    val opening: Boolean = false,
 ) {
     val focusedLine: InboxLine? get() = lines.getOrNull(focus)
 }
@@ -74,8 +83,8 @@ fun InboxState.span(): IntRange? {
 fun InboxState.range(): List<ItemLine> = span()?.mapNotNull { lines.getOrNull(it) as? ItemLine }.orEmpty()
 
 sealed interface InboxEvent {
-    /** New lines from the feed. */
-    data class Shown(val lines: List<InboxLine>) : InboxEvent
+    /** New lines from the feed, and the apps with a view (null: unchanged). */
+    data class Shown(val lines: List<InboxLine>, val apps: List<String>? = null) : InboxEvent
 
     /** The trackpad, a step up or down; with Shift held, it selects ([InboxState.anchor]). */
     data class Step(val down: Boolean, val shift: Boolean = false) : InboxEvent
@@ -83,7 +92,8 @@ sealed interface InboxEvent {
     /** A jump (navigate), or a touch on line [to]. */
     data class Moved(val to: Int) : InboxEvent
 
-    data class Filtered(val filter: Filter) : InboxEvent
+    /** A view, or one [app]'s within NOTIFICATIONS. */
+    data class Filtered(val filter: Filter, val app: String? = null) : InboxEvent
     data object SearchOpened : InboxEvent
     data class Typed(val text: String) : InboxEvent
 
@@ -98,16 +108,18 @@ sealed interface InboxEvent {
 
 fun InboxState.reduce(event: InboxEvent): InboxState = when (event) {
     is InboxEvent.Shown -> {
-        // The focus stays on its line, wherever it went; gone, on the same place.
+        // A view opens on its top, its first date field focused (sim-53, gsm 022, C). Then the
+        // focus stays on its line, wherever it went; gone (deleted), on what followed it.
         val id = focusedLine?.id
         val same = if (id == null) -1 else event.lines.indexOfFirst { it.id == id }
         val focus = when {
             focus == FIELD -> FIELD
+            opening -> 0
             same >= 0 -> same
-            else -> focus.coerceIn(0, (event.lines.size - 1).coerceAtLeast(0))
+            else -> survivor(event.lines) ?: focus.coerceIn(0, (event.lines.size - 1).coerceAtLeast(0))
         }
         // The range stays while its anchor's line is there.
-        copy(lines = event.lines, loaded = true, focus = focus, anchor = anchor?.takeIf { a -> event.lines.any { it.id == a } })
+        copy(lines = event.lines, loaded = true, focus = focus, anchor = anchor?.takeIf { a -> event.lines.any { it.id == a } }, apps = event.apps ?: apps, opening = false)
     }
     is InboxEvent.Step -> copy(
         focus = when {
@@ -120,14 +132,31 @@ fun InboxState.reduce(event: InboxEvent): InboxState = when (event) {
         anchor = if (!event.shift) null else if (span() != null) anchor else focusedLine?.id,
     )
     is InboxEvent.Moved -> copy(focus = event.to.coerceIn(0, (lines.size - 1).coerceAtLeast(0)), anchor = null)
-    is InboxEvent.Filtered -> copy(filter = event.filter, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
+    is InboxEvent.Filtered -> copy(filter = event.filter, app = event.app, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
     InboxEvent.SearchOpened -> copy(search = search ?: "", focus = FIELD, screen = Screen.LIST, anchor = null)
     is InboxEvent.SearchedBy -> copy(search = event.text, searchIn = event.field, focus = 0, screen = Screen.LIST, anchor = null)
     is InboxEvent.Typed -> copy(search = event.text, focus = FIELD, anchor = null)
-    InboxEvent.FoldersOpened -> copy(screen = Screen.FOLDERS, folder = FOLDER_VIEWS.indexOf(filter).coerceAtLeast(0), anchor = null)
-    is InboxEvent.FolderStep -> copy(folder = (folder + if (event.down) 1 else -1).coerceIn(0, FOLDER_VIEWS.lastIndex))
+    InboxEvent.FoldersOpened -> copy(screen = Screen.FOLDERS, folder = folderViews(apps).indexOf(FolderView(filter, app)).coerceAtLeast(0), anchor = null)
+    is InboxEvent.FolderStep -> copy(folder = (folder + if (event.down) 1 else -1).coerceIn(0, folderViews(apps).lastIndex))
     // The same icon again finds the app as it was left; the other one starts over on its view.
-    is InboxEvent.Opened -> if (event.base == base && event.account == account) this else copy(base = event.base, account = event.account, filter = event.base, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
+    is InboxEvent.Opened -> if (event.base == base && event.account == account) this else copy(base = event.base, account = event.account, filter = event.base, app = null, search = null, searchIn = SearchIn.ANY, focus = 0, screen = Screen.LIST, anchor = null)
+}.leaving(this)
+
+/** What the feed works the lines out for: when it changes, the lines shown are the old view's. */
+private fun InboxState.view() = listOf(filter, search, account, searchIn, app)
+
+private fun InboxState.leaving(old: InboxState) = if (view() != old.view()) copy(opening = true) else this
+
+/**
+ * Where the focus goes when its line is gone from [next]: the first line after it, or after the
+ * range it ends, that [next] still shows, else the nearest one before (as for one message deleted).
+ */
+private fun InboxState.survivor(next: List<InboxLine>): Int? {
+    // Only when the focused line is gone: a map of the new lines once per deletion.
+    val at = HashMap<Long, Int>(next.size * 2).apply { next.forEachIndexed { i, l -> put(l.id, i) } }
+    val end = span()?.last ?: focus
+    return (end + 1 until lines.size).firstNotNullOfOrNull { at[lines[it].id] }
+        ?: (minOf(end, lines.lastIndex) downTo 0).firstNotNullOfOrNull { at[lines[it].id] }
 }
 
 /**
@@ -139,9 +168,9 @@ fun InboxState.back(): InboxState? = when {
     screen == Screen.FOLDERS -> copy(screen = Screen.LIST)
     span() != null -> copy(anchor = null)
     search != null -> copy(search = null, searchIn = SearchIn.ANY, focus = 0, anchor = null)
-    filter != base -> copy(filter = base, focus = 0, anchor = null)
+    filter != base || app != null -> copy(filter = base, app = null, focus = 0, anchor = null)
     else -> null
-}
+}?.leaving(this)
 
 /**
  * Whether the search field's editor takes [key] while it has the focus (the input method types
